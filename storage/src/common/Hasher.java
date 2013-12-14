@@ -18,9 +18,15 @@ public class Hasher {
 	private int base =16;
 	
 	
-	public Hasher() throws NoSuchAlgorithmException{
-		md5 = MessageDigest.getInstance("MD5");		
-		adapter = new HexBinaryAdapter();
+	public Hasher() {
+		try {
+			md5 = MessageDigest.getInstance("MD5");
+			adapter = new HexBinaryAdapter();
+		} catch ( NoSuchAlgorithmException e ) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}		
+		
 	}
 	
 	public String getHash(String key) {

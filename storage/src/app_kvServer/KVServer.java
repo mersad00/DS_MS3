@@ -11,6 +11,8 @@ import logger.LogSetup;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+
+import common.Hasher;
 import common.ServerInfo;
 
 public class KVServer {
@@ -23,6 +25,9 @@ public class KVServer {
 
 	private ServerStatuses serverStatus;
 	private Map < String , ServerInfo > metadata;
+	private String serverHashCode;
+	
+	private Hasher hasher;
 
 	/**
 	 * Start KV Server at given port
@@ -33,6 +38,7 @@ public class KVServer {
 	public KVServer ( int port ) {
 		this.port = port;
 		this.metadata = new HashMap < String , ServerInfo > ();
+		this.hasher = new Hasher();
 	}
 
 	public void startServer () {
@@ -108,6 +114,10 @@ public class KVServer {
 
 	public Map<String , ServerInfo> getMetadata () {
 		return this.metadata;
+	}
+	
+	public String getHashCode(){
+		return this.serverHashCode;
 	}
 
 }

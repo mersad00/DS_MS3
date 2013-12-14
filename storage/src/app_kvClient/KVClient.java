@@ -11,7 +11,7 @@ import utilities.LoggingManager;
 import client.KVCommInterface;
 import client.KVStore;
 import common.messages.KVMessage;
-import common.messages.Message;
+import common.messages.ClientMessage;
 import common.messages.KVMessage.StatusType;
 
 public class KVClient {
@@ -164,9 +164,9 @@ public class KVClient {
 					+ result.getValue ();
 			break;
 		case SERVER_NOT_RESPONSIBLE : {
-			this.connection.updateMetadata ( ( ( Message ) result )
+			this.connection.updateMetadata ( ( ( ClientMessage ) result )
 					.getMetadata () );
-			Message temp = (Message)connection.getLastSentMessage();
+			ClientMessage temp = (ClientMessage)connection.getLastSentMessage();
 			
 			if(temp.getStatus ().equals ( StatusType.PUT )){
 				this.connection.put ( temp.getKey () , temp.getValue () );

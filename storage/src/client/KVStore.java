@@ -16,7 +16,7 @@ import org.apache.log4j.Logger;
 import common.Hasher;
 import common.ServerInfo;
 import common.messages.KVMessage;
-import common.messages.Message;
+import common.messages.ClientMessage;
 
 public class KVStore implements KVCommInterface {
 
@@ -99,7 +99,7 @@ public class KVStore implements KVCommInterface {
 
 	@Override
 	public KVMessage put ( String key , String value ) throws IOException {
-		Message msg = new Message ();
+		ClientMessage msg = new ClientMessage ();
 		KVMessage receivedMsg = null;
 		msg.setKey ( key );
 		msg.setValue ( value );
@@ -121,7 +121,7 @@ public class KVStore implements KVCommInterface {
 
 	@Override
 	public KVMessage get ( String key ) throws IOException {
-		Message msg = new Message ();
+		ClientMessage msg = new ClientMessage ();
 		KVMessage receivedMsg = null;
 		msg.setKey ( key );
 		msg.setStatus ( KVMessage.StatusType.GET );
@@ -217,17 +217,11 @@ public class KVStore implements KVCommInterface {
 
 	private ServerInfo getDestinationServerInfo ( String key ) {
 		ServerInfo destinationServer = null;
-		try {
-			Hasher hasher = new Hasher ();
-			String keyHash = hasher.getHash ( key );
-			String destinationServerHash = hasher
-					.getAppropriateStorageServerHash ( keyHash ,
-							metadata.keySet () );
-			destinationServer = metadata.get ( destinationServerHash );
-		} catch ( NoSuchAlgorithmException e ) {
-			logger.error ( "error in hashing key to find appropriate server" );
-			System.exit ( - 1 );
-		}
+		Hasher hasher = new Hasher ();
+		String keyHash = hasher.getHash ( key );
+		String destinationServerHash = hasher.getAppropriateStorageServerHash (
+				keyHash , metadata.keySet () );
+		destinationServer = metadata.get ( destinationServerHash );
 
 		return destinationServer;
 	}

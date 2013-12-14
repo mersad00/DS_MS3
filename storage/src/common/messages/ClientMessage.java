@@ -4,24 +4,24 @@ import java.util.Map;
 
 import common.ServerInfo;
 
-public class Message implements KVMessage {
+public class ClientMessage implements KVMessage {
 
 	private String key;
 	private String value;
 	private StatusType type;
 	private Map < String , ServerInfo > metadata;
 
-	public Message () {
+	public ClientMessage () {
 		
 	}
 	
-	public Message (String key, String value, StatusType type) {
+	public ClientMessage (String key, String value, StatusType type) {
 		this.key = key;
 		this.value = value;
 		this.type = type;
 	}
 	
-	public Message (KVMessage message){
+	public ClientMessage (KVMessage message){
 		this.key = message.getKey ();
 		this.value = message.getValue ();
 		this.type = message.getStatus ();
@@ -60,6 +60,11 @@ public class Message implements KVMessage {
 
 	public Map < String , ServerInfo > getMetadata () {
 		return this.metadata;
+	}
+
+	@Override
+	public MessageType getMessageType () {
+		return MessageType.CLIENT_MESSAGE;
 	}
 
 }

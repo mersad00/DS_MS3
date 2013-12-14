@@ -10,7 +10,8 @@ import org.apache.log4j.Logger;
 import client.SerializationUtil;
 
 import common.messages.KVMessage;
-import common.messages.Message;
+import common.messages.ClientMessage;
+import common.messages.KVMessage.StatusType;
 
 public class ClientConnection implements Runnable {
 
@@ -49,19 +50,7 @@ public class ClientConnection implements Runnable {
 			while ( isOpen ) {
 				try {
 					KVMessage msg = receiveMessage ();
-					if ( parent.getServerStatus ().equals (
-							ServerStatuses.UNDER_INITIALIZATION ) ) {
-							
-					} else if ( msg.getStatus ().equals (
-							KVMessage.StatusType.GET ) ) {
-						KVMessage result = DatabaseManager.get ( msg.getKey () );
-						this.sendMessage ( result );
-					} else if ( msg.getStatus ().equals (
-							KVMessage.StatusType.PUT ) ) {
-						KVMessage result = DatabaseManager.put ( msg.getKey () ,
-								msg.getValue () );
-						this.sendMessage ( result );
-					}
+					handleRequest ( msg );
 					/*
 					 * connection either terminated by the client or lost due to
 					 * network problems
@@ -157,6 +146,33 @@ public class ClientConnection implements Runnable {
 		output.flush ();
 		logger.info ( "Send message:\t '" + msg.getKey () + "'" );
 	}
-		
+
+	private void handleRequest ( KVMessage msg ) throws IOException {
+		if ( parent.getServerStatus ().equals (
+				ServerStatuses.UNDER_INITIALIZATION ) ) {
+			// The server has just started and not ready yet to handle requests
+			// from clients
+			ClientMessage responseMessage = new ClientMessage ( msg );
+			responseMessage.setStatus ( StatusType.SERVER_STOPPED );
+
+		} else if ( parent.getServerStatus ().equals (
+				ServerStatuses.WRITING_LOCK ) ) {
+			ClientMessage responseMessage = new ClientMessage ( msg );
+			responseMessage.setStatus ( StatusType.SERVER_WRITE_LOCK );
+
+		} else if ( parent.getServerStatus ().equals ( ServerStatuses.ACTIVE ) ) {
+			// The server is ready to handle requests
+			if ( msg.getStatus ().equals ( KVMessage.StatusType.GET ) ) {
+				KVMessage result = DatabaseManager.get ( msg.getKey () );
+				this.sendMessage ( result );
+
+			} else if ( msg.getStatus ().equals ( KVMessage.StatusType.PUT ) ) {
+				KVMessage result = DatabaseManager.put ( msg.getKey () ,
+						msg.getValue () );
+				this.sendMessage ( result );
+			}
+		}
+	}
+	
 
 }

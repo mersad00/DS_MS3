@@ -2,7 +2,7 @@ package client;
 
 import common.messages.KVMessage.StatusType;
 import common.messages.KVMessage;
-import common.messages.Message;
+import common.messages.ClientMessage;
 
 public class SerializationUtil {
 
@@ -26,7 +26,7 @@ public class SerializationUtil {
 
 		String message = new String(objectByteStream);
 		String[] tokens = message.split(LINE_FEED);
-		Message retrivedMessage = new Message();
+		ClientMessage retrivedMessage = new ClientMessage();
 		// 0: is always the status
 		// 1: could be the key value or error
 		// 2: could be value or error

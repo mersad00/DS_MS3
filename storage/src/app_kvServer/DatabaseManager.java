@@ -6,18 +6,18 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import common.messages.KVMessage;
-import common.messages.Message;
+import common.messages.ClientMessage;
 
 public class DatabaseManager {
 	
 	private static Map<String, String> database = new HashMap<String,String>();
 	private static Logger logger = Logger.getRootLogger();
-	
+		
 	public static synchronized KVMessage put(String key, String value){
 		
 		if (key == null){
 			
-			Message msg = new Message();
+			ClientMessage msg = new ClientMessage();
 			msg.setValue("can not insert null key in the database");
 			msg.setStatus(common.messages.KVMessage.StatusType.PUT_ERROR);
 			logger.error("can not insert null key in the database");
@@ -34,7 +34,7 @@ public class DatabaseManager {
 			}
 			
 		} else {
-			Message msg = new Message();
+			ClientMessage msg = new ClientMessage();
 			try{	
 				database.put(key, value);
 				msg.setKey(key);
@@ -55,7 +55,7 @@ public class DatabaseManager {
 	
 	
 	public static synchronized KVMessage get(String key){
-		Message msg = new Message();
+		ClientMessage msg = new ClientMessage();
 		try{
 			String value = database.get(key);
 			if(value==null){
@@ -82,7 +82,7 @@ public class DatabaseManager {
 	
 	
 	private static KVMessage delete(String key){
-		Message msg = new Message();
+		ClientMessage msg = new ClientMessage();
 		try{
 			database.remove(key);				
 			msg.setKey(key);			
@@ -98,7 +98,7 @@ public class DatabaseManager {
 	}
 	
 	private static KVMessage update(String key, String value){
-		Message msg = new Message();
+		ClientMessage msg = new ClientMessage();
 		try{
 			database.put(key,value);				
 			msg.setKey(key);
