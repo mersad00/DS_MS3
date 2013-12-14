@@ -5,7 +5,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import logger.LogSetup;
@@ -30,7 +32,7 @@ public class KVStore implements KVCommInterface {
 	private static final int BUFFER_SIZE = 1024;
 	private static final int DROP_SIZE = 1024 * BUFFER_SIZE;
 
-	private Map < String , ServerInfo > metadata;
+	private List < ServerInfo > metadata;
 	private KVMessage lastSentMessage;
 
 	/**
@@ -47,7 +49,7 @@ public class KVStore implements KVCommInterface {
 
 	public KVStore ( ServerInfo serverInfo ) {
 		this.currentDestinationServer = serverInfo;
-		this.metadata = new HashMap < String , ServerInfo > ();
+		this.metadata = new ArrayList < ServerInfo > ();
 	}
 
 	@Override
@@ -193,7 +195,7 @@ public class KVStore implements KVCommInterface {
 		msgBytes = tmp;
 
 		/* build final String */
-		KVMessage msg = SerializationUtil.toObject ( msgBytes );
+		KVMessage msg = ( KVMessage ) SerializationUtil.toObject ( msgBytes );
 		logger.info ( "Receive message:\t '" + msg.getKey () + "'" );
 		return msg;
 	}
@@ -206,7 +208,7 @@ public class KVStore implements KVCommInterface {
 		logger.info ( "Send message :\t '" + msg.getKey () + "'" );
 	}
 
-	public void updateMetadata ( Map < String , ServerInfo > metadata ) {
+	public void updateMetadata ( List < ServerInfo > metadata ) {
 		this.metadata = metadata;
 		logger.info ( "update metadata with " + metadata.size () + "keys" );
 	}
@@ -217,11 +219,7 @@ public class KVStore implements KVCommInterface {
 
 	private ServerInfo getDestinationServerInfo ( String key ) {
 		ServerInfo destinationServer = null;
-		Hasher hasher = new Hasher ();
-		String keyHash = hasher.getHash ( key );
-		String destinationServerHash = hasher.getAppropriateStorageServerHash (
-				keyHash , metadata.keySet () );
-		destinationServer = metadata.get ( destinationServerHash );
+		// TODO here after amjad upload the new ServerInfo
 
 		return destinationServer;
 	}

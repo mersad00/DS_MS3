@@ -43,7 +43,7 @@ public class AdditionalTest extends TestCase {
 	    
 	    assertNotNull("Message serialization failed."+byteStream);
 	    
-	    KVMessage deserializedMessage = SerializationUtil.toObject(byteStream);
+	    KVMessage deserializedMessage = (KVMessage)SerializationUtil.toObject(byteStream);
 	    
 	    assertNotNull("Message deserialization failed.",deserializedMessage);
 	    
@@ -74,7 +74,7 @@ public class AdditionalTest extends TestCase {
 	    
 	    assertNotNull("Message serialization failed."+byteStream);
 	    
-	    KVMessage deserializedMessage = SerializationUtil.toObject(byteStream);
+	    KVMessage deserializedMessage = (KVMessage)SerializationUtil.toObject(byteStream);
 	    
 	    assertNotNull("Message deserialization failed.",deserializedMessage);
 	    
@@ -105,7 +105,7 @@ public class AdditionalTest extends TestCase {
 	    
 	    assertNotNull("Message serialization failed."+byteStream);
 	    
-	    KVMessage deserializedMessage = SerializationUtil.toObject(byteStream);
+	    KVMessage deserializedMessage = (KVMessage)SerializationUtil.toObject(byteStream);
 	    
 	    assertNotNull("Message deserialization failed.",deserializedMessage);
 
@@ -135,7 +135,7 @@ public class AdditionalTest extends TestCase {
 	    
 	    assertNotNull("Message serialization failed."+byteStream);
 	    
-	    KVMessage deserializedMessage = SerializationUtil.toObject(byteStream);
+	    KVMessage deserializedMessage = (KVMessage)SerializationUtil.toObject(byteStream);
 	    
 	    assertNotNull("Message deserialization failed.",deserializedMessage);
 	    

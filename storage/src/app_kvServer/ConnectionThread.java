@@ -4,11 +4,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import app_kvEcs.ECSMessage;
+
 import client.SerializationUtil;
 
+import common.messages.AbstractMessage;
 import common.messages.KVMessage;
 import common.messages.ClientMessage;
 import common.messages.KVMessage.StatusType;
@@ -49,7 +53,7 @@ public class ConnectionThread implements Runnable {
 
 			while ( isOpen ) {
 				try {
-					KVMessage msg = receiveMessage ();
+					AbstractMessage msg = receiveMessage ();
 					handleRequest ( msg );
 					/*
 					 * connection either terminated by the client or lost due to
@@ -78,7 +82,7 @@ public class ConnectionThread implements Runnable {
 		}
 	}
 
-	private KVMessage receiveMessage () throws IOException {
+	private AbstractMessage receiveMessage () throws IOException {
 
 		int index = 0;
 		byte [] msgBytes = null , tmp = null;
@@ -134,45 +138,80 @@ public class ConnectionThread implements Runnable {
 
 		msgBytes = tmp;
 
-		/* build final String */
-		KVMessage msg = SerializationUtil.toObject ( msgBytes );
-		logger.info ( "Receive message:\t '" + msg.getKey () + "'" );
+		/* build final Message */
+		AbstractMessage msg = SerializationUtil.toObject ( msgBytes );
+		logger.info ( "Receive message:\t '" + msg.getMessageType () + "'" );
 		return msg;
 	}
 
-	private void sendMessage ( KVMessage msg ) throws IOException {
-		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
+	private void sendMessage ( byte [] msgBytes ) throws IOException {
 		output.write ( msgBytes , 0 , msgBytes.length );
 		output.flush ();
-		logger.info ( "Send message:\t '" + msg.getKey () + "'" );
 	}
 
-	private void handleRequest ( KVMessage msg ) throws IOException {
+	private void sendClientMessage ( KVMessage msg ) throws IOException {
+		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
+		sendMessage ( msgBytes );
+		logger.info ( "Send client message:\t '" + msg.getKey () + "'" );
+	}
+
+	private void sendServerMessage ( ServerMessage msg ) throws IOException {
+		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
+		sendMessage ( msgBytes );
+		// TODO print useful data in the logger
+		// logger.info ( "Send server message:\t '" + msg.getKey () + "'" );
+	}
+
+	private void sendECSMessage ( ECSMessage msg ) throws IOException {
+		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
+		sendMessage ( msgBytes );
+		// TODO print useful data in the logger
+		// logger.info ( "Send client message:\t '" + msg.getKey () + "'" );
+	}
+
+	private void handleRequest ( AbstractMessage msg ) throws IOException {
+		if ( msg instanceof ClientMessage ) {
+			handleClientRequest ( ( ClientMessage ) msg );
+		} else if ( msg instanceof ServerMessage ) {
+			handleServerRequest ( ( ServerMessage ) msg );
+		} else if ( msg instanceof ECSMessage ) {
+			handleECSRequest ( ( ECSMessage ) msg );
+		}
+
+	}
+
+	private void handleClientRequest ( ClientMessage msg ) throws IOException {
+		KVMessage responseMessage = null;
 		if ( parent.getServerStatus ().equals (
 				ServerStatuses.UNDER_INITIALIZATION ) ) {
 			// The server has just started and not ready yet to handle requests
 			// from clients
-			ClientMessage responseMessage = new ClientMessage ( msg );
-			responseMessage.setStatus ( StatusType.SERVER_STOPPED );
+			msg.setStatus ( StatusType.SERVER_STOPPED );
+			responseMessage = new ClientMessage ( msg );
 
 		} else if ( parent.getServerStatus ().equals (
 				ServerStatuses.WRITING_LOCK ) ) {
-			ClientMessage responseMessage = new ClientMessage ( msg );
-			responseMessage.setStatus ( StatusType.SERVER_WRITE_LOCK );
+			msg.setStatus ( StatusType.SERVER_WRITE_LOCK );
+			responseMessage = new ClientMessage ( msg );
 
 		} else if ( parent.getServerStatus ().equals ( ServerStatuses.ACTIVE ) ) {
 			// The server is ready to handle requests
 			if ( msg.getStatus ().equals ( KVMessage.StatusType.GET ) ) {
-				KVMessage result = DatabaseManager.get ( msg.getKey () );
-				this.sendMessage ( result );
+				responseMessage = DatabaseManager.get ( msg.getKey () );
 
 			} else if ( msg.getStatus ().equals ( KVMessage.StatusType.PUT ) ) {
-				KVMessage result = DatabaseManager.put ( msg.getKey () ,
+				responseMessage = DatabaseManager.put ( msg.getKey () ,
 						msg.getValue () );
-				this.sendMessage ( result );
 			}
 		}
+		this.sendClientMessage ( responseMessage );
 	}
-	
 
+	private void handleServerRequest ( ServerMessage msg ) throws IOException {
+
+	}
+
+	private void handleECSRequest ( ECSMessage msg ) throws IOException {
+		// TODO
+	}
 }

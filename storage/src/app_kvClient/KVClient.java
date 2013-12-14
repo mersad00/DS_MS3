@@ -8,7 +8,6 @@ import org.apache.log4j.Logger;
 
 import utilities.LoggingManager;
 
-import client.KVCommInterface;
 import client.KVStore;
 import common.messages.KVMessage;
 import common.messages.ClientMessage;
@@ -54,8 +53,9 @@ public class KVClient {
 				switch ( command ) {
 				case CONNECT :
 					if ( validationUtil.isValidConnectionParams ( tokens ) ) {
-						if ( connection == null ) {	
-							connection = new KVStore ( tokens [ 1 ] ,Integer.parseInt ( tokens [ 2 ] ) );							
+						if ( connection == null ) {
+							connection = new KVStore ( tokens [ 1 ] ,
+									Integer.parseInt ( tokens [ 2 ] ) );
 						}
 						connection.connect ();
 						System.out.println ( "Connected to KV server, "
@@ -166,28 +166,29 @@ public class KVClient {
 		case SERVER_NOT_RESPONSIBLE : {
 			this.connection.updateMetadata ( ( ( ClientMessage ) result )
 					.getMetadata () );
-			ClientMessage temp = (ClientMessage)connection.getLastSentMessage();
-			
-			if(temp.getStatus ().equals ( StatusType.PUT )){
+			ClientMessage temp = ( ClientMessage ) connection
+					.getLastSentMessage ();
+
+			if ( temp.getStatus ().equals ( StatusType.PUT ) ) {
 				this.connection.put ( temp.getKey () , temp.getValue () );
-			}else if (temp.getStatus ().equals ( StatusType.GET )){
+			} else if ( temp.getStatus ().equals ( StatusType.GET ) ) {
 				this.connection.get ( temp.getKey () );
 			}
 			break;
 		}
-		
+
 		case SERVER_STOPPED : {
-			//TODO implement your code
+			// TODO implement your code
 			logger.info ( "correct server but not ready yet" );
 			break;
 		}
-		
+
 		case SERVER_WRITE_LOCK : {
-			//TODO implement your code
+			// TODO implement your code
 			logger.info ( "correct server but busy in write operations" );
 			break;
 		}
-			
+
 		default :
 			resultText = result.getStatus () + result.getKey ()
 					+ result.getValue ();

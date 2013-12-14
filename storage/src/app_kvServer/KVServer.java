@@ -4,15 +4,14 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 import logger.LogSetup;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-import common.Hasher;
+
 import common.ServerInfo;
 
 public class KVServer {
@@ -24,10 +23,9 @@ public class KVServer {
 	private boolean running;
 
 	private ServerStatuses serverStatus;
-	private Map < String , ServerInfo > metadata;
+	private List < ServerInfo > metadata;
 	private String serverHashCode;
 	
-	private Hasher hasher;
 
 	/**
 	 * Start KV Server at given port
@@ -36,9 +34,7 @@ public class KVServer {
 	 *            given port for storage server to operate
 	 */
 	public KVServer ( int port ) {
-		this.port = port;
-		this.metadata = new HashMap < String , ServerInfo > ();
-		this.hasher = new Hasher();
+		this.port = port;		
 	}
 
 	public void startServer () {
@@ -112,11 +108,15 @@ public class KVServer {
 		return this.serverStatus;
 	}
 
-	public Map<String , ServerInfo> getMetadata () {
+	public List < ServerInfo > getMetadata () {
 		return this.metadata;
 	}
-	
-	public String getHashCode(){
+
+	public void setMetadata ( List < ServerInfo > metadata ) {
+		this.metadata = metadata;
+	}
+
+	public String getHashCode () {
 		return this.serverHashCode;
 	}
 

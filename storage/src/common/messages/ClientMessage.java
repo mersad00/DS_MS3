@@ -1,5 +1,6 @@
 package common.messages;
 
+import java.util.List;
 import java.util.Map;
 
 import common.ServerInfo;
@@ -9,24 +10,24 @@ public class ClientMessage implements KVMessage {
 	private String key;
 	private String value;
 	private StatusType type;
-	private Map < String , ServerInfo > metadata;
+	private List < ServerInfo > metadata;
 
 	public ClientMessage () {
-		
+
 	}
-	
-	public ClientMessage (String key, String value, StatusType type) {
+
+	public ClientMessage ( String key , String value , StatusType type ) {
 		this.key = key;
 		this.value = value;
 		this.type = type;
 	}
-	
-	public ClientMessage (KVMessage message){
+
+	public ClientMessage ( KVMessage message ) {
 		this.key = message.getKey ();
 		this.value = message.getValue ();
 		this.type = message.getStatus ();
 	}
-	
+
 	public void setKey ( String key ) {
 		this.key = key;
 	}
@@ -54,11 +55,11 @@ public class ClientMessage implements KVMessage {
 		return this.type;
 	}
 
-	public void setMetadata ( Map < String , ServerInfo > metadata ) {
+	public void setMetadata ( List < ServerInfo > metadata ) {
 		this.metadata = metadata;
 	}
 
-	public Map < String , ServerInfo > getMetadata () {
+	public List < ServerInfo > getMetadata () {
 		return this.metadata;
 	}
 

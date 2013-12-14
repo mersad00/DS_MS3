@@ -1,5 +1,8 @@
 package client;
 
+import app_kvEcs.ECSMessage;
+import app_kvServer.ServerMessage;
+import common.messages.AbstractMessage;
 import common.messages.KVMessage.StatusType;
 import common.messages.KVMessage;
 import common.messages.ClientMessage;
@@ -22,7 +25,7 @@ public class SerializationUtil {
 		return tmp;
 	}
 
-	public static KVMessage toObject(byte[] objectByteStream) {
+	public static AbstractMessage toObject(byte[] objectByteStream) {
 
 		String message = new String(objectByteStream);
 		String[] tokens = message.split(LINE_FEED);
@@ -43,5 +46,19 @@ public class SerializationUtil {
 		}
 		return retrivedMessage;
 	}
+	
+	public static byte[] toByteArray(ServerMessage message) {
+		//TODO
+		return null;
+	}
+	
+	public static byte[] toByteArray(ECSMessage message) {
+		//TODO
+		return null;
+	}
+	
+	
+	
+	
 
 }
