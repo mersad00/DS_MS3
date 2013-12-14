@@ -13,7 +13,7 @@ import common.messages.KVMessage;
 import common.messages.ClientMessage;
 import common.messages.KVMessage.StatusType;
 
-public class ClientConnection implements Runnable {
+public class ConnectionThread implements Runnable {
 
 	private static Logger logger = Logger.getRootLogger ();
 
@@ -32,7 +32,7 @@ public class ClientConnection implements Runnable {
 	 * @param clientSocket
 	 *            the Socket object for the client connection.
 	 */
-	public ClientConnection ( Socket clientSocket , KVServer parent ) {
+	public ConnectionThread ( Socket clientSocket , KVServer parent ) {
 		this.parent = parent;
 		this.clientSocket = clientSocket;
 		this.isOpen = true;

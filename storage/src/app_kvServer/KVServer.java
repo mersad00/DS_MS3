@@ -48,7 +48,7 @@ public class KVServer {
 			while ( isRunning () ) {
 				try {
 					Socket client = serverSocket.accept ();
-					ClientConnection connection = new ClientConnection (
+					ConnectionThread connection = new ConnectionThread (
 							client , this );
 					new Thread ( connection ).start ();
 

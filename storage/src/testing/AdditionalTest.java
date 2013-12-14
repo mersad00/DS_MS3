@@ -10,7 +10,7 @@ import client.SerializationUtil;
 import common.Hasher;
 import common.messages.KVMessage;
 import common.messages.KVMessage.StatusType;
-import common.messages.Message;
+import common.messages.ClientMessage;
 import junit.framework.TestCase;
 
 public class AdditionalTest extends TestCase {
@@ -32,7 +32,7 @@ public class AdditionalTest extends TestCase {
 	@Test
 	public void testPutSerialization(){
 	    
-	    Message putMessage = new Message();
+	    ClientMessage putMessage = new ClientMessage();
 	    putMessage.setKey("Key1");
 	    putMessage.setValue("Value1");
 	    putMessage.setStatus(StatusType.PUT);
@@ -63,7 +63,7 @@ public class AdditionalTest extends TestCase {
 	@Test
 	public void testGetSerialization(){
 	    
-	    Message getMessage = new Message();
+	    ClientMessage getMessage = new ClientMessage();
 	    getMessage.setKey("Key1");
 	    getMessage.setValue("Value1");
 	    getMessage.setStatus(StatusType.GET);
@@ -94,7 +94,7 @@ public class AdditionalTest extends TestCase {
 	@Test
 	public void testGetErrorSerialization(){
 	    
-	    Message getMessage = new Message();
+	    ClientMessage getMessage = new ClientMessage();
 	    getMessage.setKey("Key1");
 	    getMessage.setValue("Value1");
 	    getMessage.setStatus(StatusType.GET_ERROR);
@@ -124,7 +124,7 @@ public class AdditionalTest extends TestCase {
 	@Test
 	public void testDeleteSerialization(){
 	    
-	    Message deleteMessage = new Message();
+	    ClientMessage deleteMessage = new ClientMessage();
 	    deleteMessage.setKey("Key1");
 	    deleteMessage.setValue("Value1");
 	    deleteMessage.setStatus(StatusType.DELETE_SUCCESS);
