@@ -11,6 +11,22 @@ public class Message implements KVMessage {
 	private StatusType type;
 	private Map < String , ServerInfo > metadata;
 
+	public Message () {
+		
+	}
+	
+	public Message (String key, String value, StatusType type) {
+		this.key = key;
+		this.value = value;
+		this.type = type;
+	}
+	
+	public Message (KVMessage message){
+		this.key = message.getKey ();
+		this.value = message.getValue ();
+		this.type = message.getStatus ();
+	}
+	
 	public void setKey ( String key ) {
 		this.key = key;
 	}
