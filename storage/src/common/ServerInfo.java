@@ -1,19 +1,50 @@
 package common;
 
+
 public class ServerInfo {
 
 	private String address;
 	private int port;
+	private String serverName;
+	private boolean isServerLaunched;
 
 	public ServerInfo (String address, int port ){
 		this.address = address;
 		this.port = port;
 	}
 	
+	
+	public ServerInfo(String address, int port, boolean isServerLaunched) {
+	    this(address, port);
+	    this.isServerLaunched = isServerLaunched;
+	}
+	public ServerInfo(String serverInfoString) {
+	    fromString(serverInfoString);
+	}
+
+
+	private void fromString(String serverInfoString) {
+	 // should be something like nodeName host port 
+	    if (serverInfoString!=null && !serverInfoString.isEmpty()){
+		String[] tokens = serverInfoString.split(" ");
+		if (tokens.length==3){
+		    setServerName(tokens[0]);
+		    setAddress(tokens[1]);
+		    setPort(Integer.parseInt(tokens[2]));
+		}else 
+		    throw new IllegalArgumentException("Config file is not formatted as expected. near "+serverInfoString);
+		
+	    }
+	    
+	}
+
+
 	public ServerInfo (){
 		
 	}
 	
+	
+
 	public String getAddress () {
 		return address;
 	}
@@ -28,6 +59,27 @@ public class ServerInfo {
 
 	public void setPort ( int port ) {
 		this.port = port;
+	}
+
+
+	public boolean isServerLaunched() {
+	    return isServerLaunched;
+	}
+
+
+	public void setServerLaunched(boolean isServerLaunched) {
+	    this.isServerLaunched = isServerLaunched;
+	}
+
+	
+
+	public String getServerName() {
+	    return serverName;
+	}
+
+
+	public void setServerName(String serverName) {
+	    this.serverName = serverName;
 	}
 
 

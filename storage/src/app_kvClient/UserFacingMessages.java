@@ -9,6 +9,8 @@ public class UserFacingMessages {
 	
 	public static final String ECHO_PROMPT = "KVClient> ";
 	
+	public static final String ECS_ECHO_PROMPT = "ECS> ";
+	
 	public static final String SPLIT_ON = "\\s+";
 	
 	public static final String HELP_TEXT = "KVClient:  The second phase of distributed systems[IN 2259] course project."
