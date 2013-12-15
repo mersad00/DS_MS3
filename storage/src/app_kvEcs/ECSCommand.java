@@ -7,7 +7,7 @@ package app_kvEcs;
 
 public enum ECSCommand {
 
-    INIT("init"),  START("start"), STOP("stop"), SHUT_DOWN("shutDown"),  SET_WRITE_LOCK("setWriteLock"), MODE_DATA("moveData"), SEND_METADATA(
+    INIT("init"),  START("start"), STOP("stop"), SHUT_DOWN("shutDown"),  SET_WRITE_LOCK("setWriteLock"), MOVE_DATA("moveData"), SEND_METADATA(
 	    "sendMetadata"), RELEASE_LOCK("releaseLock"), UN_SUPPORTED( "unSupported"), ADD("add"), REMOVE("remove"), LOG_LEVEL(
 		    "logLevel"), HELP("help"), QUIT("quit");
 
