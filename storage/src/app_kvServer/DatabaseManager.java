@@ -14,6 +14,15 @@ public class DatabaseManager {
 	private static Map<String, String> database = new HashMap<String,String>();
 	private static Logger logger = Logger.getRootLogger();
 		
+	static {
+		database.put ( "key1" , "value1" );
+		database.put ( "key2" , "value2" );
+		database.put ( "key3" , "value3" );
+		database.put ( "key4" , "value4" );
+		database.put ( "key5" , "value5" );
+		database.put ( "key6" , "value6" );		
+	}
+	
 	public static synchronized KVMessage put(String key, String value){		
 		if (key == null){
 			
@@ -133,5 +142,7 @@ public class DatabaseManager {
 	public static void printDatabase(){
 		System.out.println(database.toString());
 	}
+	
+	
 	
 }

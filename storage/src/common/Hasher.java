@@ -66,4 +66,5 @@ public class Hasher {
 	    }
 		return result;
 	}
+	
 }

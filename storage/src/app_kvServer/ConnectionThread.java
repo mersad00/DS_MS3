@@ -167,7 +167,7 @@ public class ConnectionThread implements Runnable {
 		try {
 			connectionToOtherServer = new Socket ( server.getAddress () ,
 					server.getPort () );
-			output = connectionToOtherServer.getOutputStream ();
+			output = connectionToOtherServer.getOutputStream ();			
 			output.write ( msgBytes , 0 , msgBytes.length );
 			output.flush ();
 		} catch ( UnknownHostException e ) {
@@ -189,7 +189,7 @@ public class ConnectionThread implements Runnable {
 
 		}
 
-		logger.info ( "Moving data to server :\t '" + server.toString () + "'" );
+		logger.info ( "data moved to '" + server.toString () + "'" );
 	}
 
 	private void handleRequest ( AbstractMessage msg ) throws IOException {
@@ -229,36 +229,48 @@ public class ConnectionThread implements Runnable {
 			}
 		}
 		this.sendClientMessage ( responseMessage );
+		logger.info ( "response message sent to client " );
 	}
 
 	private void handleServerRequest ( ServerMessage msg ) throws IOException {
-		if ( msg.getData ().size () > 0 )
+		if ( msg.getData ().size () > 0 ){
 			DatabaseManager.putAll ( msg.getData () );
+			logger.info ( "updated database with : \t" + msg.getData ().size () + " keys ");
+		}
 	}
 
 	private void handleECSRequest ( ECSMessage msg ) throws IOException {
 		if ( msg.getActionType ().equals ( ECSCommand.INIT ) ) {
 			parent.setMetadata ( msg.getMetaData () );
 			parent.setServerStatus ( ServerStatuses.UNDER_INITIALIZATION );
+			logger.info ( "server under initialization \n set server status to : \t stopped " );
 		} else if ( msg.getActionType ().equals ( ECSCommand.START ) ) {
 			parent.setServerStatus ( ServerStatuses.ACTIVE );
+			logger.info ( "server is starting to serve clients \n set server status to : \t active " );
 		} else if ( msg.getActionType ().equals ( ECSCommand.STOP ) ) {
 			parent.setServerStatus ( ServerStatuses.STOPPED );
+			logger.info ( "server is stopped serving clients \n set server status to : \t stopped " );
 		} else if ( msg.getActionType ().equals ( ECSCommand.SHUT_DOWN )){
+			logger.info ( "server is shutting down " );
 			System.exit ( 0 );
 		} else if ( msg.getActionType ().equals ( ECSCommand.SET_WRITE_LOCK )){
 			parent.setServerStatus ( ServerStatuses.WRITING_LOCK );
+			logger.info ( "server is busy in writing data \n set server status to : \t write_lock " );
 		} else if ( msg.getActionType ().equals ( ECSCommand.RELEASE_LOCK )){
 			parent.setServerStatus ( ServerStatuses.ACTIVE );
+			logger.info ( "server is removing writing data lock \n set server status to : \t active " );
 		} else if ( msg.getActionType ().equals ( ECSCommand.MOVE_DATA )){
 			ServerMessage message = new ServerMessage ();
 			message.setData ( DatabaseManager.getDataInRange ( msg.getMoveFromIndex () , msg.getMoveToIndex () ) );
 			this.sendServerMessage (  message , msg.getMoveToServer () );
+			logger.info ( "server moved data to "+msg.getMoveToServer ().toString () );
 			ECSMessage acknowledgeMessage = new ECSMessage ();
 			acknowledgeMessage.setActionType ( ECSCommand.ACK );
 			this.sendECSMessage ( acknowledgeMessage );
+			logger.info ( "sent acknowledgment to  ECS" );
 		} else if (msg.getActionType ().equals ( ECSCommand.SEND_METADATA )){
 			parent.setMetadata ( msg.getMetaData () );
+			logger.info ( "received metadata from ECS and updated the current metadata " );
 		}
 	}
 		

@@ -37,7 +37,8 @@ public class KVServer {
 		this.port = port;		
 	}
 
-	public void startServer () {
+	public void startServer () throws IOException{
+		new LogSetup ( "logs/server/server.log" , Level.ALL );
 		this.serverStatus = ServerStatuses.UNDER_INITIALIZATION;
 		running = initializeServer ();
 		if ( serverSocket != null ) {
@@ -94,15 +95,15 @@ public class KVServer {
 		}
 	}
 
-	public static void main ( String args[] ) {
-		try {
-			new LogSetup ( "logs/server/server.log" , Level.ALL );
-		} catch ( IOException e ) {
-			e.printStackTrace ();
-		}
-		KVServer server = new KVServer ( Integer.parseInt ( args [ 0 ] ) );
-		server.startServer ();
-	}
+//	public static void main ( String args[] ) {
+//		try {
+//			new LogSetup ( "logs/server/server.log" , Level.ALL );
+//		} catch ( IOException e ) {
+//			e.printStackTrace ();
+//		}
+//		KVServer server = new KVServer ( Integer.parseInt ( args [ 0 ] ) );
+//		server.startServer ();
+//	}
 
 	public ServerStatuses getServerStatus () {
 		return this.serverStatus;

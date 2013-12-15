@@ -75,6 +75,7 @@ public class SerializationUtil {
 			// 2: could be the key value or error
 			// 3: could be value or error
 			if (tokens[1] != null && tokens[1].equals("0") ) {// should always be 0
+				//TODO avoid exception in case of empty map attahed
 			  Map<String, String> data = getData(tokens[2].trim());
 			  ((ServerMessage)retrivedMessage).setData(data);
 			  }

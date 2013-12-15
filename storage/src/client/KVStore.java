@@ -59,7 +59,7 @@ public class KVStore implements KVCommInterface {
 					currentDestinationServer.getPort () );
 			output = clientSocket.getOutputStream ();
 			input = clientSocket.getInputStream ();
-			logger.info ( "Connection established with server" );
+			logger.info ( "Connection established with " + currentDestinationServer.toString () );
 		} catch ( IOException ioe ) {
 
 			logger.error ( "Connection could not be established!" );
@@ -73,9 +73,7 @@ public class KVStore implements KVCommInterface {
 		this.currentDestinationServer = newDestinationServerInfo;
 		this.connect ();
 
-		logger.info ( "switch connection to server : "
-				+ newDestinationServerInfo.getAddress () + " on port : "
-				+ newDestinationServerInfo.getPort () );
+		logger.info ( "switch connection to " + currentDestinationServer.toString () );
 	}
 
 	@Override
@@ -210,7 +208,7 @@ public class KVStore implements KVCommInterface {
 
 	public void updateMetadata ( List < ServerInfo > metadata ) {
 		this.metadata = metadata;
-		logger.info ( "update metadata with " + metadata.size () + "keys" );
+		logger.info ( "update metadata with " + metadata.size () + " keys" );
 	}
 
 	public KVMessage getLastSentMessage () {
