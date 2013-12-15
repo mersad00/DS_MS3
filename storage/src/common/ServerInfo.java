@@ -141,5 +141,10 @@ public class ServerInfo {
 			return false;
 		return true;
 	}
+	
+	@Override
+	public String toString(){
+		return "Server address : " + this.getAddress () +" on port : " + this.getPort ();
+	}
 
 }

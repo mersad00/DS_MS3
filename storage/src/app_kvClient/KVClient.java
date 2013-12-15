@@ -163,12 +163,13 @@ public class KVClient {
 			resultText = UserFacingMessages.DELETE_ERROR_MESSAGE
 					+ result.getValue ();
 			break;
-		case SERVER_NOT_RESPONSIBLE : {
+		case SERVER_NOT_RESPONSIBLE : {		
+			resultText = UserFacingMessages.SERVER_NOT_RESPONSIBLE;
 			this.connection.updateMetadata ( ( ( ClientMessage ) result )
-					.getMetadata () );
+					.getMetadata () );		
 			ClientMessage temp = ( ClientMessage ) connection
 					.getLastSentMessage ();
-
+			logger.info ( "re-sent last message " + temp.getStatus () + " : " + temp.getKey ()  );
 			if ( temp.getStatus ().equals ( StatusType.PUT ) ) {
 				this.connection.put ( temp.getKey () , temp.getValue () );
 			} else if ( temp.getStatus ().equals ( StatusType.GET ) ) {
@@ -178,14 +179,12 @@ public class KVClient {
 		}
 
 		case SERVER_STOPPED : {
-			// TODO implement your code
-			logger.info ( "correct server but not ready yet" );
+			resultText = UserFacingMessages.SERVER_STOPPED;
 			break;
 		}
 
 		case SERVER_WRITE_LOCK : {
-			// TODO implement your code
-			logger.info ( "correct server but busy in write operations" );
+			resultText = UserFacingMessages.SERVER_WRITE_LOCK;
 			break;
 		}
 
