@@ -6,7 +6,9 @@ public class ServerInfo {
 	private String address;
 	private int port;
 	private String serverName;
-	private boolean isServerLaunched;
+	private boolean isServerLaunched;	
+	private String fromIndex;
+	private String toIndex;
 
 	public ServerInfo (String address, int port ){
 		this.address = address;
@@ -80,6 +82,26 @@ public class ServerInfo {
 
 	public void setServerName(String serverName) {
 	    this.serverName = serverName;
+	}
+
+
+	public String getFromIndex() {
+	    return fromIndex;
+	}
+
+
+	public void setFromIndex(String fromIndex) {
+	    this.fromIndex = fromIndex;
+	}
+
+
+	public String getToIndex() {
+	    return toIndex;
+	}
+
+
+	public void setToIndex(String toIndex) {
+	    this.toIndex = toIndex;
 	}
 
 
