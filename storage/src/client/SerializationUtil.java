@@ -1,7 +1,11 @@
 package client;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.activation.UnsupportedDataTypeException;
 
@@ -66,7 +70,15 @@ public class SerializationUtil {
 		}
 		break;
 	    case SERVER_MESSAGE:
-		//TODO
+		 retrivedMessage = new ServerMessage();
+			// 1: is always the status
+			// 2: could be the key value or error
+			// 3: could be value or error
+			if (tokens[1] != null && tokens[1].equals("0") ) {// should always be 0
+			  Map<String, String> data = getData(tokens[2].trim());
+			  ((ServerMessage)retrivedMessage).setData(data);
+			  }
+			
 		break;
 	    case ECS_MESSAGE:
 		 retrivedMessage = new ECSMessage();
@@ -108,6 +120,16 @@ public class SerializationUtil {
 	return retrivedMessage;
     }
 
+    private static Map<String, String> getData(String dataStr) {
+	Map<String, String> data = new HashMap<String, String>();
+	String[] tokens = dataStr.split(INNER_LINE_FEED2);
+	for (String dataTuple : tokens) {
+	    String[] dataTokens = dataTuple.split(INNER_LINE_FEED);
+	    data.put(dataTokens[0], dataTokens[1]);
+	}
+	return data;
+    }
+
     private static List<ServerInfo> getMetaData(String metaDataStr) {
 	List<ServerInfo> serverInfoList = new ArrayList<ServerInfo>();
 	String[] tokens = metaDataStr.split(INNER_LINE_FEED2);
@@ -135,7 +157,23 @@ public class SerializationUtil {
 
     public static byte[] toByteArray(ServerMessage message) {
 
-	return null;
+	// message : number(messageType)-- number(actionType)--map of data
+	String messageStr = (SERVER_MESSAGE+LINE_FEED+"0");// the only action is move data =0
+	    messageStr += LINE_FEED;
+	    
+	    Iterator it = message.getData().entrySet().iterator();
+	    while (it.hasNext()) {
+	        Entry pairs = (Entry)it.next();
+	        messageStr += pairs.getKey()+INNER_LINE_FEED+pairs.getValue();
+		messageStr+=INNER_LINE_FEED2;
+	    }
+
+	byte[] bytes = messageStr.getBytes();
+	byte[] ctrBytes = new byte[] { RETURN };
+	byte[] tmp = new byte[bytes.length + ctrBytes.length];
+	System.arraycopy(bytes, 0, tmp, 0, bytes.length);
+	System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
+	return tmp;
 
     }
 
@@ -149,7 +187,6 @@ public class SerializationUtil {
 		messageStr += server.getAddress()+INNER_LINE_FEED+server.getPort()+INNER_LINE_FEED+server.getFromIndex()+INNER_LINE_FEED+server.getToIndex();
 		messageStr+=INNER_LINE_FEED2;
 	    }
-	    //TODO remove the last token
 
 	}else if (message.getActionType() == ECSCommand.MOVE_DATA)
 	{

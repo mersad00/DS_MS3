@@ -2,8 +2,10 @@ package testing;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.activation.UnsupportedDataTypeException;
@@ -12,6 +14,7 @@ import org.junit.Test;
 
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
+import app_kvServer.ServerMessage;
 import client.SerializationUtil;
 import common.Hasher;
 import common.ServerInfo;
@@ -60,6 +63,36 @@ public class AdditionalTest extends TestCase {
 	    assertTrue(putMessage.getValue().equals(deserializedMessage.getValue()));
 	} catch (UnsupportedDataTypeException e) {
 
+
+	}
+    }
+    
+    @Test
+    public void testServerMoveDataSerialization(){
+
+	ServerMessage message = new ServerMessage();
+	
+	Map<String, String> data = new HashMap<String, String>();
+	data.put("k1", "v1");
+	data.put("k2", "v2");
+	data.put("k3", "v3");
+	data.put("k4", "v4");
+	data.put("k5", "v5");
+	message.setData(data);
+	
+	assertNotNull("Message is null",message);
+
+	byte[] byteStream = SerializationUtil.toByteArray(message);
+
+	assertNotNull("Message serialization failed."+byteStream);
+
+	ServerMessage deserializedMessage;
+	try {
+	    deserializedMessage = (ServerMessage)SerializationUtil.toObject(byteStream);
+	    assertNotNull("Message deserialization failed.",deserializedMessage);
+	    assertTrue(message.getData().equals(deserializedMessage.getData()));
+	} catch (UnsupportedDataTypeException e) {
+	    System.out.println(e.getMessage());
 
 	}
     }
