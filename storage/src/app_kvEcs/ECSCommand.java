@@ -7,41 +7,41 @@ package app_kvEcs;
 
 public enum ECSCommand {
 
-	START ( "start" ) , STOP ( "stop" ) , ADD ( "add" ) , REMOVE ("remove"),LOG_LEVEL (
-			"logLevel" ) , HELP ( "help" ) , QUIT ( "quit" ) , SHUT_DOWN("shutDown"),UN_SUPPORTED (
-			"unSupported" );
+    INIT("init"),  START("start"), STOP("stop"), SHUT_DOWN("shutDown"),  SET_WRITE_LOCK("setWriteLock"), MODE_DATA("moveData"), SEND_METADATA(
+	    "sendMetadata"), RELEASE_LOCK("releaseLock"), UN_SUPPORTED( "unSupported"), ADD("add"), REMOVE("remove"), LOG_LEVEL(
+		    "logLevel"), HELP("help"), QUIT("quit");
 
-	private String commandText;
+    private String commandText;
 
-	/**
-	 * Enum constructor to initialize the commandText
-	 * 
-	 * @param commandText
-	 */
-	private ECSCommand ( String commandText ) {
-		this.commandText = commandText;
-	}
+    /**
+     * Enum constructor to initialize the commandText
+     * 
+     * @param commandText
+     */
+    private ECSCommand(String commandText) {
+	this.commandText = commandText;
+    }
 
-	/**
-	 * @return commandText
-	 */
-	public String getCommandText () {
-		return commandText;
-	}
+    /**
+     * @return commandText
+     */
+    public String getCommandText() {
+	return commandText;
+    }
 
-	/**
-	 * @param commandText
-	 * @return EchoClientCommand appropriate <code>enum</code> for the command
-	 */
-	public static ECSCommand fromString ( String commandText ) {
-		if ( commandText != null ) {
-			for ( ECSCommand command : ECSCommand.values () ) {
-				if ( commandText.equalsIgnoreCase ( command.commandText ) ) {
-					return command;
-				}
-			}
+    /**
+     * @param commandText
+     * @return EchoClientCommand appropriate <code>enum</code> for the command
+     */
+    public static ECSCommand fromString(String commandText) {
+	if (commandText != null) {
+	    for (ECSCommand command : ECSCommand.values()) {
+		if (commandText.equalsIgnoreCase(command.commandText)) {
+		    return command;
 		}
-		return ECSCommand.UN_SUPPORTED;
+	    }
 	}
+	return ECSCommand.UN_SUPPORTED;
+    }
 
 }
