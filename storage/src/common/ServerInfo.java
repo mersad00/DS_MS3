@@ -25,6 +25,14 @@ public class ServerInfo {
 	}
 
 
+	public ServerInfo(String address, int port, String fromIndex,
+		String toIndex) {
+	    this(address, port);
+	    this.fromIndex = fromIndex;
+	    this.toIndex = toIndex;
+	}
+
+
 	private void fromString(String serverInfoString) {
 	 // should be something like nodeName host port 
 	    if (serverInfoString!=null && !serverInfoString.isEmpty()){
