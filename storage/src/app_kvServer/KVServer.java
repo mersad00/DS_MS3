@@ -107,6 +107,10 @@ public class KVServer {
 	public ServerStatuses getServerStatus () {
 		return this.serverStatus;
 	}
+	
+	public synchronized void setServerStatus(ServerStatuses status){
+		this.serverStatus = status;
+	}
 
 	public List < ServerInfo > getMetadata () {
 		return this.metadata;

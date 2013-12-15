@@ -43,9 +43,11 @@ public class UserFacingMessages {
 	public static final String PUT_ERROR_MESSAGE = "The put command was not successful:";
 	public static final String PUT_SUCCESS_MESSAGE = "The put command was successful.";
 	public static final String PUT_UPDATE_MESSAGE = "The tuple was updated successfully.";
-	public static final String DELETE_ERROR_MESSAGE = "The tuple wasnot deleted successfully:";
-	public static final String DELETE_SUCCESS_MESSAGE = "The tuple was deleted successfully.";
-	
+	public static final String DELETE_ERROR_MESSAGE = "The tuple was not deleted successfully:";
+	public static final String DELETE_SUCCESS_MESSAGE = "The tuple was deleted successfully.";	
+	public static final String SERVER_NOT_RESPONSIBLE = "The server is not responsible for this key";
+	public static final String SERVER_WRITE_LOCK = "The server is busy with writing operation";
+	public static final String SERVER_STOPPED = "Server is stopped";
 	public static final byte END_OF_MESSAGE = 13;
 	
 }

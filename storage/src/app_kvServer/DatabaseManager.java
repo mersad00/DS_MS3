@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import common.Hasher;
 import common.messages.KVMessage;
 import common.messages.ClientMessage;
 
@@ -13,8 +14,7 @@ public class DatabaseManager {
 	private static Map<String, String> database = new HashMap<String,String>();
 	private static Logger logger = Logger.getRootLogger();
 		
-	public static synchronized KVMessage put(String key, String value){
-		
+	public static synchronized KVMessage put(String key, String value){		
 		if (key == null){
 			
 			ClientMessage msg = new ClientMessage();
@@ -113,6 +113,21 @@ public class DatabaseManager {
 					     + e.getMessage());
 		}		
 		return msg;		
+	}
+	//TODO create comments to all methods
+	public synchronized static void putAll ( Map<String,String> data){
+		database.putAll ( data );
+	}
+	
+	public static  Map<String, String> getDataInRange (String rangeStart, String rangeEnd){
+		Map<String , String> dataToBeMoved = new HashMap<String, String>();
+		Hasher hasher = new Hasher();
+		for( String key : database.keySet ()){
+			if(hasher.isInRange ( rangeStart , rangeEnd , key )){
+				dataToBeMoved.put ( key , database.get ( key ) );
+			}
+		}		
+		return dataToBeMoved;
 	}
 	
 	public static void printDatabase(){

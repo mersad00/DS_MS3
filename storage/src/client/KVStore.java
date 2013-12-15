@@ -218,8 +218,12 @@ public class KVStore implements KVCommInterface {
 	}
 
 	private ServerInfo getDestinationServerInfo ( String key ) {
-		ServerInfo destinationServer = null;
-		// TODO here after amjad upload the new ServerInfo
+		ServerInfo destinationServer = null;		
+		Hasher hasher = new Hasher();
+		for(ServerInfo server: metadata){
+			if( hasher.isInRange ( server.getFromIndex () , server.getToIndex () , key ));
+				return server;
+		}
 
 		return destinationServer;
 	}

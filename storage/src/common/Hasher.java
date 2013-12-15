@@ -36,24 +36,34 @@ public class Hasher {
 	}
 	
 	
-	public String getAppropriateStorageServerHash ( String key , Set<String> serverKeysHashes ) {
-		String destinationServer ="";
-		List<String> tempSortList = new ArrayList<String> ( serverKeysHashes );
-		Collections.sort ( tempSortList );
-		for ( String currentServerHash : tempSortList ){			
-			if ( compareHashes(currentServerHash, key) >= 0){
-				return currentServerHash;
-			}
-		}
-		//TODO in case of no server is in the range 
-		//TODO in case empty set passed
-		return tempSortList.get ( 0 );
-	}
+//	public String getAppropriateStorageServerHash ( String key , Set<String> serverKeysHashes ) {
+//		String destinationServer ="";
+//		List<String> tempSortList = new ArrayList<String> ( serverKeysHashes );
+//		Collections.sort ( tempSortList );
+//		for ( String currentServerHash : tempSortList ){			
+//			if ( compareHashes(currentServerHash, key) >= 0){
+//				return currentServerHash;
+//			}
+//		}
+//		//TODO in case of no server is in the range 
+//		//TODO in case empty set passed
+//		return tempSortList.get ( 0 );
+//	}
 	
-	private int compareHashes(String firstHash, String secondHash) {
+	public int compareHashes(String firstHash, String secondHash) {
 		BigInteger firstValue = new BigInteger(firstHash, base);
 		BigInteger secondValue = new BigInteger(secondHash, base);
 		
 		return firstValue.compareTo(secondValue);
+	}
+	
+	public boolean isInRange (String startRange, String endRange, String key){
+		//TODO ask amjad about the range exclusive or inclusive
+		boolean result = false;
+	    String keyHash = this.getHash ( key );
+	    if ( this.compareHashes ( startRange , keyHash) >=  0 && this.compareHashes ( endRange , keyHash ) <= 0){
+	    	result = true;
+	    }
+		return result;
 	}
 }
