@@ -6,12 +6,9 @@ import java.io.InputStreamReader;
 import org.apache.log4j.Logger;
 
 import utilities.LoggingManager;
-import app_kvClient.KVCommand;
 import app_kvClient.UserFacingMessages;
 import app_kvClient.ValidationUtil;
-import client.KVStore;
 
-import common.messages.KVMessage;
 
 public class ECSClient {
 
