@@ -218,10 +218,15 @@ public class KVStore implements KVCommInterface {
 	private ServerInfo getDestinationServerInfo ( String key ) {
 		ServerInfo destinationServer = null;		
 		Hasher hasher = new Hasher();
-		for(ServerInfo server: metadata){
-			if( hasher.isInRange ( server.getFromIndex () , server.getToIndex () , key ));
-				return server;
+		if ( metadata.size () != 0){
+			for(ServerInfo server: metadata){
+				if( hasher.isInRange ( server.getFromIndex () , server.getToIndex () , key ));
+					return server;
+			}
+		} else {
+			destinationServer = this.currentDestinationServer;
 		}
+		
 
 		return destinationServer;
 	}

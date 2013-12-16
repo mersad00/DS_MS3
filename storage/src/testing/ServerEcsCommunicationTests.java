@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -70,6 +71,12 @@ public class ServerEcsCommunicationTests {
 		ECSMessage shutdownMessage = new ECSMessage ();
 		shutdownMessage.setActionType ( ECSCommand.SHUT_DOWN );
 		
+		ECSMessage writeLockMessage = new ECSMessage ();
+		writeLockMessage.setActionType ( ECSCommand.SET_WRITE_LOCK );
+		
+		ECSMessage releaseLockMessage = new ECSMessage ();
+		releaseLockMessage.setActionType ( ECSCommand.RELEASE_LOCK );
+		
 		
 		ECSMessage sendDataMessage = new ECSMessage ();
 		sendDataMessage.setActionType ( ECSCommand.MOVE_DATA );
@@ -77,24 +84,31 @@ public class ServerEcsCommunicationTests {
 		sendDataMessage.setMoveToIndex ( "78F825AAA0103319AAA1A30BF4FE3ADA" );
 		sendDataMessage.setMoveToServer ( new ServerInfo ("localhost", 50001) );
 		
+		ECSMessage updateMessage = new ECSMessage ();
+		updateMessage.setActionType ( ECSCommand.SEND_METADATA );
+		updateMessage.setMetaData ( this.getRandomMetadata () );
 		
 		initConnection (  new ServerInfo ( "localhost" ,
 				50000 ) );
 		
 		sendMessageToServer ( initMessage );
 		sendMessageToServer ( startMessage );
-		sendMessageToServer ( sendDataMessage );
-		
-
-		ECSMessage ackMsg = receiveMessage();
-		assertEquals ( ECSCommand.ACK , ackMsg.getActionType () );
 		
 		sendMessageToServer ( stopMessage );
 		
+		sendMessageToServer ( writeLockMessage);
+		
+		sendMessageToServer ( sendDataMessage );
+		ECSMessage ackMsg = receiveMessage();
+		assertEquals ( ECSCommand.ACK , ackMsg.getActionType () );
+		
+		sendMessageToServer ( releaseLockMessage);
 		//sendMessageToServer ( shutdownMessage ); //TODO search for other solutions to exit safely
 		
+		sendMessageToServer ( updateMessage);
 		
-		
+		ServerSocket server = new ServerSocket (40000); // some blocking operation to test client
+		server.accept ();
 	}
 
 	private void initConnection ( ServerInfo server ) {
@@ -127,7 +141,7 @@ public class ServerEcsCommunicationTests {
 		List < ServerInfo > metadata = new ArrayList < ServerInfo > ();
 		ServerInfo server1 = new ServerInfo ();
 		server1.setAddress ( "localhost" );
-		server1.setPort ( 50001 );
+		server1.setPort ( 50000 );
 		server1.setFromIndex ( "1" );
 		server1.setToIndex ( "10" );
 		metadata.add ( server1 );

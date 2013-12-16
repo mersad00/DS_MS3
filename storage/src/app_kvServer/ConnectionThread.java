@@ -15,6 +15,7 @@ import app_kvEcs.ECSMessage;
 
 import client.SerializationUtil;
 
+import common.Hasher;
 import common.ServerInfo;
 import common.messages.AbstractMessage;
 import common.messages.KVMessage;
@@ -155,6 +156,7 @@ public class ConnectionThread implements Runnable {
 	}
 
 	private void sendClientMessage ( KVMessage msg ) throws IOException {
+		System.out.println (((ClientMessage)msg).getMetadata ());
 		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
 		sendMessage ( msgBytes );
 		logger.info ( "Send client message:\t '" + msg.getKey () + "'" );
@@ -204,7 +206,7 @@ public class ConnectionThread implements Runnable {
 	}
 
 	private void handleClientRequest ( ClientMessage msg ) throws IOException {
-		KVMessage responseMessage = null;
+		KVMessage responseMessage = null;		
 		if ( parent.getServerStatus ().equals (
 				ServerStatuses.UNDER_INITIALIZATION )
 				|| parent.getServerStatus ().equals ( ServerStatuses.STOPPED ) ) {
@@ -220,13 +222,21 @@ public class ConnectionThread implements Runnable {
 
 		} else if ( parent.getServerStatus ().equals ( ServerStatuses.ACTIVE ) ) {
 			// The server is ready to handle requests
-			if ( msg.getStatus ().equals ( KVMessage.StatusType.GET ) ) {
-				responseMessage = DatabaseManager.get ( msg.getKey () );
+			Hasher hasher = new Hasher ();
+			if ( hasher.isInRange ( parent.getThisServerInfo ().getFromIndex () , parent.getThisServerInfo ().getToIndex () , msg.getKey () )){
+				if ( msg.getStatus ().equals ( KVMessage.StatusType.GET ) ) {
+					responseMessage = DatabaseManager.get ( msg.getKey () );
 
-			} else if ( msg.getStatus ().equals ( KVMessage.StatusType.PUT ) ) {
-				responseMessage = DatabaseManager.put ( msg.getKey () ,
-						msg.getValue () );
+				} else if ( msg.getStatus ().equals ( KVMessage.StatusType.PUT ) ) {
+					responseMessage = DatabaseManager.put ( msg.getKey () ,
+							msg.getValue () );
+				}
+			} else {
+				msg.setStatus ( StatusType.SERVER_NOT_RESPONSIBLE );				
+				responseMessage = new ClientMessage ( msg );
+				((ClientMessage)responseMessage).setMetadata ( parent.getMetadata () );				
 			}
+			
 		}
 		this.sendClientMessage ( responseMessage );
 		logger.info ( "response message sent to client " );

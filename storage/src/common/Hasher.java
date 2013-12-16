@@ -61,9 +61,18 @@ public class Hasher {
 		//TODO ask amjad about the range exclusive or inclusive
 		boolean result = false;
 	    String keyHash = this.getHash ( key );
-	    if ( this.compareHashes ( startRange , keyHash) >=  0 && this.compareHashes ( endRange , keyHash ) <= 0){
-	    	result = true;
+	    if ( this.compareHashes ( startRange , endRange ) > 0) { // in this case the key is between the last node and the first node
+	    	if ( this.compareHashes ( keyHash , endRange ) < 0 ){ // if (key < end) ---->  the key is between 000 and the first node
+	    		result = true;
+	    	} else if ( this.compareHashes ( keyHash , startRange ) > 0){ // in this case key is between last node and fff
+	    		result = true;
+	    	}
+	    } else {
+	    	if ( this.compareHashes ( startRange , keyHash) >=  0 && this.compareHashes ( endRange , keyHash ) <= 0){
+		    	result = true;
+		    }
 	    }
+	    
 		return result;
 	}
 	

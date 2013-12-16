@@ -124,6 +124,7 @@ public class KVClient {
 			} catch ( Exception e ) {
 				// report issue to user
 				logger.error ( e.getMessage () );
+				e.printStackTrace ();
 
 			}
 

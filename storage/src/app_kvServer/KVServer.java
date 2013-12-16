@@ -25,6 +25,7 @@ public class KVServer {
 	private ServerStatuses serverStatus;
 	private List < ServerInfo > metadata;
 	private String serverHashCode;
+	private ServerInfo thisServerInfo;
 	
 
 	/**
@@ -119,7 +120,19 @@ public class KVServer {
 
 	public void setMetadata ( List < ServerInfo > metadata ) {
 		this.metadata = metadata;
+		//TODO update this after figure out how to get your IP
+		for(ServerInfo server : metadata){
+			if ( server.getPort () == this.port ){
+				this.thisServerInfo = server;
+				System.out.println ( this.thisServerInfo);
+			}
+		}		
 	}
+	
+	public ServerInfo getThisServerInfo(){
+		return this.thisServerInfo;
+	}
+		
 
 	public String getHashCode () {
 		return this.serverHashCode;
