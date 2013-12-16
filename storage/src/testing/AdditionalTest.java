@@ -31,6 +31,60 @@ public class AdditionalTest extends TestCase {
 	assertTrue(true);
     }
 
+    @Test
+    public void testClientNotRespSerialization(){
+
+	ClientMessage message = new ClientMessage();
+	message.setStatus(StatusType.SERVER_NOT_RESPONSIBLE);
+	List<ServerInfo> metaData = new ArrayList<ServerInfo>();
+	ServerInfo s1 = new ServerInfo("1222",900,"1","10");
+	metaData.add(s1);
+	ServerInfo s2 = new ServerInfo("1333",880,"11","20");
+	metaData.add(s2);
+	ServerInfo s3 = new ServerInfo("3333",333,"33","43");
+	metaData.add(s3);
+	ServerInfo s4 = new ServerInfo("4444",666,"44","55");
+	metaData.add(s4);
+	message.setMetadata(metaData);
+	
+	assertNotNull("Message is null",message);
+
+	byte[] byteStream = SerializationUtil.toByteArray(message);
+
+	assertNotNull("Message serialization failed."+byteStream);
+
+	ClientMessage deserializedMessage;
+	try {
+	    deserializedMessage = (ClientMessage)SerializationUtil.toObject(byteStream);
+	    assertNotNull("Message deserialization failed.",deserializedMessage);
+	    assertTrue(message.getStatus().equals(deserializedMessage.getStatus()));
+	    assertTrue(message.getMetadata().equals(deserializedMessage.getMetadata()));
+	} catch (UnsupportedDataTypeException e) {
+	    System.out.println(e.getMessage());
+
+	}
+    }
+    @Test
+    public void testClientServerStoppedSerialization(){
+
+	ClientMessage message = new ClientMessage();
+	message.setStatus(StatusType.SERVER_STOPPED);
+	assertNotNull("Message is null",message);
+
+	byte[] byteStream = SerializationUtil.toByteArray(message);
+
+	assertNotNull("Message serialization failed."+byteStream);
+
+	ClientMessage deserializedMessage;
+	try {
+	    deserializedMessage = (ClientMessage)SerializationUtil.toObject(byteStream);
+	    assertNotNull("Message deserialization failed.",deserializedMessage);
+	    assertTrue(message.getStatus().equals(deserializedMessage.getStatus()));
+	} catch (UnsupportedDataTypeException e) {
+	    System.out.println(e.getMessage());
+
+	}
+    }
 
     /**
      * This test id for testing the serialization of <code>KVMessage</code> 

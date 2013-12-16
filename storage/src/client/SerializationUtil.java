@@ -16,7 +16,6 @@ import common.ServerInfo;
 import common.messages.AbstractMessage;
 import common.messages.AbstractMessage.MessageType;
 import common.messages.KVMessage.StatusType;
-import common.messages.KVMessage;
 import common.messages.ClientMessage;
 
 public class SerializationUtil {
@@ -30,12 +29,22 @@ public class SerializationUtil {
 
     private static final char RETURN = 0x0D;
 
-    public static byte[] toByteArray(KVMessage message) {
+    public static byte[] toByteArray(ClientMessage message) {
 
 	// message : number(0)$key$value
 
-	byte[] bytes = (CLIENT_MESSAGE+LINE_FEED+message.getStatus().ordinal() + LINE_FEED
-		+ message.getKey() + LINE_FEED + message.getValue()).getBytes();
+	String messageStr = (CLIENT_MESSAGE+LINE_FEED+message.getStatus().ordinal() + LINE_FEED
+		+ message.getKey() + LINE_FEED + message.getValue());
+
+	if (message.getStatus() == StatusType.SERVER_NOT_RESPONSIBLE){
+	    // add metadata
+	    messageStr += LINE_FEED;
+	    for (ServerInfo server : message.getMetadata()) {
+		messageStr += server.getAddress()+INNER_LINE_FEED+server.getPort()+INNER_LINE_FEED+server.getFromIndex()+INNER_LINE_FEED+server.getToIndex();
+		messageStr+=INNER_LINE_FEED2;
+	    }
+	}
+	byte[] bytes =messageStr.getBytes();
 	byte[] ctrBytes = new byte[] { RETURN };
 	byte[] tmp = new byte[bytes.length + ctrBytes.length];
 	System.arraycopy(bytes, 0, tmp, 0, bytes.length);
@@ -67,6 +76,9 @@ public class SerializationUtil {
 		}
 		if (tokens[3] != null) {
 		    ((ClientMessage)retrivedMessage).setValue(tokens[3].trim());
+		}if (tokens.length>= 5 && tokens[4] != null){
+		    List<ServerInfo> metaData = getMetaData(tokens[4].trim());
+		    ((ClientMessage)retrivedMessage).setMetadata(metaData);
 		}
 		break;
 	    case SERVER_MESSAGE:
