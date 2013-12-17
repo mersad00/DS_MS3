@@ -11,7 +11,7 @@ import utilities.LoggingManager;
 import client.KVStore;
 import common.messages.KVMessage;
 import common.messages.ClientMessage;
-import common.messages.KVMessage.StatusType;
+
 
 public class KVClient {
 

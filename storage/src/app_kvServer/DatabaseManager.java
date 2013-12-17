@@ -104,8 +104,7 @@ public class DatabaseManager {
 			database.put(key,value);				
 			msg.setKey(key);
 			msg.setValue(value);
-			msg.setStatus(common.messages.KVMessage.StatusType.PUT_UPDATE);
-			printDatabase();
+			msg.setStatus(common.messages.KVMessage.StatusType.PUT_UPDATE);			
 			logger.info("update for key: '"+key+"' and value '"+value+"' success");
 		}catch(Exception e){
 			msg.setKey(key);

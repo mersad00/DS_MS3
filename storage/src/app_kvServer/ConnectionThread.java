@@ -5,8 +5,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.apache.log4j.Logger;
 
@@ -37,10 +35,13 @@ public class ConnectionThread implements Runnable {
 	private KVServer parent;
 
 	/**
-	 * Constructs a new CientConnection object for a given TCP socket.
+	 * Constructs a new <code>ConnectionThread</code> object for a given TCP
+	 * socket.
 	 * 
 	 * @param clientSocket
 	 *            the Socket object for the client connection.
+	 * @param parent
+	 *            the server object which is listening to new connections
 	 */
 	public ConnectionThread ( Socket clientSocket , KVServer parent ) {
 		this.parent = parent;
@@ -49,8 +50,8 @@ public class ConnectionThread implements Runnable {
 	}
 
 	/**
-	 * Initializes and starts the client connection. Loops until the connection
-	 * is closed or aborted by the client.
+	 * Initializes and starts the connection. Loops until the connection is
+	 * closed or aborted by the client.
 	 */
 	public void run () {
 		try {
@@ -60,7 +61,7 @@ public class ConnectionThread implements Runnable {
 			while ( isOpen ) {
 				try {
 					AbstractMessage msg = receiveMessage ();
-					handleRequest ( msg );
+					handleRequest ( msg ); // to determine the connection type
 					/*
 					 * connection either terminated by the client or lost due to
 					 * network problems
@@ -88,6 +89,12 @@ public class ConnectionThread implements Runnable {
 		}
 	}
 
+	/**
+	 * receives the sent bytes and de-serialize into Object
+	 * 
+	 * @return <code>AbstractMessage</code> general type of message.
+	 * @throws IOException
+	 */
 	private AbstractMessage receiveMessage () throws IOException {
 
 		int index = 0;
@@ -150,17 +157,40 @@ public class ConnectionThread implements Runnable {
 		return msg;
 	}
 
+	/**
+	 * the low level sending method
+	 * 
+	 * @param msgBytes
+	 *            the serialized message
+	 * @throws IOException
+	 */
 	private void sendMessage ( byte [] msgBytes ) throws IOException {
 		output.write ( msgBytes , 0 , msgBytes.length );
 		output.flush ();
 	}
 
-	private void sendClientMessage ( KVMessage msg ) throws IOException {		
-		byte [] msgBytes = SerializationUtil.toByteArray ( (ClientMessage)msg );
+	/**
+	 * sends message of type <code>KVMessage</code>
+	 * 
+	 * @param msg
+	 *            the <code>KVMessage</code> object
+	 * @throws IOException
+	 */
+	private void sendClientMessage ( KVMessage msg ) throws IOException {
+		byte [] msgBytes = SerializationUtil
+				.toByteArray ( ( ClientMessage ) msg );
 		sendMessage ( msgBytes );
 		logger.info ( "Send client message:\t '" + msg.getKey () + "'" );
 	}
 
+	
+	/**
+	 * sends message of type <code>ServerMessage</code>
+	 * 
+	 * @param msg
+	 *            the <code>ServerMessage</code> object
+	 * @throws IOException
+	 */
 	private void sendServerMessage ( ServerMessage msg , ServerInfo server ) {
 		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
 		Socket connectionToOtherServer = null;
@@ -168,7 +198,7 @@ public class ConnectionThread implements Runnable {
 		try {
 			connectionToOtherServer = new Socket ( server.getAddress () ,
 					server.getPort () );
-			output = connectionToOtherServer.getOutputStream ();			
+			output = connectionToOtherServer.getOutputStream ();
 			output.write ( msgBytes , 0 , msgBytes.length );
 			output.flush ();
 		} catch ( UnknownHostException e ) {
@@ -193,19 +223,41 @@ public class ConnectionThread implements Runnable {
 		logger.info ( "data moved to '" + server.toString () + "'" );
 	}
 
+	/**
+	 * sends message of type <code>ECSMessage</code>
+	 * 
+	 * @param msg
+	 *            the <code>ECSMessage</code> object
+	 * @throws IOException
+	 */
+	private void sendECSMessage ( ECSMessage msg ) throws IOException {
+		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
+		this.sendMessage ( msgBytes );
+	}
+	
+	/**
+	 * 
+	 * @param  msg of type <code>AbstractMessage</code> determine the received message type and select the appropriate action
+	 * @throws IOException
+	 */
 	private void handleRequest ( AbstractMessage msg ) throws IOException {
 		if ( msg.getMessageType ().equals ( MessageType.CLIENT_MESSAGE ) ) {
 			handleClientRequest ( ( ClientMessage ) msg );
 		} else if ( msg.getMessageType ().equals ( MessageType.SERVER_MESSAGE ) ) {
 			handleServerRequest ( ( ServerMessage ) msg );
-		} else if ( msg.getMessageType ().equals ( MessageType.ECS_MESSAGE) ) {
+		} else if ( msg.getMessageType ().equals ( MessageType.ECS_MESSAGE ) ) {
 			handleECSRequest ( ( ECSMessage ) msg );
 		}
 
 	}
 
+	/**
+	 * in case of the received message is a client request
+	 * @param  msg of type <code>ClientMessage</code>
+	 * @throws IOException
+	 */
 	private void handleClientRequest ( ClientMessage msg ) throws IOException {
-		KVMessage responseMessage = null;		
+		KVMessage responseMessage = null;
 		if ( parent.getServerStatus ().equals (
 				ServerStatuses.UNDER_INITIALIZATION )
 				|| parent.getServerStatus ().equals ( ServerStatuses.STOPPED ) ) {
@@ -216,80 +268,102 @@ public class ConnectionThread implements Runnable {
 
 		} else if ( parent.getServerStatus ().equals (
 				ServerStatuses.WRITING_LOCK ) ) {
+			// The server is locked for writing operations
 			msg.setStatus ( StatusType.SERVER_WRITE_LOCK );
 			responseMessage = new ClientMessage ( msg );
 
 		} else if ( parent.getServerStatus ().equals ( ServerStatuses.ACTIVE ) ) {
 			// The server is ready to handle requests
-			Hasher hasher = new Hasher ();
-			System.out.println ("------------" + hasher.isInRange ( parent.getThisServerInfo ().getFromIndex () , parent.getThisServerInfo ().getToIndex () , hasher.getHash ( msg.getKey () )));
-			if ( hasher.isInRange ( parent.getThisServerInfo ().getFromIndex () , parent.getThisServerInfo ().getToIndex () , hasher.getHash ( msg.getKey () ))){
+			Hasher hasher = new Hasher ();	
+			// check if the received message is in this server range
+			if ( hasher.isInRange (
+					parent.getThisServerInfo ().getFromIndex () , parent
+							.getThisServerInfo ().getToIndex () , hasher
+							.getHash ( msg.getKey () ) ) ) {
+				//in case the received message is in the range of this server
 				if ( msg.getStatus ().equals ( KVMessage.StatusType.GET ) ) {
 					responseMessage = DatabaseManager.get ( msg.getKey () );
 
 				} else if ( msg.getStatus ().equals ( KVMessage.StatusType.PUT ) ) {
 					responseMessage = DatabaseManager.put ( msg.getKey () ,
-							msg.getValue () );					
+							msg.getValue () );
 				}
 			} else {
-				msg.setStatus ( StatusType.SERVER_NOT_RESPONSIBLE );				
+				//in case the received message is in the range of this server
+				msg.setStatus ( StatusType.SERVER_NOT_RESPONSIBLE );
 				responseMessage = new ClientMessage ( msg );
-				((ClientMessage)responseMessage).setMetadata ( parent.getMetadata () );				
+				( ( ClientMessage ) responseMessage ).setMetadata ( parent
+						.getMetadata () );
 			}
-			
+
 		}
-		this.sendClientMessage ( responseMessage );
-		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" +responseMessage.getStatus ());
+		this.sendClientMessage ( responseMessage );		
 		logger.info ( "response message sent to client " );
 	}
 
+	/**
+	 * in case of the received message is a server request
+	 * this method is only for moving data to this server
+	 * @param  msg of type <code>ServerMessage</code>
+	 * @throws IOException
+	 */
 	private void handleServerRequest ( ServerMessage msg ) throws IOException {
-		if ( msg.getData ().size () > 0 ){
+		if ( msg.getData ().size () > 0 ) {
 			DatabaseManager.putAll ( msg.getData () );
-			logger.info ( "updated database with : \t" + msg.getData ().size () + " keys ");
+			logger.info ( "updated database with : \t" + msg.getData ().size ()
+					+ " keys " );
 		}
 	}
 
+	/**
+	 * in case of the received message is a ECS command
+	 * @param  msg of type <code>ECSMessage</code>
+	 * @throws IOException
+	 */
 	private void handleECSRequest ( ECSMessage msg ) throws IOException {
 		if ( msg.getActionType ().equals ( ECSCommand.INIT ) ) {
-			parent.setMetadata ( msg.getMetaData () );
-			System.out.println (msg.getMetaData ());
+			parent.setMetadata ( msg.getMetaData () );			
 			parent.setServerStatus ( ServerStatuses.UNDER_INITIALIZATION );
 			logger.info ( "server under initialization \n set server status to : \t stopped " );
+			
 		} else if ( msg.getActionType ().equals ( ECSCommand.START ) ) {
 			parent.setServerStatus ( ServerStatuses.ACTIVE );
 			logger.info ( "server is starting to serve clients \n set server status to : \t active " );
+			
 		} else if ( msg.getActionType ().equals ( ECSCommand.STOP ) ) {
 			parent.setServerStatus ( ServerStatuses.STOPPED );
 			logger.info ( "server is stopped serving clients \n set server status to : \t stopped " );
-		} else if ( msg.getActionType ().equals ( ECSCommand.SHUT_DOWN )){
+			
+		} else if ( msg.getActionType ().equals ( ECSCommand.SHUT_DOWN ) ) {
 			logger.info ( "server is shutting down " );
 			System.exit ( 0 );
-		} else if ( msg.getActionType ().equals ( ECSCommand.SET_WRITE_LOCK )){
+			
+		} else if ( msg.getActionType ().equals ( ECSCommand.SET_WRITE_LOCK ) ) {
 			parent.setServerStatus ( ServerStatuses.WRITING_LOCK );
 			logger.info ( "server is busy in writing data \n set server status to : \t write_lock " );
-		} else if ( msg.getActionType ().equals ( ECSCommand.RELEASE_LOCK )){
+			
+		} else if ( msg.getActionType ().equals ( ECSCommand.RELEASE_LOCK ) ) {
 			parent.setServerStatus ( ServerStatuses.ACTIVE );
 			logger.info ( "server is removing writing data lock \n set server status to : \t active " );
-		} else if ( msg.getActionType ().equals ( ECSCommand.MOVE_DATA )){
+			
+		} else if ( msg.getActionType ().equals ( ECSCommand.MOVE_DATA ) ) {
 			ServerMessage message = new ServerMessage ();
-			message.setData ( DatabaseManager.getDataInRange ( msg.getMoveFromIndex () , msg.getMoveToIndex () ) );
-			this.sendServerMessage (  message , msg.getMoveToServer () );
-			logger.info ( "server moved data to "+msg.getMoveToServer ().toString () );
+			message.setData ( DatabaseManager.getDataInRange (
+					msg.getMoveFromIndex () , msg.getMoveToIndex () ) );
+			this.sendServerMessage ( message , msg.getMoveToServer () );
+			logger.info ( "server moved data to "
+					+ msg.getMoveToServer ().toString () );
 			ECSMessage acknowledgeMessage = new ECSMessage ();
 			acknowledgeMessage.setActionType ( ECSCommand.ACK );
 			this.sendECSMessage ( acknowledgeMessage );
 			logger.info ( "sent acknowledgment to  ECS" );
-		} else if (msg.getActionType ().equals ( ECSCommand.SEND_METADATA )){
+			
+		} else if ( msg.getActionType ().equals ( ECSCommand.SEND_METADATA ) ) {
 			parent.setMetadata ( msg.getMetaData () );
 			logger.info ( "received metadata from ECS and updated the current metadata " );
 		}
 	}
-		
+
 	
-	private void sendECSMessage (ECSMessage msg ) throws IOException{
-		byte[] msgBytes = SerializationUtil.toByteArray ( msg );
-		this.sendMessage ( msgBytes );
-	}
-		
+
 }
