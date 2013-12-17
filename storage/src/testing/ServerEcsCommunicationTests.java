@@ -9,6 +9,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +23,7 @@ import threads.ServerThread;
 
 import client.SerializationUtil;
 
+import common.Hasher;
 import common.ServerInfo;
 import common.messages.AbstractMessage;
 
@@ -39,6 +42,8 @@ public class ServerEcsCommunicationTests {
 	private OutputStream output = null;
 	private InputStream input = null;
 	
+	private Hasher md5Hasher;
+	
 	private static final int BUFFER_SIZE = 1024;
 	private static final int DROP_SIZE = 1024 * BUFFER_SIZE;
 
@@ -47,7 +52,7 @@ public class ServerEcsCommunicationTests {
 		firstServer = new KVServer ( 50000 );
 		secondServer = new KVServer ( 50001 );
 		thirdServer = new KVServer ( 50002 );
-		
+		this.md5Hasher = new Hasher();
 	}
 
 	@Test
@@ -88,49 +93,41 @@ public class ServerEcsCommunicationTests {
 		updateMessage.setActionType ( ECSCommand.SEND_METADATA );
 		updateMessage.setMetaData ( this.getRandomMetadata () );
 		
-		initConnection (  new ServerInfo ( "localhost" ,
-				50000 ) );
+		ServerInfo serverInfo1 = new ServerInfo ( "localhost" , 50000 );
+		ServerInfo serverInfo2 = new ServerInfo ( "localhost" , 50001 );
 		
-		sendMessageToServer ( initMessage );
-		sendMessageToServer ( startMessage );
+		sendMessageToServer ( initMessage , serverInfo1 );
+		sendMessageToServer ( startMessage , serverInfo1 );
 		
-		sendMessageToServer ( stopMessage );
+		sendMessageToServer ( initMessage , serverInfo2 );
+		sendMessageToServer ( startMessage , serverInfo2 );
 		
-		sendMessageToServer ( writeLockMessage);
+		//sendMessageToServer ( stopMessage );
 		
-		sendMessageToServer ( sendDataMessage );
-		ECSMessage ackMsg = receiveMessage();
-		assertEquals ( ECSCommand.ACK , ackMsg.getActionType () );
+		//sendMessageToServer ( writeLockMessage);
 		
-		sendMessageToServer ( releaseLockMessage);
+		//sendMessageToServer ( sendDataMessage );
+		//ECSMessage ackMsg = receiveMessage();
+		//assertEquals ( ECSCommand.ACK , ackMsg.getActionType () );
+		
+		//sendMessageToServer ( releaseLockMessage);
 		//sendMessageToServer ( shutdownMessage ); //TODO search for other solutions to exit safely, 
 		
-		sendMessageToServer ( updateMessage);
+		//sendMessageToServer ( updateMessage);
 		
 		ServerSocket server = new ServerSocket (40000); // some blocking operation to test client
 		server.accept ();
 	}
 
-	private void initConnection ( ServerInfo server ) {
-		try {
-			connectionToOtherServer = new Socket ( server.getAddress () ,
-					server.getPort () );	
-			System.out.println(connectionToOtherServer.isConnected ());
-			output = connectionToOtherServer.getOutputStream ();
-		} catch ( UnknownHostException e ) {
-			e.printStackTrace ();
-		} catch ( IOException e ) {
-			e.printStackTrace ();
-		}
-	}
 
-	private void sendMessageToServer ( ECSMessage msg ) {
+	private void sendMessageToServer ( ECSMessage msg , ServerInfo server) {
 		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
 		try {
+			connectionToOtherServer = new Socket ( server.getAddress () ,
+					server.getPort () );				
+			output = connectionToOtherServer.getOutputStream ();
 			output.write ( msgBytes , 0 , msgBytes.length );
-			output.flush ();
-			
-			System.out.println ("sending message");
+			output.flush ();						
 		} catch ( IOException e ) {
 			e.printStackTrace ();
 		}
@@ -142,15 +139,14 @@ public class ServerEcsCommunicationTests {
 		ServerInfo server1 = new ServerInfo ();
 		server1.setAddress ( "localhost" );
 		server1.setPort ( 50000 );
-		server1.setFromIndex ( "1" );
-		server1.setToIndex ( "10" );
-		metadata.add ( server1 );
+		
 		ServerInfo server2 = new ServerInfo ();
 		server2.setAddress ( "localhost" );
 		server2.setPort ( 50001 );
-		server2.setFromIndex ( "11" );
-		server2.setToIndex ( "20" );
+		
+		metadata.add ( server1 );
 		metadata.add ( server2 );
+		metadata = this.calculateMetaData ( metadata );
 		return metadata;
 	}
 
@@ -217,4 +213,32 @@ public class ServerEcsCommunicationTests {
 		return msg;
 	}
 
+	private List<ServerInfo> calculateMetaData(List<ServerInfo> serversToStart) {
+		
+		for (ServerInfo server: serversToStart){// loop and the hash values
+		    String hashKey = md5Hasher.getHash(server.getAddress()+":"+server.getPort());
+		    //the to index is the value of the server hash
+		    server.setToIndex(hashKey);
+		}
+		
+		Collections.sort(serversToStart, new Comparator<ServerInfo>() { // sort the list by the hashes
+		    @Override
+		    public int compare(ServerInfo o1, ServerInfo o2) {
+		         return md5Hasher.compareHashes(o1.getToIndex() , o2.getToIndex());
+		         }
+		});			
+		    
+		for (int i = 0; i < serversToStart.size(); i++) {
+		    ServerInfo server = serversToStart.get(i);
+		    ServerInfo predecessor;
+		    if(i==0){// first node is a special case.
+			predecessor = serversToStart.get(serversToStart.size()-1);
+		    }else{
+			predecessor = serversToStart.get(i-1);
+		    }
+		    server.setFromIndex(predecessor.getToIndex());
+		    
+		}		
+		return serversToStart;
+		}
 }

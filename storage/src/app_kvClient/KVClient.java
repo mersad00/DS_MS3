@@ -167,16 +167,7 @@ public class KVClient {
 		case SERVER_NOT_RESPONSIBLE : {		
 			resultText = UserFacingMessages.SERVER_NOT_RESPONSIBLE;
 			this.connection.updateMetadata ( ( ( ClientMessage ) result )
-					.getMetadata () );		
-			System.out.println(((ClientMessage)result).getMetadata ());
-			ClientMessage temp = ( ClientMessage ) connection
-					.getLastSentMessage ();
-			logger.info ( "re-sent last message " + temp.getStatus () + " : " + temp.getKey ()  );
-			if ( temp.getStatus ().equals ( StatusType.PUT ) ) {
-				this.connection.put ( temp.getKey () , temp.getValue () );
-			} else if ( temp.getStatus ().equals ( StatusType.GET ) ) {
-				this.connection.get ( temp.getKey () );
-			}
+					.getMetadata () );					
 			break;
 		}
 

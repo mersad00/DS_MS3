@@ -96,15 +96,15 @@ public class KVServer {
 		}
 	}
 
-//	public static void main ( String args[] ) {
-//		try {
-//			new LogSetup ( "logs/server/server.log" , Level.ALL );
-//		} catch ( IOException e ) {
-//			e.printStackTrace ();
-//		}
-//		KVServer server = new KVServer ( Integer.parseInt ( args [ 0 ] ) );
-//		server.startServer ();
-//	}
+	public static void main ( String args[] ) throws IOException{
+		try {
+			new LogSetup ( "logs/server/server.log" , Level.ALL );
+		} catch ( IOException e ) {
+			e.printStackTrace ();
+		}
+		KVServer server = new KVServer ( Integer.parseInt ( args [ 0 ] ) );
+		server.startServer ();
+	}
 
 	public ServerStatuses getServerStatus () {
 		return this.serverStatus;
@@ -124,7 +124,7 @@ public class KVServer {
 		for(ServerInfo server : metadata){
 			if ( server.getPort () == this.port ){
 				this.thisServerInfo = server;
-				System.out.println ( this.thisServerInfo);
+				System.out.println ( "this server info is : " + this.thisServerInfo);
 			}
 		}		
 	}

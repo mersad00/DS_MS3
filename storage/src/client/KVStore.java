@@ -219,7 +219,7 @@ public class KVStore implements KVCommInterface {
 		Hasher hasher = new Hasher();
 		if ( metadata.size () != 0){
 			for(ServerInfo server: metadata){
-				if( hasher.isInRange ( server.getFromIndex () , server.getToIndex () , key ));
+				if( hasher.isInRange ( server.getFromIndex () , server.getToIndex () , hasher.getHash ( key ) ));
 					return server;
 			}
 		} else {

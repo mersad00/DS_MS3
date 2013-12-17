@@ -222,13 +222,14 @@ public class ConnectionThread implements Runnable {
 		} else if ( parent.getServerStatus ().equals ( ServerStatuses.ACTIVE ) ) {
 			// The server is ready to handle requests
 			Hasher hasher = new Hasher ();
-			if ( hasher.isInRange ( parent.getThisServerInfo ().getFromIndex () , parent.getThisServerInfo ().getToIndex () , msg.getKey () )){
+			System.out.println ("------------" + hasher.isInRange ( parent.getThisServerInfo ().getFromIndex () , parent.getThisServerInfo ().getToIndex () , hasher.getHash ( msg.getKey () )));
+			if ( hasher.isInRange ( parent.getThisServerInfo ().getFromIndex () , parent.getThisServerInfo ().getToIndex () , hasher.getHash ( msg.getKey () ))){
 				if ( msg.getStatus ().equals ( KVMessage.StatusType.GET ) ) {
 					responseMessage = DatabaseManager.get ( msg.getKey () );
 
 				} else if ( msg.getStatus ().equals ( KVMessage.StatusType.PUT ) ) {
 					responseMessage = DatabaseManager.put ( msg.getKey () ,
-							msg.getValue () );
+							msg.getValue () );					
 				}
 			} else {
 				msg.setStatus ( StatusType.SERVER_NOT_RESPONSIBLE );				
@@ -238,6 +239,7 @@ public class ConnectionThread implements Runnable {
 			
 		}
 		this.sendClientMessage ( responseMessage );
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" +responseMessage.getStatus ());
 		logger.info ( "response message sent to client " );
 	}
 
@@ -251,6 +253,7 @@ public class ConnectionThread implements Runnable {
 	private void handleECSRequest ( ECSMessage msg ) throws IOException {
 		if ( msg.getActionType ().equals ( ECSCommand.INIT ) ) {
 			parent.setMetadata ( msg.getMetaData () );
+			System.out.println (msg.getMetaData ());
 			parent.setServerStatus ( ServerStatuses.UNDER_INITIALIZATION );
 			logger.info ( "server under initialization \n set server status to : \t stopped " );
 		} else if ( msg.getActionType ().equals ( ECSCommand.START ) ) {

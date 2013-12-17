@@ -70,7 +70,10 @@ public class Hasher {
 	    	} else if ( this.compareHashes ( keyHash , startRange ) > 0){ // in this case key is between last node and fff
 	    		result = true;
 	    	}
+	    } else if ( this.compareHashes ( startRange , endRange ) == 0){
+	    	result = true;
 	    } else {
+	    
 	    	if ( this.compareHashes ( startRange , keyHash) >=  0 && this.compareHashes ( endRange , keyHash ) <= 0){
 		    	result = true;
 		    }

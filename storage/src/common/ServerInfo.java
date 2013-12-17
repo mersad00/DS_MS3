@@ -144,7 +144,8 @@ public class ServerInfo {
 	
 	@Override
 	public String toString(){
-		return "Server address : " + this.getAddress () +" on port : " + this.getPort ();
+		return "Server address : " + this.getAddress () +" on port : " + this.getPort ()+
+				"\n start range: "+this.fromIndex +"\nend range :"+ this.toIndex;
 	}
 
 }
