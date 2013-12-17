@@ -61,7 +61,6 @@ public class KVStore implements KVCommInterface {
 			input = clientSocket.getInputStream ();
 			logger.info ( "Connection established with " + currentDestinationServer.toString () );
 		} catch ( IOException ioe ) {
-
 			logger.error ( "Connection could not be established!" );
 			throw ioe;
 		}
@@ -198,7 +197,7 @@ public class KVStore implements KVCommInterface {
 		return msg;
 	}
 
-	private void sendMessage ( KVMessage msg ) throws IOException {
+	private void sendMessage ( ClientMessage msg ) throws IOException {
 		this.lastSentMessage = msg;
 		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
 		output.write ( msgBytes , 0 , msgBytes.length );

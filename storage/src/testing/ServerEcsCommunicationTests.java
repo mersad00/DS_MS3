@@ -103,7 +103,7 @@ public class ServerEcsCommunicationTests {
 		assertEquals ( ECSCommand.ACK , ackMsg.getActionType () );
 		
 		sendMessageToServer ( releaseLockMessage);
-		//sendMessageToServer ( shutdownMessage ); //TODO search for other solutions to exit safely
+		//sendMessageToServer ( shutdownMessage ); //TODO search for other solutions to exit safely, 
 		
 		sendMessageToServer ( updateMessage);
 		
@@ -145,6 +145,12 @@ public class ServerEcsCommunicationTests {
 		server1.setFromIndex ( "1" );
 		server1.setToIndex ( "10" );
 		metadata.add ( server1 );
+		ServerInfo server2 = new ServerInfo ();
+		server2.setAddress ( "localhost" );
+		server2.setPort ( 50001 );
+		server2.setFromIndex ( "11" );
+		server2.setToIndex ( "20" );
+		metadata.add ( server2 );
 		return metadata;
 	}
 

@@ -168,6 +168,7 @@ public class KVClient {
 			resultText = UserFacingMessages.SERVER_NOT_RESPONSIBLE;
 			this.connection.updateMetadata ( ( ( ClientMessage ) result )
 					.getMetadata () );		
+			System.out.println(((ClientMessage)result).getMetadata ());
 			ClientMessage temp = ( ClientMessage ) connection
 					.getLastSentMessage ();
 			logger.info ( "re-sent last message " + temp.getStatus () + " : " + temp.getKey ()  );

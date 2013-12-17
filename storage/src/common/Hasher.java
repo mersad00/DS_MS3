@@ -61,6 +61,9 @@ public class Hasher {
 		//TODO ask amjad about the range exclusive or inclusive
 		boolean result = false;
 	    String keyHash = this.getHash ( key );
+	    System.out.println (startRange);
+	    System.out.println (endRange);
+	    System.out.println (keyHash);
 	    if ( this.compareHashes ( startRange , endRange ) > 0) { // in this case the key is between the last node and the first node
 	    	if ( this.compareHashes ( keyHash , endRange ) < 0 ){ // if (key < end) ---->  the key is between 000 and the first node
 	    		result = true;

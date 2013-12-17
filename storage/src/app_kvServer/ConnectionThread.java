@@ -155,9 +155,8 @@ public class ConnectionThread implements Runnable {
 		output.flush ();
 	}
 
-	private void sendClientMessage ( KVMessage msg ) throws IOException {
-		System.out.println (((ClientMessage)msg).getMetadata ());
-		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
+	private void sendClientMessage ( KVMessage msg ) throws IOException {		
+		byte [] msgBytes = SerializationUtil.toByteArray ( (ClientMessage)msg );
 		sendMessage ( msgBytes );
 		logger.info ( "Send client message:\t '" + msg.getKey () + "'" );
 	}
