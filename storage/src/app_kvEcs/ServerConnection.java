@@ -79,7 +79,7 @@ public class ServerConnection {
 
 	
 
-	private ECSMessage receiveMessage () throws IOException {
+	public ECSMessage receiveMessage () throws IOException {
 		int index = 0;
 		byte [] msgBytes = null , tmp = null;
 		byte [] bufferBytes = new byte [ BUFFER_SIZE ];
@@ -138,7 +138,7 @@ public class ServerConnection {
 		return msg;
 	}
 
-	private void sendMessage ( ECSMessage msg ) throws IOException {		
+	public void sendMessage ( ECSMessage msg ) throws IOException {		
 		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
 		output.write ( msgBytes , 0 , msgBytes.length );
 		output.flush ();

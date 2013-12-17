@@ -98,9 +98,8 @@ public class SerializationUtil {
 			// 1: is always the action
 			// 2: could be the  metadata or from
 			// 3: could be to index
-		 	// 4 could be the to index
-		 	// 5: could be the to server
-		        // 6 : could be the to port
+		 	// 4: could be the to server
+		        // 5 : could be the to port
 			if (tokens.length>= 2 && tokens[1] != null) {// should always be the action
 			    int actionOrdinal = Integer.parseInt(tokens[1]);
 			    ((ECSMessage)retrivedMessage).setActionType(ECSCommand.values()[actionOrdinal]);
