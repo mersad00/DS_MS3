@@ -112,6 +112,7 @@ public class ECSClient {
 
 	    } catch (Exception e) {
 		// report issue to user
+		e.printStackTrace();
 		logger.error(e.getMessage());
 
 	    }

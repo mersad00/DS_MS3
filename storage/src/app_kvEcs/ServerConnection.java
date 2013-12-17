@@ -145,4 +145,12 @@ public class ServerConnection {
 		logger.info ( "Send message :\t '" + msg.getActionType () + "' to : " + server.toString () );
 	}
 
+	public ServerInfo getServer() {
+	    return server;
+	}
+
+	public void setServer(ServerInfo server) {
+	    this.server = server;
+	}
+
 }
