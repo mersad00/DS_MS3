@@ -67,7 +67,7 @@ public class ConnectionThread implements Runnable {
 					 * network problems
 					 */
 				} catch ( IOException ioe ) {
-					logger.error ( "Error! Connection lost!" );
+					logger.error ( "Error! Connection lost!" +ioe.getStackTrace ());
 					isOpen = false;
 				}
 			}
@@ -87,6 +87,7 @@ public class ConnectionThread implements Runnable {
 				logger.error ( "Error! Unable to tear down connection!" , ioe );
 			}
 		}
+		logger.info ( "exit the thread" );
 	}
 
 	/**
@@ -241,6 +242,7 @@ public class ConnectionThread implements Runnable {
 	 * @throws IOException
 	 */
 	private void handleRequest ( AbstractMessage msg ) throws IOException {
+		logger.info ( "inside handling abstract message" );
 		if ( msg.getMessageType ().equals ( MessageType.CLIENT_MESSAGE ) ) {
 			handleClientRequest ( ( ClientMessage ) msg );
 		} else if ( msg.getMessageType ().equals ( MessageType.SERVER_MESSAGE ) ) {
@@ -248,6 +250,7 @@ public class ConnectionThread implements Runnable {
 		} else if ( msg.getMessageType ().equals ( MessageType.ECS_MESSAGE ) ) {
 			handleECSRequest ( ( ECSMessage ) msg );
 		}
+		logger.info ( "finish handling " );
 
 	}
 
@@ -258,6 +261,9 @@ public class ConnectionThread implements Runnable {
 	 */
 	private void handleClientRequest ( ClientMessage msg ) throws IOException {
 		KVMessage responseMessage = null;
+		logger.info ( "inside client request" );
+		logger.info ( "the serber is : " + parent.getServerStatus () );
+		
 		if ( parent.getServerStatus ().equals (
 				ServerStatuses.UNDER_INITIALIZATION )
 				|| parent.getServerStatus ().equals ( ServerStatuses.STOPPED ) ) {
@@ -276,15 +282,18 @@ public class ConnectionThread implements Runnable {
 			// The server is ready to handle requests
 			Hasher hasher = new Hasher ();	
 			// check if the received message is in this server range
+			logger.info("inside active if");
 			if ( hasher.isInRange (
 					parent.getThisServerInfo ().getFromIndex () , parent
 							.getThisServerInfo ().getToIndex () , hasher
 							.getHash ( msg.getKey () ) ) ) {
 				//in case the received message is in the range of this server
 				if ( msg.getStatus ().equals ( KVMessage.StatusType.GET ) ) {
+					logger.info("inside get");
 					responseMessage = DatabaseManager.get ( msg.getKey () );
 
 				} else if ( msg.getStatus ().equals ( KVMessage.StatusType.PUT ) ) {
+					logger.info("inside put");
 					responseMessage = DatabaseManager.put ( msg.getKey () ,
 							msg.getValue () );
 				}

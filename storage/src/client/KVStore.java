@@ -65,6 +65,7 @@ public class KVStore implements KVCommInterface {
 			throws IOException {
 		this.tearDownConnection ();
 		this.currentDestinationServer = newDestinationServerInfo;
+		logger.info ( "switch connection to " + currentDestinationServer.toString () );
 		this.connect ();
 
 		logger.info ( "switch connection to " + currentDestinationServer.toString () );
@@ -214,14 +215,21 @@ public class KVStore implements KVCommInterface {
 		Hasher hasher = new Hasher();
 		if ( metadata.size () != 0){
 			for(ServerInfo server: metadata){
-				if( hasher.isInRange ( server.getFromIndex () , server.getToIndex () , hasher.getHash ( key ) ));
+				if( hasher.isInRange ( server.getFromIndex () , server.getToIndex () , hasher.getHash ( key ) )){
+					System.out.println ("finally, found something valid"+ server);
 					return server;
+				}
+					
 			}
 		} else {
 			destinationServer = this.currentDestinationServer;
+			logger.info ( "metadata is empty !!" );
 		}
 		
 
+		if(destinationServer == null){
+			logger.error ( "moseeeeeeba null ya 7azeen" );
+		}
 		return destinationServer;
 	}
 

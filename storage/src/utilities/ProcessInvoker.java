@@ -12,8 +12,10 @@ import common.ServerInfo;
 public class ProcessInvoker {
     
     Logger logger = LoggingManager.getInstance().createLogger(this.getClass());
-    private static final String[] commandArrayWindows ={"ssh","-n","host","java","-jar","/ser.jar ","port"};
-    private static final String[] commandArrayLinux ={"ssh","-n","host","nohup","java","-jar","/ser.jar ","port"};
+//  private static final String[] commandArrayWindows ={"ssh","-n","host","java","-jar","/server.jar","port"};
+  private static final String[] commandArrayLinux ={"ssh","-n","host","nohup","java","-jar",System.getProperty("user.dir")+"/ser.jar","port"};
+  private static final String[] commandArrayWindows ={"java","-jar",System.getProperty("user.dir")+"/server.jar","port"};
+//  private static final String[] commandArrayLinux ={"ssh","-n","host","nohup","java","-jar",System.getProperty("user.dir")+"/ser.jar","port"};
     private String[] commandArray;
     
     public ProcessInvoker() {

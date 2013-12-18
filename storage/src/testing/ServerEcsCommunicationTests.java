@@ -57,10 +57,13 @@ public class ServerEcsCommunicationTests {
 
 	@Test
 	public void testECSCommunicationFlow () throws IOException {
+		System.out.println (getRandomMetadata ());
 		ServerThread server1 = new ServerThread ( firstServer );
 		ServerThread server2 = new ServerThread ( secondServer );
+		ServerThread server3 = new ServerThread ( thirdServer );
 		server1.start ();
 		server2.start ();
+		server3.start ();
 
 		ECSMessage initMessage = new ECSMessage ();
 		initMessage.setActionType ( ECSCommand.INIT );
@@ -69,38 +72,42 @@ public class ServerEcsCommunicationTests {
 		ECSMessage startMessage = new ECSMessage ();
 		startMessage.setActionType ( ECSCommand.START );
 
-		ECSMessage stopMessage = new ECSMessage ();
-		stopMessage.setActionType ( ECSCommand.STOP );
-		
-		
-		ECSMessage shutdownMessage = new ECSMessage ();
-		shutdownMessage.setActionType ( ECSCommand.SHUT_DOWN );
-		
-		ECSMessage writeLockMessage = new ECSMessage ();
-		writeLockMessage.setActionType ( ECSCommand.SET_WRITE_LOCK );
-		
-		ECSMessage releaseLockMessage = new ECSMessage ();
-		releaseLockMessage.setActionType ( ECSCommand.RELEASE_LOCK );
-		
-		
-		ECSMessage sendDataMessage = new ECSMessage ();
-		sendDataMessage.setActionType ( ECSCommand.MOVE_DATA );
-		sendDataMessage.setMoveFromIndex ( "C2ADD694BF942DC77B376592D9C862CD" );
-		sendDataMessage.setMoveToIndex ( "78F825AAA0103319AAA1A30BF4FE3ADA" );
-		sendDataMessage.setMoveToServer ( new ServerInfo ("localhost", 50001) );
-		
-		ECSMessage updateMessage = new ECSMessage ();
-		updateMessage.setActionType ( ECSCommand.SEND_METADATA );
-		updateMessage.setMetaData ( this.getRandomMetadata () );
+//		ECSMessage stopMessage = new ECSMessage ();
+//		stopMessage.setActionType ( ECSCommand.STOP );
+//		
+//		
+//		ECSMessage shutdownMessage = new ECSMessage ();
+//		shutdownMessage.setActionType ( ECSCommand.SHUT_DOWN );
+//		
+//		ECSMessage writeLockMessage = new ECSMessage ();
+//		writeLockMessage.setActionType ( ECSCommand.SET_WRITE_LOCK );
+//		
+//		ECSMessage releaseLockMessage = new ECSMessage ();
+//		releaseLockMessage.setActionType ( ECSCommand.RELEASE_LOCK );
+//		
+//		
+//		ECSMessage sendDataMessage = new ECSMessage ();
+//		sendDataMessage.setActionType ( ECSCommand.MOVE_DATA );
+//		sendDataMessage.setMoveFromIndex ( "C2ADD694BF942DC77B376592D9C862CD" );
+//		sendDataMessage.setMoveToIndex ( "78F825AAA0103319AAA1A30BF4FE3ADA" );
+//		sendDataMessage.setMoveToServer ( new ServerInfo ("localhost", 50001) );
+//		
+//		ECSMessage updateMessage = new ECSMessage ();
+//		updateMessage.setActionType ( ECSCommand.SEND_METADATA );
+//		updateMessage.setMetaData ( this.getRandomMetadata () );
 		
 		ServerInfo serverInfo1 = new ServerInfo ( "localhost" , 50000 );
 		ServerInfo serverInfo2 = new ServerInfo ( "localhost" , 50001 );
+		ServerInfo serverInfo3 = new ServerInfo ( "localhost" , 50002 );
 		
-		sendMessageToServer ( initMessage , serverInfo1 );
-		sendMessageToServer ( startMessage , serverInfo1 );
 		
+		sendMessageToServer ( initMessage , serverInfo1 );				
 		sendMessageToServer ( initMessage , serverInfo2 );
+		sendMessageToServer ( initMessage , serverInfo3 );
+		
+		sendMessageToServer ( startMessage , serverInfo1 );
 		sendMessageToServer ( startMessage , serverInfo2 );
+		sendMessageToServer ( startMessage , serverInfo3 );
 		
 		//sendMessageToServer ( stopMessage );
 		
@@ -144,8 +151,13 @@ public class ServerEcsCommunicationTests {
 		server2.setAddress ( "localhost" );
 		server2.setPort ( 50001 );
 		
+		ServerInfo server3 = new ServerInfo ();
+		server3.setAddress ( "localhost" );
+		server3.setPort ( 50002 );
+		
 		metadata.add ( server1 );
 		metadata.add ( server2 );
+		metadata.add ( server3 );
 		metadata = this.calculateMetaData ( metadata );
 		return metadata;
 	}

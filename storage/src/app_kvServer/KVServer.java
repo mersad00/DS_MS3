@@ -120,14 +120,13 @@ public class KVServer {
 		return this.metadata;
 	}
 
-	public void setMetadata ( List < ServerInfo > metadata ) {
+	public synchronized void setMetadata ( List < ServerInfo > metadata ) {
 		this.metadata = metadata;
 		logger.info ( "update metadata with : " + metadata.size () );
 		//TODO update this after figure out how to get your IP
 		for(ServerInfo server : metadata){
 			if ( server.getPort () == this.port ){
 				this.thisServerInfo = server;
-				System.out.println ( "this server info is : " + this.thisServerInfo);
 			}
 		}		
 	}

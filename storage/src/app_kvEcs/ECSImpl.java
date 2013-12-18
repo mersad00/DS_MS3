@@ -47,7 +47,8 @@ public class ECSImpl implements ECS {
 	this.processInvoker = new ProcessInvoker();
 	// parse the server repository
 	readServerInfo(fileName);
-	initService(pickRandomValue(serverRepository.size()));
+	//initService(pickRandomValue(serverRepository.size()));
+	initService(2);
     }
 
     private void readServerInfo(String fileName) throws FileNotFoundException {

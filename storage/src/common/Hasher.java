@@ -74,7 +74,8 @@ public class Hasher {
 	    	result = true;
 	    } else {
 	    
-	    	if ( this.compareHashes ( startRange , keyHash) >=  0 && this.compareHashes ( endRange , keyHash ) <= 0){
+	    	if ( (this.compareHashes ( startRange , keyHash) <  0 )&& (this.compareHashes ( endRange , keyHash ) >= 0)){
+	    		System.out.println ("last one");
 		    	result = true;
 		    }
 	    }
