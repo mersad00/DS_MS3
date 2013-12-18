@@ -4,15 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import logger.LogSetup;
 
-import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import common.Hasher;

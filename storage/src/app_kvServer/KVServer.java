@@ -96,14 +96,16 @@ public class KVServer {
 		}
 	}
 
-	public static void main ( String args[] ) throws IOException{
+	public static void main ( String args[] ) {
 		try {
 			new LogSetup ( "logs/server/server.log" , Level.ALL );
+			KVServer server = new KVServer ( Integer.parseInt ( args [ 0 ] ) );
+			server.startServer ();
 		} catch ( IOException e ) {
+			
 			e.printStackTrace ();
 		}
-		KVServer server = new KVServer ( Integer.parseInt ( args [ 0 ] ) );
-		server.startServer ();
+		
 	}
 
 	public ServerStatuses getServerStatus () {
@@ -120,6 +122,7 @@ public class KVServer {
 
 	public void setMetadata ( List < ServerInfo > metadata ) {
 		this.metadata = metadata;
+		logger.info ( "update metadata with : " + metadata.size () );
 		//TODO update this after figure out how to get your IP
 		for(ServerInfo server : metadata){
 			if ( server.getPort () == this.port ){

@@ -15,6 +15,12 @@ public class DatabaseManager {
 	private static Logger logger = Logger.getRootLogger();
 			
 	
+	/**
+	 * put a new tuple in the database
+	 * @param key
+	 * @param value
+	 * @return <code>KVMessage</code> return message representing the put status
+	 */
 	public static synchronized KVMessage put(String key, String value){		
 		if (key == null){
 			
@@ -54,7 +60,11 @@ public class DatabaseManager {
 	}
 	
 	
-	
+	/**
+	 * get stored tuple from the database
+	 * @param key
+	 * @return <code>KVMessage</code> return message representing the get status
+	 */
 	public static synchronized KVMessage get(String key){
 		ClientMessage msg = new ClientMessage();
 		try{

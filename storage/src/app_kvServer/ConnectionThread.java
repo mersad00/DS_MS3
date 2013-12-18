@@ -322,6 +322,7 @@ public class ConnectionThread implements Runnable {
 	 */
 	private void handleECSRequest ( ECSMessage msg ) throws IOException {
 		if ( msg.getActionType ().equals ( ECSCommand.INIT ) ) {
+			System.out.println ( "----------------------------" +msg.getMetaData () );
 			parent.setMetadata ( msg.getMetaData () );			
 			parent.setServerStatus ( ServerStatuses.UNDER_INITIALIZATION );
 			logger.info ( "server under initialization \n set server status to : \t stopped " );
