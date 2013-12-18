@@ -27,6 +27,18 @@ public class UserFacingMessages {
 			+ "\nHelp: Prints the help and usage tips."
 			+ "\nquit: Tears down the active connection to the server and exits the program execution.";
 	
+	public static final String ECS_HELP_TEXT = "ECS:  The third phase of distributed systems[IN 2259] course project."
+		+ "\nUsage:"
+		+ "\nStart: Sends a start signal to all the servers under ECS control.\n"
+		+ "Stop:  Sends a stop signal to all the servers under ECS control.\n"
+		+ "Shutdown:  Sends a Shutdown signal to all the servers under ECS control.\n"
+		+ "Add:  Adds a node to the ring and performs related data arrangements.\n"
+		+ "Remove:  removes a node to the ring and performs related data arrangements.\n"
+		+ "\nlogLevel <level>: Sets the logger to the specified log level."
+		+ "\nHelp: Prints the help and usage tips."
+		+ "\nquit: Shuts down servers and exit.";
+
+	
 	public static final String GENERAL_ILLIGAL_ARGUMENT = "Please enter a valid command. \n"+ HELP_TEXT;
 	
 	public static final String ILLIGAL_PARAM_NUMBER = "The number of the command parameters is not as expected, Please use the help command to see an example.";

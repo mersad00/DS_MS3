@@ -59,28 +59,20 @@ public class ECSClient {
 		switch (command) {
 		case START:
 			eCSService.start();
-//			System.out.println("Connected to KV server, "
-//				+ tokens[1] + ":" + tokens[2]);
-//			logger.info("Connected to KV server, " + tokens[1]
-//				+ ":" + tokens[2]);
 		    break;
 		case STOP:
 		    eCSService.stop();
-//		    System.out.println("Connection closed.");
-		    //		    logger.info("Connection closed.");
 		    break;
 		case ADD:
 		    eCSService.addNode();
-//		    logger.info(textResult);
-//		    System.out.println(textResult);
 		    break;
 
 		case REMOVE:
 		    eCSService.removeNode();
-//			logger.info(textResult);
-//			System.out.println(textResult);
-//			logger.warn("Key was not provided.");
-//			System.out.println("Key was not provided.");
+		    break;
+		    
+		case SHUT_DOWN:
+		    eCSService.shutdown();
 		    break;
 		case LOG_LEVEL:
 		    if (validationUtil.isValidLogLevel(tokens)) {
@@ -90,7 +82,7 @@ public class ECSClient {
 		    }
 		    break;
 		case HELP:
-		    System.out.println(UserFacingMessages.HELP_TEXT);
+		    System.out.println(UserFacingMessages.ECS_HELP_TEXT);
 		    logger.info("Help Text provided to user.");
 		    break;
 
@@ -101,7 +93,7 @@ public class ECSClient {
 
 		case QUIT:
 		    quit = true;
-//		    connection.shut();
+		    eCSService.shutdown();
 		    System.out.println("Quit program based on user request.");
 		    logger.info("Quit program based on user request.");
 		    break;
