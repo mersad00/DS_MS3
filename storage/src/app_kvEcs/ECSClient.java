@@ -71,8 +71,9 @@ public class ECSClient {
 		    eCSService.removeNode();
 		    break;
 		    
-		case SHUT_DOWN:
+		case SHUT_DOWN:{
 		    eCSService.shutdown();
+		}
 		    break;
 		case LOG_LEVEL:
 		    if (validationUtil.isValidLogLevel(tokens)) {
@@ -96,6 +97,7 @@ public class ECSClient {
 		    eCSService.shutdown();
 		    System.out.println("Quit program based on user request.");
 		    logger.info("Quit program based on user request.");
+		    System.exit(1);
 		    break;
 
 		default:

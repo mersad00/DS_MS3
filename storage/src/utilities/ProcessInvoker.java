@@ -45,6 +45,7 @@ public class ProcessInvoker {
 				ProcessThread t = new ProcessThread ( command );
 				t.start ();
 				// create a process and execute cmdArray and currect environment
+				server.setServerLaunched(true);
 
 			} catch ( Exception ex ) {
 				ex.printStackTrace ();

@@ -21,6 +21,7 @@ import org.apache.log4j.Logger;
 
 
 
+
 import utilities.LoggingManager;
 import utilities.ProcessInvoker;
 import common.Hasher;
@@ -219,14 +220,14 @@ public class ECSImpl implements ECS {
     }
 
     @Override
-    public void addNode() throws IllegalArgumentException {
+    public void addNode()  {
 
 	// steps to add new node:
 	List<ServerInfo> serverList= new ArrayList<ServerInfo>();
 	ServerInfo newNode = getAvailableNode();
 	if (newNode==null){
 	    logger.info("No available node to add."); 
-	    throw new IllegalArgumentException("No available node to add");
+	    return;
 	}
 
 	logger.debug("Adding a new node."+ newNode); 
@@ -276,7 +277,11 @@ public class ECSImpl implements ECS {
 	}
 
 	logger.debug("Successor node"+successor+ " locked."+ successorChannel.getServer()); 
-
+	try {
+	    Thread.sleep(200);
+	} catch (InterruptedException e1) {
+	}
+	
 	//Invoke the transfer of the affected data items
 	ECSMessage moveDataMessage = new ECSMessage();
 	moveDataMessage.setActionType(ECSCommand.MOVE_DATA);
@@ -303,31 +308,30 @@ public class ECSImpl implements ECS {
 		    } catch (IOException e) {
 			logger.error("Could not send message to server"+server +e.getMessage());
 		    }	
-
-		    logger.debug("Updated Meta-data handed to servers."); 
-		    // release the lock 
-		    ECSMessage releaseLock = new ECSMessage();
-		    releaseLock.setActionType(ECSCommand.RELEASE_LOCK);
-		    try {
-			successorChannel.sendMessage(releaseLock);		
-		    } catch (IOException e) {
-			logger.error("Start message couldn't be sent.");
-		    }
-
-		    logger.debug("Successor lock released."); 
 		}
-	    }} catch (IOException e) {
-		logger.error(e.getMessage());
+		logger.debug("Updated Meta-data handed to servers."); 
+		// release the lock 
+		ECSMessage releaseLock = new ECSMessage();
+		releaseLock.setActionType(ECSCommand.RELEASE_LOCK);
+		try {
+		    successorChannel.sendMessage(releaseLock);		
+		} catch (IOException e) {
+		    logger.error("Start message couldn't be sent.");
+		}
+
+		logger.debug("Successor lock released."); 
 	    }
+	} catch (IOException e) {
+	    logger.error(e.getMessage());
+	}
     }
 
     private ServerInfo getSuccessor(ServerInfo newNode) {
 	ServerInfo successor;
-	// TODO double check this works
 	int nodeIndex = this.activeServers.indexOf(newNode);
 	try {
 	    successor = this.activeServers.get(nodeIndex+1);
-	} catch (ArrayIndexOutOfBoundsException e) {
+	} catch (IndexOutOfBoundsException e) {
 	    // that means the new node is the last item and the successor with be the first item.
 	    successor = this.activeServers.get(0);
 	}
