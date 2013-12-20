@@ -113,6 +113,7 @@ public class KVServer {
 	}
 	
 	public synchronized void setServerStatus(ServerStatuses status){
+		logger.info ( "set server status to : \t"+ status );
 		this.serverStatus = status;
 	}
 
@@ -122,7 +123,7 @@ public class KVServer {
 
 	public synchronized void setMetadata ( List < ServerInfo > metadata ) {
 		this.metadata = metadata;
-		logger.info ( "update metadata with : " + metadata.size () );
+		logger.info ( "metadata updated with : " + metadata.size () + " values ");
 		//TODO update this after figure out how to get your IP
 		for(ServerInfo server : metadata){
 			if ( server.getPort () == this.port ){
@@ -138,6 +139,18 @@ public class KVServer {
 
 	public String getHashCode () {
 		return this.serverHashCode;
+	}
+	
+	public void shutdown (){
+		running = false;
+		try {
+			logger.info ( "shutting down server ... " );
+			serverSocket.close ();
+			System.exit ( 0 );
+		} catch ( IOException e ) {
+			logger.info ( "server shutdown with errors !" );
+			System.exit ( 1 );
+		}
 	}
 
 }

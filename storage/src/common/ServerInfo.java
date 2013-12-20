@@ -1,59 +1,60 @@
 package common;
 
-
+/**
+ * 
+ * This class is a representation of the server node,
+ * containing all required information about this node.
+ * 
+ */
 public class ServerInfo {
 
 	private String address;
 	private int port;
 	private String serverName;
-	private boolean isServerLaunched;	
+	private boolean isServerLaunched;
 	private String fromIndex;
 	private String toIndex;
 
-	public ServerInfo (String address, int port ){
+	public ServerInfo () {
+	}
+
+	public ServerInfo ( String address , int port ) {
 		this.address = address;
 		this.port = port;
 	}
-	
-	
-	public ServerInfo(String address, int port, boolean isServerLaunched) {
-	    this(address, port);
-	    this.isServerLaunched = isServerLaunched;
-	}
-	public ServerInfo(String serverInfoString) {
-	    fromString(serverInfoString);
+
+	public ServerInfo ( String address , int port , boolean isServerLaunched ) {
+		this ( address , port );
+		this.isServerLaunched = isServerLaunched;
 	}
 
-
-	public ServerInfo(String address, int port, String fromIndex,
-		String toIndex) {
-	    this(address, port);
-	    this.fromIndex = fromIndex;
-	    this.toIndex = toIndex;
+	public ServerInfo ( String serverInfoString ) {
+		fromString ( serverInfoString );
 	}
 
-
-	private void fromString(String serverInfoString) {
-	 // should be something like nodeName host port 
-	    if (serverInfoString!=null && !serverInfoString.isEmpty()){
-		String[] tokens = serverInfoString.split(" ");
-		if (tokens.length==3){
-		    setServerName(tokens[0]);
-		    setAddress(tokens[1]);
-		    setPort(Integer.parseInt(tokens[2]));
-		}else 
-		    throw new IllegalArgumentException("Config file is not formatted as expected. near "+serverInfoString);
-		
-	    }
-	    
+	public ServerInfo ( String address , int port , String fromIndex ,
+			String toIndex ) {
+		this ( address , port );
+		this.fromIndex = fromIndex;
+		this.toIndex = toIndex;
 	}
 
+	private void fromString ( String serverInfoString ) {
+		/* should be something like nodeName host port */
+		if ( serverInfoString != null && ! serverInfoString.isEmpty () ) {
+			String [] tokens = serverInfoString.split ( " " );
+			if ( tokens.length == 3 ) {
+				setServerName ( tokens [ 0 ] );
+				setAddress ( tokens [ 1 ] );
+				setPort ( Integer.parseInt ( tokens [ 2 ] ) );
+			} else
+				throw new IllegalArgumentException (
+						"Config file is not formatted as expected. near "
+								+ serverInfoString );
 
-	public ServerInfo (){
-		
+		}
+
 	}
-	
-	
 
 	public String getAddress () {
 		return address;
@@ -71,47 +72,37 @@ public class ServerInfo {
 		this.port = port;
 	}
 
-
-	public boolean isServerLaunched() {
-	    return isServerLaunched;
+	public boolean isServerLaunched () {
+		return isServerLaunched;
 	}
 
-
-	public void setServerLaunched(boolean isServerLaunched) {
-	    this.isServerLaunched = isServerLaunched;
+	public void setServerLaunched ( boolean isServerLaunched ) {
+		this.isServerLaunched = isServerLaunched;
 	}
 
-	
-
-	public String getServerName() {
-	    return serverName;
+	public String getServerName () {
+		return serverName;
 	}
 
-
-	public void setServerName(String serverName) {
-	    this.serverName = serverName;
+	public void setServerName ( String serverName ) {
+		this.serverName = serverName;
 	}
 
-
-	public String getFromIndex() {
-	    return fromIndex;
+	public String getFromIndex () {
+		return fromIndex;
 	}
 
-
-	public void setFromIndex(String fromIndex) {
-	    this.fromIndex = fromIndex;
+	public void setFromIndex ( String fromIndex ) {
+		this.fromIndex = fromIndex;
 	}
 
-
-	public String getToIndex() {
-	    return toIndex;
+	public String getToIndex () {
+		return toIndex;
 	}
 
-
-	public void setToIndex(String toIndex) {
-	    this.toIndex = toIndex;
+	public void setToIndex ( String toIndex ) {
+		this.toIndex = toIndex;
 	}
-
 
 	@Override
 	public int hashCode () {
@@ -141,11 +132,11 @@ public class ServerInfo {
 			return false;
 		return true;
 	}
-	
+
 	@Override
-	public String toString(){
-		return "Server address : " + this.getAddress () +" on port : " + this.getPort ()+
-				"\n start range: "+this.fromIndex +"\nend range :"+ this.toIndex;
+	public String toString () {
+		return "Server address : " + this.getAddress () + " on port : "
+				+ this.getPort ();
 	}
 
 }

@@ -8,6 +8,8 @@ import java.net.UnknownHostException;
 
 import org.apache.log4j.Logger;
 
+import utilities.LoggingManager;
+
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
 
@@ -23,7 +25,7 @@ import common.messages.KVMessage.StatusType;
 
 public class ConnectionThread implements Runnable {
 
-	private static Logger logger = Logger.getRootLogger ();
+	private static Logger logger;
 
 	private boolean isOpen;
 
@@ -33,6 +35,7 @@ public class ConnectionThread implements Runnable {
 	private static final int BUFFER_SIZE = 1024;
 	private static final int DROP_SIZE = 1024 * BUFFER_SIZE;
 	private KVServer parent;
+	private ECSMessage dataToBeRemoved;
 
 	/**
 	 * Constructs a new <code>ConnectionThread</code> object for a given TCP
@@ -47,6 +50,7 @@ public class ConnectionThread implements Runnable {
 		this.parent = parent;
 		this.clientSocket = clientSocket;
 		this.isOpen = true;
+		logger = LoggingManager.getInstance ().createLogger ( this.getClass () );
 	}
 
 	/**
@@ -67,7 +71,8 @@ public class ConnectionThread implements Runnable {
 					 * network problems
 					 */
 				} catch ( IOException ioe ) {
-					logger.error ( "Error! Connection lost!" +ioe.getStackTrace ());
+					logger.error ( "Error! Connection lost!"
+							+ ioe.getStackTrace () );
 					isOpen = false;
 				}
 			}
@@ -87,7 +92,6 @@ public class ConnectionThread implements Runnable {
 				logger.error ( "Error! Unable to tear down connection!" , ioe );
 			}
 		}
-		logger.info ( "exit the thread" );
 	}
 
 	/**
@@ -181,10 +185,9 @@ public class ConnectionThread implements Runnable {
 		byte [] msgBytes = SerializationUtil
 				.toByteArray ( ( ClientMessage ) msg );
 		sendMessage ( msgBytes );
-		logger.info ( "Send client message:\t '" + msg.getKey () + "'" );
+		logger.info ( "Send client message:\t '" + msg.getStatus ()+ "'" );
 	}
 
-	
 	/**
 	 * sends message of type <code>ServerMessage</code>
 	 * 
@@ -235,14 +238,15 @@ public class ConnectionThread implements Runnable {
 		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
 		this.sendMessage ( msgBytes );
 	}
-	
+
 	/**
 	 * 
-	 * @param  msg of type <code>AbstractMessage</code> determine the received message type and select the appropriate action
+	 * @param msg
+	 *            of type <code>AbstractMessage</code> determine the received
+	 *            message type and select the appropriate action
 	 * @throws IOException
 	 */
 	private void handleRequest ( AbstractMessage msg ) throws IOException {
-		logger.info ( "inside handling abstract message" );
 		if ( msg.getMessageType ().equals ( MessageType.CLIENT_MESSAGE ) ) {
 			handleClientRequest ( ( ClientMessage ) msg );
 		} else if ( msg.getMessageType ().equals ( MessageType.SERVER_MESSAGE ) ) {
@@ -250,55 +254,54 @@ public class ConnectionThread implements Runnable {
 		} else if ( msg.getMessageType ().equals ( MessageType.ECS_MESSAGE ) ) {
 			handleECSRequest ( ( ECSMessage ) msg );
 		}
-		logger.info ( "finish handling " );
-
 	}
 
 	/**
 	 * in case of the received message is a client request
-	 * @param  msg of type <code>ClientMessage</code>
+	 * 
+	 * @param msg
+	 *            of type <code>ClientMessage</code>
 	 * @throws IOException
 	 */
 	private void handleClientRequest ( ClientMessage msg ) throws IOException {
 		KVMessage responseMessage = null;
-		logger.info ( "inside client request" );
-		logger.info ( "the serber is : " + parent.getServerStatus () );
-		
 		if ( parent.getServerStatus ().equals (
 				ServerStatuses.UNDER_INITIALIZATION )
 				|| parent.getServerStatus ().equals ( ServerStatuses.STOPPED ) ) {
-			// The server has just started and not ready yet to handle requests
-			// from clients
+			
+			/* The server has just started and not ready yet to handle requests
+			 * from clients 
+			 */
 			msg.setStatus ( StatusType.SERVER_STOPPED );
 			responseMessage = new ClientMessage ( msg );
 
 		} else if ( parent.getServerStatus ().equals (
 				ServerStatuses.WRITING_LOCK ) ) {
-			// The server is locked for writing operations
+			
+			/* The server is locked for writing operations */
 			msg.setStatus ( StatusType.SERVER_WRITE_LOCK );
 			responseMessage = new ClientMessage ( msg );
 
 		} else if ( parent.getServerStatus ().equals ( ServerStatuses.ACTIVE ) ) {
-			// The server is ready to handle requests
-			Hasher hasher = new Hasher ();	
-			// check if the received message is in this server range
-			logger.info("inside active if");
+			/* The server is ready to handle requests */
+			Hasher hasher = new Hasher ();
+			/* check if the received message is in this server range */
+			
 			if ( hasher.isInRange (
 					parent.getThisServerInfo ().getFromIndex () , parent
 							.getThisServerInfo ().getToIndex () , hasher
 							.getHash ( msg.getKey () ) ) ) {
-				//in case the received message is in the range of this server
+				
+				/* in case the received message is in the range of this server */
 				if ( msg.getStatus ().equals ( KVMessage.StatusType.GET ) ) {
-					logger.info("inside get");
 					responseMessage = DatabaseManager.get ( msg.getKey () );
 
 				} else if ( msg.getStatus ().equals ( KVMessage.StatusType.PUT ) ) {
-					logger.info("inside put");
 					responseMessage = DatabaseManager.put ( msg.getKey () ,
 							msg.getValue () );
 				}
 			} else {
-				//in case the received message is in the range of this server
+				/* in case the received message is in the range of this server */
 				msg.setStatus ( StatusType.SERVER_NOT_RESPONSIBLE );
 				responseMessage = new ClientMessage ( msg );
 				( ( ClientMessage ) responseMessage ).setMetadata ( parent
@@ -306,14 +309,16 @@ public class ConnectionThread implements Runnable {
 			}
 
 		}
-		this.sendClientMessage ( responseMessage );		
+		this.sendClientMessage ( responseMessage );
 		logger.info ( "response message sent to client " );
 	}
 
 	/**
-	 * in case of the received message is a server request
-	 * this method is only for moving data to this server
-	 * @param  msg of type <code>ServerMessage</code>
+	 * in case of the received message is a server request this method is only
+	 * for moving data to this server
+	 * 
+	 * @param msg
+	 *            of type <code>ServerMessage</code>
 	 * @throws IOException
 	 */
 	private void handleServerRequest ( ServerMessage msg ) throws IOException {
@@ -326,54 +331,60 @@ public class ConnectionThread implements Runnable {
 
 	/**
 	 * in case of the received message is a ECS command
-	 * @param  msg of type <code>ECSMessage</code>
+	 * 
+	 * @param msg
+	 *            of type <code>ECSMessage</code>
 	 * @throws IOException
 	 */
 	private void handleECSRequest ( ECSMessage msg ) throws IOException {
 		if ( msg.getActionType ().equals ( ECSCommand.INIT ) ) {
-			System.out.println ( "----------------------------" +msg.getMetaData () );
-			parent.setMetadata ( msg.getMetaData () );			
+			logger.info ( "server is initializing ..." );
+			parent.setMetadata ( msg.getMetaData () );
 			parent.setServerStatus ( ServerStatuses.UNDER_INITIALIZATION );
-			logger.info ( "server under initialization \n set server status to : \t stopped " );
-			
+
 		} else if ( msg.getActionType ().equals ( ECSCommand.START ) ) {
-			parent.setServerStatus ( ServerStatuses.ACTIVE );
-			logger.info ( "server is starting to serve clients \n set server status to : \t active " );
-			
+			logger.info ( "server is starting ..." );
+			parent.setServerStatus ( ServerStatuses.ACTIVE );			
+
 		} else if ( msg.getActionType ().equals ( ECSCommand.STOP ) ) {
-			parent.setServerStatus ( ServerStatuses.STOPPED );
-			logger.info ( "server is stopped serving clients \n set server status to : \t stopped " );
-			
+			logger.info ( "server is stopping ... " );
+			parent.setServerStatus ( ServerStatuses.STOPPED );			
+
 		} else if ( msg.getActionType ().equals ( ECSCommand.SHUT_DOWN ) ) {
-			logger.info ( "server is shutting down " );
-			System.exit ( 0 );
-			
+			parent.shutdown ();
+
 		} else if ( msg.getActionType ().equals ( ECSCommand.SET_WRITE_LOCK ) ) {
+			logger.info ( "locking server for write ..." );
 			parent.setServerStatus ( ServerStatuses.WRITING_LOCK );
-			logger.info ( "server is busy in writing data \n set server status to : \t write_lock " );
 			
 		} else if ( msg.getActionType ().equals ( ECSCommand.RELEASE_LOCK ) ) {
+			logger.info ( "releasing writing lock ..." );
+			logger.info ( "remove data from server " );
+			if ( this.dataToBeRemoved != null ) {
+				DatabaseManager.removeDataInRange (
+						this.dataToBeRemoved.getMoveFromIndex () ,
+						this.dataToBeRemoved.getMoveToIndex () );
+			}
 			parent.setServerStatus ( ServerStatuses.ACTIVE );
-			logger.info ( "server is removing writing data lock \n set server status to : \t active " );
-			
+
 		} else if ( msg.getActionType ().equals ( ECSCommand.MOVE_DATA ) ) {
+			logger.info ( "preparing data to be moved ... " );
 			ServerMessage message = new ServerMessage ();
 			message.setData ( DatabaseManager.getDataInRange (
 					msg.getMoveFromIndex () , msg.getMoveToIndex () ) );
+			this.dataToBeRemoved = msg;
 			this.sendServerMessage ( message , msg.getMoveToServer () );
-			logger.info ( "server moved data to "
+			logger.info ( "data moved to : "
 					+ msg.getMoveToServer ().toString () );
 			ECSMessage acknowledgeMessage = new ECSMessage ();
 			acknowledgeMessage.setActionType ( ECSCommand.ACK );
 			this.sendECSMessage ( acknowledgeMessage );
-			logger.info ( "sent acknowledgment to  ECS" );
-			
+			logger.info ( "send acknowledgment back to  ECS" );
+
 		} else if ( msg.getActionType ().equals ( ECSCommand.SEND_METADATA ) ) {
+			logger.info ( "updating metadata ..." );
 			parent.setMetadata ( msg.getMetaData () );
-			logger.info ( "received metadata from ECS and updated the current metadata " );
 		}
 	}
-
-	
 
 }

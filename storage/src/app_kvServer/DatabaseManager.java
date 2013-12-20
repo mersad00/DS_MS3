@@ -140,6 +140,15 @@ public class DatabaseManager {
 		return dataToBeMoved;
 	}
 	
+	public static void removeDataInRange (String rangeStart, String rangeEnd ){
+		Hasher hasher = new Hasher();
+		for( String key : database.keySet ()){
+			if(hasher.isInRange ( rangeStart , rangeEnd , key )){
+				database.remove ( key );
+			}
+		}				
+	}
+	
 	public static void printDatabase(){
 		System.out.println(database.toString());
 	}

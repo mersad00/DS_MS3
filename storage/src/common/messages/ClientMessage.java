@@ -1,15 +1,31 @@
 package common.messages;
 
 import java.util.List;
-import java.util.Map;
 
 import common.ServerInfo;
 
+/**
+ * 
+ * This class is the concrete implementation for the KVMesage
+ * interface with the addition of a list of <code>ServerInfo</code>
+ * which represents the meta-data of all nodes in the system.
+ * 
+ * <p>In addition, this class implement <code>AbstractMessage</code>
+ * interface which is the parent of all messages in the system
+ * and override the only method, getMessageType()
+ * 
+ * @see AbstractMessage
+ * @see ServerInfo
+ * @see MessageType
+ *
+ */
 public class ClientMessage implements KVMessage {
 
 	private String key;
 	private String value;
 	private StatusType type;
+	
+	/* represents the meta-data of all nodes in the system */
 	private List < ServerInfo > metadata;
 
 	public ClientMessage () {

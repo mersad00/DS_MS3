@@ -67,8 +67,6 @@ public class KVStore implements KVCommInterface {
 		this.currentDestinationServer = newDestinationServerInfo;
 		logger.info ( "switch connection to " + currentDestinationServer.toString () );
 		this.connect ();
-
-		logger.info ( "switch connection to " + currentDestinationServer.toString () );
 	}
 
 	@Override

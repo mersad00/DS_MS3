@@ -7,7 +7,6 @@ import java.net.Socket;
 
 import org.apache.log4j.Logger;
 
-import client.KVStore;
 import client.SerializationUtil;
 
 import common.ServerInfo;
