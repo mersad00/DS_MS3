@@ -68,7 +68,7 @@ public class ECSImpl implements ECS {
      */
     private int pickRandomValue(int size) {
 	Random randomGenerator = new Random();
-	int randomNumber = randomGenerator.nextInt(size);
+	int randomNumber = randomGenerator.nextInt(size)+1;
 
 	logger.info("Picked "+randomNumber+" as a random number.");
 	return randomNumber;
@@ -189,16 +189,14 @@ public class ECSImpl implements ECS {
 	    try {
 		ServerConnection channel = activeConnections.get(server);
 		channel.sendMessage(shutDownMessage);
-		this.activeConnections.remove(server);
-		this.activeServers.remove(server);
 
 	    } catch (IOException e) {
 		logger.error("Could not send message to server"+server +e.getMessage());
 	    }	
-
-
 	}
 
+	this.activeConnections.clear();
+	this.activeServers.clear();
 	logger.info("Active servers are shutdown.");
 
     }
