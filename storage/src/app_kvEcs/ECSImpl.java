@@ -22,6 +22,7 @@ import org.apache.log4j.Logger;
 
 
 
+
 import utilities.LoggingManager;
 import utilities.ProcessInvoker;
 import common.Hasher;
@@ -48,7 +49,7 @@ public class ECSImpl implements ECS {
 	this.processInvoker = new ProcessInvoker();
 	// parse the server repository
 	readServerInfo(fileName);
-	initService(pickRandomValue(serverRepository.size()));
+	initService(pickRandomValue(serverRepository.size(),false));
     }
 
     private void readServerInfo(String fileName) throws FileNotFoundException {
@@ -64,13 +65,17 @@ public class ECSImpl implements ECS {
     }
 
     /** Generates a random number in range
+     * @param allowZero 
      * @param size: the range upper bound
      * @return
      */
-    private int pickRandomValue(int size) {
+    private int pickRandomValue(int size, boolean allowZero) {
 	Random randomGenerator = new Random();
-	int randomNumber = randomGenerator.nextInt(size)+1;
-
+	int randomNumber = randomGenerator.nextInt(size);
+	if(!allowZero){
+	   randomNumber += 1;
+	}
+	
 	logger.info("Picked "+randomNumber+" as a random number.");
 	return randomNumber;
     }
@@ -354,11 +359,15 @@ public class ECSImpl implements ECS {
 
     @Override
     public boolean removeNode() {
-	int removeIndex = pickRandomValue(this.activeServers.size());
+	int removeIndex = pickRandomValue(this.activeServers.size(),true);
 	logger.debug("Picked node index to remove "+removeIndex); 
 	ServerInfo nodeToDelete = this.activeServers.get(removeIndex);
 	ServerInfo successor = getSuccessor(nodeToDelete);
 	this.activeServers.remove(removeIndex);
+	if (nodeToDelete.equals(successor)){
+	    logger.error("Cannot remove node because it is the only active node available, If you want to remove please use the shutdown option");
+	    return false;
+	}
 	calculateMetaData(this.activeServers);
 	logger.debug("Calculated meta-data without the node to delete");
 	ServerConnection nodeToDeleteChannel = this.activeConnections.get(nodeToDelete);
@@ -384,6 +393,10 @@ public class ECSImpl implements ECS {
 	    logger.error("Meta-data update couldn't be sent."+e.getMessage());
 	}
 
+	try {
+	    Thread.sleep(200);
+	} catch (InterruptedException e1) {
+	}
 	//Invoke the transfer of the affected data items
 	ECSMessage moveDataMessage = new ECSMessage();
 	moveDataMessage.setActionType(ECSCommand.MOVE_DATA);
@@ -427,8 +440,22 @@ public class ECSImpl implements ECS {
 	    }} catch (IOException e) {
 		e.printStackTrace();
 	    }
-	//	this.serverRepository.get(serverRepository.indexOf(nodeToDelete)).setServerLaunched(false);
+	cleanUpNode(nodeToDelete);
+
+
 	return true;
+    }
+
+    private void cleanUpNode(ServerInfo nodeToDelete) {
+	for (ServerInfo server : this.serverRepository) {
+	    if (server.equals(nodeToDelete)){
+		server.setServerLaunched(false);
+		this.activeConnections.remove(nodeToDelete);
+		this.activeServers.remove(nodeToDelete);
+		break;
+	    }
+	}
+	
     }
 
 
