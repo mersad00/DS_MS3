@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.util.List;
 
 import org.apache.log4j.Logger;
@@ -15,15 +14,18 @@ public class ProcessInvoker {
 
 	Logger logger = LoggingManager.getInstance ().createLogger (
 			this.getClass () );
-	// private static final String[] commandArrayWindows
-	// ={"ssh","-n","host","java","-jar","/ms3-server.jar","port"};
-	private static final String [] commandArrayLinux = { "ssh" , "-n" , "host" ,
-			"nohup" , "java" , "-jar" ,
-			System.getProperty ( "user.dir" ) + "/ms3-server.jar" , "port" };
-	private static final String [] commandArrayWindows = { "java" , "-jar" ,
-			System.getProperty ( "user.dir" ) + "/ms3-server.jar" , "port" };
-	// private static final String[] commandArrayLinux
-	// ={"ssh","-n","host","nohup","java","-jar",System.getProperty("user.dir")+"/ms3-server.jar","port"};
+	
+	 private static final String[] commandArrayWindows
+	 ={"ssh","-n","host","java","-jar",System.getProperty ( "user.dir" ) +"/ms3-server.jar","port"};
+	 
+//	private static final String [] commandArrayLinux = { "ssh" , "-n" , "host" ,
+//			"nohup" , "java" , "-jar" ,
+//			System.getProperty ( "user.dir" ) + "/ms3-server.jar" , "port" };
+//	private static final String [] commandArrayWindows = { "java" , "-jar" ,
+//			System.getProperty ( "user.dir" ) + "/ms3-server.jar" , "port" };
+	 
+	 private static final String[] commandArrayLinux
+	 ={"ssh","-n","host","nohup","java","-jar",System.getProperty("user.dir")+"/ms3-server.jar","port"};
 	private String [] commandArray;
 
 	public ProcessInvoker () {
