@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -173,7 +174,7 @@ public class KVStore implements KVCommInterface {
 
 		} catch ( IOException e ) {
 			logger.error ( "error in sending or receiving message" );
-		}
+		} 
 		return receivedMsg;
 	}
 

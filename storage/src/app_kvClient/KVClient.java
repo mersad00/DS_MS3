@@ -122,10 +122,8 @@ public class KVClient {
 				}
 
 			} catch ( Exception e ) {
-				// report issue to user
 				logger.error ( e.getMessage () );
-				e.printStackTrace ();
-
+				System.out.println("Server is not found any more, make sure the server is up");
 			}
 
 		}

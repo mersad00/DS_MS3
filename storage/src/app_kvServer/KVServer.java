@@ -28,13 +28,15 @@ import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import utilities.LoggingManager;
+
 
 import common.ServerInfo;
 
 public class KVServer {
 
-	private static Logger logger = Logger.getRootLogger ();
-
+	private static Logger logger ;
+	
 	private int port;
 	private ServerSocket serverSocket;
 	private boolean running;
@@ -53,6 +55,7 @@ public class KVServer {
 	 */
 	public KVServer ( int port ) {
 		this.port = port;		
+		logger = LoggingManager.getInstance ().createLogger ( this.getClass () );
 	}
 
 	/**
@@ -130,7 +133,7 @@ public class KVServer {
 
 	public static void main ( String args[] ) {
 		try {
-			new LogSetup ( "logs/server/server.log" , Level.ALL );
+			//new LogSetup ( "logs/server/server.log" , Level.ALL );
 			KVServer server = new KVServer ( Integer.parseInt ( args [ 0 ] ) );
 			server.startServer ();
 		} catch ( IOException e ) {
