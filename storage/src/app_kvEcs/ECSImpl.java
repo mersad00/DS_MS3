@@ -489,4 +489,18 @@ public class ECSImpl implements ECS {
 
 	}
 
+	public List<ServerInfo> getServerRepository() {
+	    return serverRepository;
+	}
+
+	public List<ServerInfo> getActiveServers() {
+	    return activeServers;
+	}
+
+	public Map<ServerInfo, ServerConnection> getActiveConnections() {
+	    return activeConnections;
+	}
+
+	
+	
 }
