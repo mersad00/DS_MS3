@@ -16,14 +16,14 @@ public class ProcessInvoker {
 	Logger logger = LoggingManager.getInstance ().createLogger (
 			this.getClass () );
 	// private static final String[] commandArrayWindows
-	// ={"ssh","-n","host","java","-jar","/server.jar","port"};
+	// ={"ssh","-n","host","java","-jar","/ms3-server.jar","port"};
 	private static final String [] commandArrayLinux = { "ssh" , "-n" , "host" ,
 			"nohup" , "java" , "-jar" ,
-			System.getProperty ( "user.dir" ) + "/ser.jar" , "port" };
+			System.getProperty ( "user.dir" ) + "/ms3-server.jar" , "port" };
 	private static final String [] commandArrayWindows = { "java" , "-jar" ,
-			System.getProperty ( "user.dir" ) + "/server.jar" , "port" };
+			System.getProperty ( "user.dir" ) + "/ms3-server.jar" , "port" };
 	// private static final String[] commandArrayLinux
-	// ={"ssh","-n","host","nohup","java","-jar",System.getProperty("user.dir")+"/ser.jar","port"};
+	// ={"ssh","-n","host","nohup","java","-jar",System.getProperty("user.dir")+"/ms3-server.jar","port"};
 	private String [] commandArray;
 
 	public ProcessInvoker () {

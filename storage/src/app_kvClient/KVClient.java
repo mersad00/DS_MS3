@@ -53,10 +53,10 @@ public class KVClient {
 				switch ( command ) {
 				case CONNECT :
 					if ( validationUtil.isValidConnectionParams ( tokens ) ) {
-						if ( connection == null ) {
+						
 							connection = new KVStore ( tokens [ 1 ] ,
 									Integer.parseInt ( tokens [ 2 ] ) );
-						}
+						
 						connection.connect ();
 						System.out.println ( "Connected to KV server, "
 								+ tokens [ 1 ] + ":" + tokens [ 2 ] );

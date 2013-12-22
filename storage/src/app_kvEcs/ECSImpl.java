@@ -41,14 +41,14 @@ public class ECSImpl implements ECS {
 	public ECSImpl ( String fileName ) throws FileNotFoundException {
 		this.fileName = fileName;
 		/* parse the server repository */
-		readServerInfo ( fileName );
+		readServerInfo ( this.fileName );
 		init ( pickRandomValue ( serverRepository.size () , false ) );		
 	}
 	
 	ECSImpl(int numberOfNodes , String fileName) throws FileNotFoundException{
 		this.fileName = fileName;
 		/* parse the server repository */
-		readServerInfo ( fileName );		
+		readServerInfo ( this.fileName );		
 		init ( numberOfNodes );	
 	}
 	

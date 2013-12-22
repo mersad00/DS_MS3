@@ -1,8 +1,3 @@
-package common.messages;
-
-import java.util.List;
-
-import common.ServerInfo;
 
 /**
  * 
@@ -19,6 +14,13 @@ import common.ServerInfo;
  * @see MessageType
  *
  */
+
+package common.messages;
+
+import java.util.List;
+
+import common.ServerInfo;
+
 public class ClientMessage implements KVMessage {
 
 	private String key;

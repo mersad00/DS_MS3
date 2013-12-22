@@ -1,3 +1,20 @@
+/**
+ * This class is the main node class (Server node) which is 
+ * a multi-thread server, which runs a <code>ServerSocket</code>
+ * listening on a specific port and accepts new connection.
+ * 
+ * <p> Each new connection is handled by a new <code>ConnectionThread</code>
+ * and this thread handle all the required requests.
+ * 
+ * <p> The connection thread shares some data in this server, which is a 
+ * thread-safe class.
+ * 
+ * @see ConnectionThread
+ * @see ServerStatuses
+ * @see ServerSocket
+ * @see Socket
+ */
+
 package app_kvServer;
 
 import java.io.IOException;
@@ -38,6 +55,13 @@ public class KVServer {
 		this.port = port;		
 	}
 
+	/**
+	 * initialize and the starts the server on a given port and 
+	 * starts to loop and accepts new connections, then it generates
+	 * a new <code>ConnectionThread</code> to handle this connection.
+	 * 
+	 * @throws IOException
+	 */
 	public void startServer () throws IOException{
 		new LogSetup ( "logs/server/server.log" , Level.ALL );
 		this.serverStatus = ServerStatuses.UNDER_INITIALIZATION;
@@ -61,11 +85,19 @@ public class KVServer {
 		}
 		logger.info ( "Server stopped." );
 	}
+	
+	
 
+	/**
+	 * check if the server is still running
+	 * @return  boolean representing if the server still running
+	 */
 	private synchronized boolean isRunning () {
 		return this.running;
 	}
 
+	
+	
 	/**
 	 * Stops the server insofar that it won't listen at the given port any more.
 	 */
@@ -107,24 +139,43 @@ public class KVServer {
 		}
 		
 	}
+	
+	
 
+	/**
+	 * @return <code>ServerStatuses</code> represents the status of the server
+	 */
 	public ServerStatuses getServerStatus () {
 		return this.serverStatus;
 	}
 	
+	
+	
+	/**
+	 * set a new status to the server
+	 * @param status
+	 */
 	public synchronized void setServerStatus(ServerStatuses status){
 		logger.info ( "set server status to : \t"+ status );
 		this.serverStatus = status;
 	}
-
+	
+	
+	/**
+	 * @return List of all servers info representing the metadata
+	 */
 	public List < ServerInfo > getMetadata () {
 		return this.metadata;
 	}
-
+	
+	
+	/**
+	 * set a new value for the metadata
+	 * @param metadata
+	 */
 	public synchronized void setMetadata ( List < ServerInfo > metadata ) {
 		this.metadata = metadata;
 		logger.info ( "metadata updated with : " + metadata.size () + " values ");
-		//TODO update this after figure out how to get your IP
 		for(ServerInfo server : metadata){
 			if ( server.getPort () == this.port ){
 				this.thisServerInfo = server;
@@ -132,6 +183,10 @@ public class KVServer {
 		}		
 	}
 	
+	
+	/**
+	 * @return return the <code>ServerInfo</code> of this server
+	 */
 	public ServerInfo getThisServerInfo(){
 		return this.thisServerInfo;
 	}
@@ -141,6 +196,10 @@ public class KVServer {
 		return this.serverHashCode;
 	}
 	
+	
+	/**
+	 * shutdown the server with closing all the opening resources
+	 */
 	public void shutdown (){
 		running = false;
 		try {

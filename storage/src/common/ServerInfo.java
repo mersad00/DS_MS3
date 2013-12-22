@@ -1,4 +1,4 @@
-package common;
+
 
 /**
  * 
@@ -6,6 +6,10 @@ package common;
  * containing all required information about this node.
  * 
  */
+
+package common;
+
+
 public class ServerInfo {
 
 	private String address;

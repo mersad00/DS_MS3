@@ -1,8 +1,17 @@
+/**
+ * This class is the representation of the server message
+ * which should be sent between servers to move data from
+ * server to another server.
+ * 
+ * @see AbstractMessage
+ * @see MessageType
+ */
 package app_kvServer;
 
 import java.util.Map;
 
 import common.messages.AbstractMessage;
+
 
 public class ServerMessage implements AbstractMessage {
 

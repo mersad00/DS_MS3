@@ -1,3 +1,27 @@
+/**
+ * This class is the thread for every new connection
+ * to the server, containing all the required methods
+ * to handle the requests, there is 3 types of new 
+ * connection to the server:
+ * <ul>
+ * <li>client connection and it is recognized by the 
+ * <code>ClientMessage</code></li>
+ * <li>server connection and it is recognized by the 
+ * <code>ServerMessage</code></li>
+ * <li>ECS connection and it is recognized by the 
+ * <code>ECSMessage</code></li>
+ * </ul>
+ * This class receives the new message and recognize the 
+ * type of the new message and then choose the appropriate 
+ * action.
+ * 
+ * 
+ * @see ClientMessage
+ * @see ServerMessage
+ * @see ECSMessage
+ * @see ServerStatuses
+ * 
+ */
 package app_kvServer;
 
 import java.io.IOException;

@@ -1,3 +1,17 @@
+/**
+ * This class is the client library for the communication 
+ * with the servers, containing all the required methods
+ * like connect , put , get.
+ * 
+ * <p> On each operation, the metadata is checked to determine
+ * the correct server that contains the specific key, and send
+ * the request to this server.
+ * 
+ * @see KVMEssage
+ * @see Socket
+ * @see ServerInfo;
+ * 
+ */
 package client;
 
 import java.io.IOException;
@@ -6,7 +20,6 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-
 
 import org.apache.log4j.Logger;
 
@@ -47,6 +60,10 @@ public class KVStore implements KVCommInterface {
 		this.metadata = new ArrayList < ServerInfo > ();
 	}
 
+	/**
+	 * connect to the specified address and port, and get the output and input
+	 * streams from the connection to be used in communication
+	 */
 	@Override
 	public void connect () throws IOException {
 		try {
@@ -54,21 +71,34 @@ public class KVStore implements KVCommInterface {
 					currentDestinationServer.getPort () );
 			output = clientSocket.getOutputStream ();
 			input = clientSocket.getInputStream ();
-			logger.info ( "Connection established with " + currentDestinationServer.toString () );
+			logger.info ( "Connection established with "
+					+ currentDestinationServer.toString () );
 		} catch ( IOException ioe ) {
 			logger.error ( "Connection could not be established!" );
 			throw ioe;
 		}
 	}
 
+	/**
+	 * switch connection to another server in case of the current connected
+	 * server is not the correct server.
+	 * 
+	 * @param newDestinationServerInfo the new server details to switch connection to
+	 * @throws IOException
+	 */
 	public void switchConnection ( ServerInfo newDestinationServerInfo )
 			throws IOException {
 		this.tearDownConnection ();
 		this.currentDestinationServer = newDestinationServerInfo;
-		logger.info ( "switch connection to " + currentDestinationServer.toString () );
+		logger.info ( "switch connection to "
+				+ currentDestinationServer.toString () );
 		this.connect ();
 	}
 
+	
+	/**
+	 * this method is used to disconnect the current connected server
+	 */
 	@Override
 	public void disconnect () {
 		try {
@@ -90,6 +120,14 @@ public class KVStore implements KVCommInterface {
 		}
 	}
 
+	/**
+	 * sends request to the correct server to insert the key and the value, update
+	 * or delete it.
+	 * @param key the key to be inserted
+	 * @param value the value to be inserted
+	 * 
+	 * @return KVMessage represents the result of this operation
+	 */
 	@Override
 	public KVMessage put ( String key , String value ) throws IOException {
 		ClientMessage msg = new ClientMessage ();
@@ -112,6 +150,13 @@ public class KVStore implements KVCommInterface {
 		return receivedMsg;
 	}
 
+	
+	/**
+	 * sends request to the correct server to get the key and the value
+	 * @param key the key to be selected
+	 * 
+	 * @return KVMessage represents the result of this operation
+	 */
 	@Override
 	public KVMessage get ( String key ) throws IOException {
 		ClientMessage msg = new ClientMessage ();
@@ -199,6 +244,10 @@ public class KVStore implements KVCommInterface {
 		logger.info ( "Send message :\t '" + msg.getKey () + "'" );
 	}
 
+	/**
+	 * updates the metadata with a new copy
+	 * @param metadata the new metadata to be settled
+	 */
 	public void updateMetadata ( List < ServerInfo > metadata ) {
 		this.metadata = metadata;
 		logger.info ( "update metadata with " + metadata.size () + " keys" );
@@ -209,24 +258,21 @@ public class KVStore implements KVCommInterface {
 	}
 
 	private ServerInfo getDestinationServerInfo ( String key ) {
-		ServerInfo destinationServer = null;		
-		Hasher hasher = new Hasher();
-		if ( metadata.size () != 0){
-			for(ServerInfo server: metadata){
-				if( hasher.isInRange ( server.getFromIndex () , server.getToIndex () , hasher.getHash ( key ) )){
+		ServerInfo destinationServer = null;
+		Hasher hasher = new Hasher ();
+		if ( metadata.size () != 0 ) {
+			for ( ServerInfo server : metadata ) {
+				if ( hasher.isInRange ( server.getFromIndex () ,
+						server.getToIndex () , hasher.getHash ( key ) ) ) {
 					return server;
 				}
-					
+
 			}
 		} else {
 			destinationServer = this.currentDestinationServer;
 			logger.info ( "metadata is empty !!" );
 		}
-		
 
-		if(destinationServer == null){
-			logger.error ( "moseeeeeeba null ya 7azeen" );
-		}
 		return destinationServer;
 	}
 
