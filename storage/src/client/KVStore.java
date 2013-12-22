@@ -214,7 +214,6 @@ public class KVStore implements KVCommInterface {
 		if ( metadata.size () != 0){
 			for(ServerInfo server: metadata){
 				if( hasher.isInRange ( server.getFromIndex () , server.getToIndex () , hasher.getHash ( key ) )){
-					System.out.println ("finally, found something valid"+ server);
 					return server;
 				}
 					
