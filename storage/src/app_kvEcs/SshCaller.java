@@ -67,7 +67,7 @@ public class SshCaller implements SshInvoker{
 			        	c = (char)in.read();
 			        	
 			        	/* '\r' indicates that the process on the
-			        	 * remote machine started successfully
+			        	 * remote machine started successfully 
 			        	 */
 			        	if(c == '\r'){ 
 			        		channel.disconnect();
@@ -107,7 +107,6 @@ public class SshCaller implements SshInvoker{
 		try {
 			new LogSetup("logs/ecs/ecs.log", Level.ALL);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
