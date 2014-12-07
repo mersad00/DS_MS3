@@ -44,7 +44,7 @@ public class DatabaseManager {
 		in order to avoid Filenotfound exception when creating Presistentstorage. 
 		Because when this program
 		is called from a remote process, the user directory will link to 
-		 "/home/<user>"
+		"/home/<user>"
 		 it is sufficient to delete path variable from this code when there is no
 		 remote process calling this object
 		*/
