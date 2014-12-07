@@ -55,7 +55,7 @@ public class KVServer {
 	 */
 	public KVServer ( int port, int cacheSize ,String cacheStrategy ) {
 		this.port = port;		
-		/* creating persistent storage */
+		/* creating persistent storage  */
 		db = new DatabaseManager(this.port,cacheSize,cacheStrategy);
 		logger = LoggingManager.getInstance ().createLogger ( this.getClass () );
 	}
