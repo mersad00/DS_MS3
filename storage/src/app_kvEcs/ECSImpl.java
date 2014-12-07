@@ -15,7 +15,6 @@ import java.util.Scanner;
 import org.apache.log4j.Logger;
 
 import utilities.LoggingManager;
-import utilities.ProcessInvoker;
 import common.Hasher;
 import common.ServerInfo;
 
@@ -30,7 +29,8 @@ public class ECSImpl implements ECS {
 	Logger logger = LoggingManager.getInstance ().createLogger (
 			this.getClass () );
 	private Hasher md5Hasher;
-	private ProcessInvoker processInvoker;
+	//private ProcessInvoker processInvoker;
+	private SshInvoker processInvoker;
 	private String fileName;
 
 	/**
@@ -54,7 +54,8 @@ public class ECSImpl implements ECS {
 	
 	public void init (int numberOfNodes ){
 		this.md5Hasher = new Hasher ();
-		this.processInvoker = new ProcessInvoker ();			
+		/*this.processInvoker = new ProcessInvoker ();*/
+		this.processInvoker = new SshCaller();
 		initService ( numberOfNodes );
 		
 	}
@@ -135,7 +136,18 @@ public class ECSImpl implements ECS {
 	}
 
 	private void launchNodes ( List < ServerInfo > serversToStart ) {
-		processInvoker.ivnokeCommands ( serversToStart );
+		
+		/* it is considered that the invoker and invoked processes are in the same folder and machine*/
+		String path = System.getProperty("user.dir");
+		String command = "nohup java -jar " + path + "/ms3-server.jar ";
+		String arguments[] = new String [2];
+		arguments[1] = "  ERROR &";
+		for(ServerInfo server: serversToStart){
+			arguments[0] = String.valueOf(server.getPort());
+			processInvoker.invokeProcess(server.getAddress(), command, arguments);
+		}
+		
+		
 
 	}
 
