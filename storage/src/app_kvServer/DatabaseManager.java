@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
@@ -276,7 +277,7 @@ public class DatabaseManager {
 	 * @return Map containing the data in the range.
 	 */
 	@SuppressWarnings("unchecked")
-	public Map < String , String > getDataInRange ( String rangeStart ,
+	public synchronized Map < String , String > getDataInRange ( String rangeStart ,
 			String rangeEnd ) {
 		
 		try{
@@ -314,7 +315,7 @@ public class DatabaseManager {
 	 *            the hash representation of the end of the range
 	 */
 	@SuppressWarnings("unchecked")
-	public void removeDataInRange ( String rangeStart , String rangeEnd ) {
+	public synchronized void removeDataInRange ( String rangeStart , String rangeEnd ) {
 		
 		try{
 			//loading the DataBase
@@ -327,11 +328,29 @@ public class DatabaseManager {
 			
 			//Map < String , String > dataToBeMoved = new HashMap < String , String > ();
 			Hasher hasher = new Hasher ();
-			//for ( String key : database.keySet () ) {
-			for ( String key : temp.keySet () ) {
+			
+
+			/*
+			 * Using Iterator and while loop.
+			 * In this method you can remeove the entries
+			 * while iterating through it.
+			 *  The previous for loop will through
+			 *   java.util.ConcurrentModificationException 
+			 *   if you remove while iterating.
+			 *
+			for ( String key : database.keySet () ) {
 				if ( hasher.isInRange ( rangeStart , rangeEnd , key ) ) {
 					//database.remove(key);
 					temp.remove ( key);
+				}
+			*/
+			
+			Iterator<Map.Entry<String, String>> iterator = temp.entrySet().iterator() ;
+	        while(iterator.hasNext()){
+	            Map.Entry<String, String> item = iterator.next();
+	            //You can remove elements while iterating.
+	            if ( hasher.isInRange ( rangeStart , rangeEnd , item.getKey() ) ) {
+					iterator.remove();
 				}
 			}
 			
@@ -345,12 +364,13 @@ public class DatabaseManager {
 		}catch(Exception e){
 			logger.error("error occured while removing data"
 					+ "in range " + e.getMessage());
+			e.printStackTrace();
 
 		}
 	}
 
 	@SuppressWarnings("unchecked")
-	public void printDatabase () {
+	public synchronized void printDatabase () {
 		try{
 			HashMap<String, String> temp = new HashMap<String, String>();
 			FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
