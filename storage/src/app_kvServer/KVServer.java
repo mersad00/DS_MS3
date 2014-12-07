@@ -29,8 +29,6 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import utilities.LoggingManager;
-
-
 import common.ServerInfo;
 
 public class KVServer {
@@ -45,7 +43,9 @@ public class KVServer {
 	private List < ServerInfo > metadata;
 	private String serverHashCode;
 	private ServerInfo thisServerInfo;
-	
+
+	/* added in order to handle Persistent storage */
+	private static DatabaseManager db;
 
 	/**
 	 * Start KV Server at given port
@@ -53,8 +53,10 @@ public class KVServer {
 	 * @param port
 	 *            given port for storage server to operate
 	 */
-	public KVServer ( int port ) {
+	public KVServer ( int port, int cacheSize ,String cacheStrategy ) {
 		this.port = port;		
+		/* creating persistent storage */
+		db = new DatabaseManager(this.port,cacheSize,cacheStrategy);
 		logger = LoggingManager.getInstance ().createLogger ( this.getClass () );
 	}
 
@@ -74,7 +76,7 @@ public class KVServer {
 				try {
 					Socket client = serverSocket.accept ();
 					ConnectionThread connection = new ConnectionThread (
-							client , this );
+							client , this, this.db );
 					new Thread ( connection ).start ();
 
 					logger.info ( "new Connection: Connected to "
@@ -133,9 +135,22 @@ public class KVServer {
 
 	public static void main ( String args[] ) {
 		try {
-			//new LogSetup ( "logs/server/server.log" , Level.ALL );
-			KVServer server = new KVServer ( Integer.parseInt ( args [ 0 ] ) );
+			new LogSetup ( "logs/server/server.log" , Level.ALL );
+			KVServer server;
+			if(args.length >=3)
+				server = new KVServer ( Integer.parseInt ( args [ 0 ] ),  Integer.parseInt ( args [ 1 ] ) , args[ 2] );
+			else
+				server = new KVServer ( Integer.parseInt ( args [ 0 ] ),  10 , "FIFO" );
+			
+			
 			server.startServer ();
+			
+			/* informing the ProcessInvoker of the ECS Machine that
+			 * the KVServer process started successfully
+			 */
+			System.out.write("\r".getBytes());
+			System.out.flush();
+			
 		} catch ( IOException e ) {
 			
 			e.printStackTrace ();
