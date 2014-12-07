@@ -96,4 +96,41 @@ public class DataBaseManagerTest {
 		s6.run();
 	}
 	
+	
+	/**
+	 * keys sorted by their hashMD5 funtion
+	 * 6 = 1679091c5a880faf6fb5e6087eb1b2dc
+	 * 9 = 45c48cce2e2d7fbdea1afc51c7c6ad26
+	 * 11= 6512bd43d9caa6e02c990b0a82652dca
+	 * 7 = 8f14e45fceea167a5a36dedd4bea2543
+	 * 4 = a87ff679a2f3e71d9181a67b7542122c
+	 * 31 = c16a5320fa475530d9583c34fd356ef5
+	 * 1 = c4ca4238a0b923820dcc509a6f75849b
+	 * 2 = c81e728d9d4c2f636f067f89cc14862c
+	 * 8 = c9f0f895fb98ab9159f51fd0297e236d
+	 * 10 = d3d9446802a44259755d38e6d163e820
+	 * 5 = e4da3b7fbbce2345d7772b0674a318d5
+	 * 3 = eccbc87e4b5ce2fe28308fd9f2a7baf3
+	 */
+	@Test public void rangeTests(){
+		Map <String,String> temp = 
+				db.getDataInRange("a87ff679a2f3e71d9181a67b7542122c", "d3d9446802a44259755d38e6d163e820");
+		db.removeDataInRange("c81e728d9d4c2f636f067f89cc14862c", "e4da3b7fbbce2345d7772b0674a318d5");
+		
+		db.printDatabase();
+		assertFalse(temp.containsKey("4"));
+		assertTrue(temp.containsKey("31"));
+		assertFalse(temp.containsKey("9"));
+		
+		assertTrue( db.get("3").getValue().equals("Maldini") );
+		assertTrue( db.get("1").getValue().equals("Kahn") );
+		assertFalse( db.get("8").getValue().equals("Karimi") );
+		System.out.println("<<< "+db.get("10").getValue() +">>>");
+		assertTrue( db.get("10").getValue().equals("no value mapped to this key") );
+
+		
+		
+		
+	}
+	
 }
