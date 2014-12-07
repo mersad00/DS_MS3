@@ -163,9 +163,12 @@ public class KVClient {
 					+ result.getValue ();
 			break;
 		case SERVER_NOT_RESPONSIBLE : {		
-			resultText = UserFacingMessages.SERVER_NOT_RESPONSIBLE;
+			//resultText = UserFacingMessages.SERVER_NOT_RESPONSIBLE;
 			this.connection.updateMetadata ( ( ( ClientMessage ) result )
-					.getMetadata () );					
+					.getMetadata () );
+			result = this.connection.get(result.getKey());
+			String textResult = handleResponse ( result );
+			logger.info ( textResult );
 			break;
 		}
 
