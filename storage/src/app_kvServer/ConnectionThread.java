@@ -60,6 +60,9 @@ public class ConnectionThread implements Runnable {
 	private static final int DROP_SIZE = 1024 * BUFFER_SIZE;
 	private KVServer parent;
 	private ECSMessage dataToBeRemoved;
+	private static DatabaseManager dbManager;
+	
+	
 
 	/**
 	 * Constructs a new <code>ConnectionThread</code> object for a given TCP
@@ -70,10 +73,11 @@ public class ConnectionThread implements Runnable {
 	 * @param parent
 	 *            the server object which is listening to new connections
 	 */
-	public ConnectionThread ( Socket clientSocket , KVServer parent ) {
+	public ConnectionThread ( Socket clientSocket , KVServer parent , DatabaseManager db) {
 		this.parent = parent;
 		this.clientSocket = clientSocket;
 		this.isOpen = true;
+		this.dbManager = db;
 		logger = LoggingManager.getInstance ().createLogger ( this.getClass () );
 	}
 
@@ -318,11 +322,15 @@ public class ConnectionThread implements Runnable {
 				
 				/* in case the received message is in the range of this server */
 				if ( msg.getStatus ().equals ( KVMessage.StatusType.GET ) ) {
-					responseMessage = DatabaseManager.get ( msg.getKey () );
+					//responseMessage = DatabaseManager.get ( msg.getKey () );
+					responseMessage = dbManager.get ( msg.getKey () );
 
 				} else if ( msg.getStatus ().equals ( KVMessage.StatusType.PUT ) ) {
-					responseMessage = DatabaseManager.put ( msg.getKey () ,
+					/*responseMessage = DatabaseManager.put ( msg.getKey () ,
+							msg.getValue () );*/
+					responseMessage = dbManager.put ( msg.getKey () ,
 							msg.getValue () );
+				
 				}
 			} else {
 				/* in case the received message is in the range of this server */
@@ -347,7 +355,9 @@ public class ConnectionThread implements Runnable {
 	 */
 	private void handleServerRequest ( ServerMessage msg ) throws IOException {
 		if ( msg.getData ().size () > 0 ) {
-			DatabaseManager.putAll ( msg.getData () );
+			//DatabaseManager.putAll ( msg.getData () );
+			dbManager.putAll ( msg.getData () );
+			
 			logger.info ( "updated database with : \t" + msg.getData ().size ()
 					+ " keys " );
 		}
@@ -385,7 +395,11 @@ public class ConnectionThread implements Runnable {
 			logger.info ( "releasing writing lock ..." );
 			logger.info ( "remove data from server " );
 			if ( this.dataToBeRemoved != null ) {
-				DatabaseManager.removeDataInRange (
+				/*DatabaseManager.removeDataInRange (
+						this.dataToBeRemoved.getMoveFromIndex () ,
+						this.dataToBeRemoved.getMoveToIndex () );*/
+
+				dbManager.removeDataInRange (
 						this.dataToBeRemoved.getMoveFromIndex () ,
 						this.dataToBeRemoved.getMoveToIndex () );
 			}
@@ -394,8 +408,11 @@ public class ConnectionThread implements Runnable {
 		} else if ( msg.getActionType ().equals ( ECSCommand.MOVE_DATA ) ) {
 			logger.info ( "preparing data to be moved ... " );
 			ServerMessage message = new ServerMessage ();
-			message.setData ( DatabaseManager.getDataInRange (
+			/*message.setData ( DatabaseManager.getDataInRange (
+					msg.getMoveFromIndex () , msg.getMoveToIndex () ) );*/
+			message.setData ( dbManager.getDataInRange (
 					msg.getMoveFromIndex () , msg.getMoveToIndex () ) );
+			
 			this.dataToBeRemoved = msg;
 			this.sendServerMessage ( message , msg.getMoveToServer () );
 			logger.info ( "data moved to : "
