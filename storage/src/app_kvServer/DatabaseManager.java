@@ -341,7 +341,7 @@ public class DatabaseManager {
 			for ( String key : database.keySet () ) {
 				if ( hasher.isInRange ( rangeStart , rangeEnd , key ) ) {
 					//database.remove(key);
-					temp.remove ( key);
+					//temp.remove ( key);
 				}
 			*/
 			
