@@ -41,7 +41,7 @@ public class Cache implements CacheInterface{
 		String response = cache.get(key);
 		
 		/* key does exist in our cache */
-		if(response != null){
+		if(cache.containsKey(key)){
 			
 			/* when we have LRU strategy */
 			if(this.strategy == Strategy.LRU){
@@ -69,7 +69,6 @@ public class Cache implements CacheInterface{
 	 * called when cache is full. Based on the caching strategy will remove one element
 	 */
 	public void pop(){
-		logger.debug("a Miss occured!");
 		switch(this.strategy){
 			case FIFO:{
 				int i = 0;
@@ -96,7 +95,13 @@ public class Cache implements CacheInterface{
 	 */
 	public void push(String key, String value){
 		if(cache.containsKey(key)){
-			logger.warn(key+ " already exists in the cache");
+			logger.info(key+ " already exists in the cache");
+			cache.put(key, value);
+			if(strategy == Strategy.LRU){
+				reOrder(key);
+				return;
+			}
+			qeueOfKeys.push(key);
 			return ;
 		}
 		else{
@@ -154,15 +159,18 @@ public class Cache implements CacheInterface{
 	 * @param index of the recent hit
 	 */
 	private void reOrder(String key){
+			if(keys.contains(key)){
+				keys.remove(key);
+			}
 			keys.add(0, key);
 		
 	}
 	
 	public static void main(String args[])
 	{
-	
 		try {
-			new LogSetup("logs/server/server.log", Level.ALL);
+			new LogSetup("logs/server/cache.log", Level.ALL);
+			
 		} catch (IOException e) {
 			System.out.println("Error! Unable to initialize logger!");
 			e.printStackTrace();
