@@ -118,7 +118,7 @@ public class ECSImpl implements ECS {
 		//some nodes were not started successfully! 
 		if(serversToStart.size() < numberOfNodes){
 			int n = numberOfNodes - serversToStart.size();
-			count = 1; 
+			count = 0; 
 			int i = 0,r;
 			while(count < n && i < (serverRepository.size() -1 )){
 				temp = serverRepository.get(i);
@@ -134,10 +134,10 @@ public class ECSImpl implements ECS {
 				i++;
 			}
 			if(count < n)
-				count += serversToStart.size();
+				//count += serversToStart.size();
 				logger.warn("Could not start all the " + numberOfNodes +
-						"servers! insetead started " + 
-						count + "server");
+						" servers! insetead started " + 
+						this.activeServers.size() + " servers");
 		}
 		
 		logger.info("ECS started " +  serversToStart.toString() );
@@ -291,7 +291,7 @@ public class ECSImpl implements ECS {
 					}
 				} );
 
-		logger.debug ( "Sorted list of servers " + serversToStart );
+		//logger.debug ( "Sorted list of servers " + serversToStart );
 
 		for ( int i = 0 ; i < serversToStart.size () ; i++ ) {
 			ServerInfo server = serversToStart.get ( i );
@@ -305,7 +305,7 @@ public class ECSImpl implements ECS {
 
 		}
 		//this.activeServers = serversToStart;
-		logger.debug ( "Calculated metadata " + serversToStart );
+		//logger.debug ( "Calculated metadata " + serversToStart );
 		return serversToStart;
 	}
 
