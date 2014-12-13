@@ -85,5 +85,8 @@ public class ClientMessage implements KVMessage {
 	public MessageType getMessageType () {
 		return MessageType.CLIENT_MESSAGE;
 	}
-
+	
+	public String toString(){
+		return "Key: "+ this.getKey() + " Value" + this.getValue() + " Statue" +this.getStatus();
+	}
 }
