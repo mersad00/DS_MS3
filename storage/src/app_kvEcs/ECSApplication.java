@@ -32,9 +32,9 @@ public class ECSApplication {
     private Logger logger = LoggingManager.getInstance ().createLogger ( this.getClass () );
     
     
-    public ECSApplication(String fileName) {
+    public ECSApplication(int numberOfServers,String fileName) {
 	try {
-	    this.eCSService = new ECSImpl(fileName);
+	    this.eCSService = new ECSImpl(numberOfServers,fileName);
 	    this.eCSClient = new ECSClient(eCSService);
 	    startCSClient();
 	} catch (FileNotFoundException e) {
@@ -63,7 +63,7 @@ public class ECSApplication {
 	} catch (IOException e) {
 	    e.printStackTrace();
 	}
-	new ECSApplication(args[0]);
+	new ECSApplication(Integer.valueOf(args[0]),args[1]);
     }
 
 }
