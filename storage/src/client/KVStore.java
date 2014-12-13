@@ -233,7 +233,7 @@ public class KVStore implements KVCommInterface {
 
 		/* build final String */
 		KVMessage msg = ( KVMessage ) SerializationUtil.toObject ( msgBytes );
-		logger.info ( "Receive message:\t '" + msg.getKey () + "'" );
+		logger.info ( "Receive message:\t '" + msg.toString() + "'" );
 		return msg;
 	}
 
@@ -242,7 +242,7 @@ public class KVStore implements KVCommInterface {
 		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
 		output.write ( msgBytes , 0 , msgBytes.length );
 		output.flush ();
-		logger.info ( "Send message :\t '" + msg.getKey () + "'" );
+		logger.info ( "Send message :\t '" + msg.toString() + "'" );
 	}
 
 	/**
