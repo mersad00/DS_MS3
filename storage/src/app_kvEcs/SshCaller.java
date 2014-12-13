@@ -10,12 +10,20 @@ import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
 
+/**
+ * the default consideration is that the ssh private keys and knownHostfiles are in .ssh folder in the home 
+ * directory of the user.
+ * @author arash
+ *
+ */
+
+
 public class SshCaller implements SshInvoker{
 	public static Logger logger = Logger.getRootLogger();
 	private  static final int port = 22;
-	private  String userName = "arash";
-	private  String privateKey = "/home/arash/.ssh/id_rsa";
-	private  String knownHostsfiles = "/home/arash/.ssh/known_hosts";
+	private  String userName = System.getProperty("user.name");
+	private  String privateKey = System.getProperty("user.home") + "/.ssh/id_rsa";
+	private  String knownHostsfiles = System.getProperty("user.home") + "/.ssh/known_hosts";
 	private long timeOut = 3000;
 	
 	public void setTimeOut(long t){
@@ -36,7 +44,6 @@ public class SshCaller implements SshInvoker{
 
 	
 	public int invokeProcess(String host, String command, String[] arguments){
-		
 		try{
 
 			JSch jsch = new JSch();
