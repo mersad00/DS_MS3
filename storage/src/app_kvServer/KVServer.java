@@ -144,16 +144,23 @@ public class KVServer {
 			
 			
 			server.startServer ();
+			if(server.isRunning()){
+				/* informing the ProcessInvoker of the ECS Machine that
+				 * the KVServer process started successfully
+				 */
+				System.out.write("\r".getBytes());
+				System.out.flush();
+			}else{
+				System.out.write("$ERROR$".getBytes());
+				System.out.flush();
+				System.exit(-1);
+			}
 			
-			/* informing the ProcessInvoker of the ECS Machine that
-			 * the KVServer process started successfully
-			 */
-			System.out.write("\r".getBytes());
-			System.out.flush();
 			
 		} catch ( IOException e ) {
 			
 			e.printStackTrace ();
+			
 		}
 		
 	}
