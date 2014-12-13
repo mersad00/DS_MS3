@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -56,8 +57,7 @@ public class ECSImpl implements ECS {
 		this.md5Hasher = new Hasher ();
 		/*this.processInvoker = new ProcessInvoker ();*/
 		this.processInvoker = new SshCaller();
-		initService ( numberOfNodes );
-		
+		initService ( numberOfNodes );	
 	}
 	
 
@@ -96,7 +96,78 @@ public class ECSImpl implements ECS {
 
 	@Override
 	public void initService ( int numberOfNodes ) {
-		List < ServerInfo > serversToStart = this.serverRepository.subList ( 0 ,
+		Random rand = new Random();
+		int count = 0;
+		ServerInfo temp;
+		List < ServerInfo > serversToStart = new ArrayList<ServerInfo>();
+		this.activeConnections = new HashMap < ServerInfo , ServerConnection > ();
+		if(this.activeServers == null)
+			this.activeServers = new ArrayList<ServerInfo>();
+		//choosing servers randomly
+		while(count < numberOfNodes ){
+			int i = rand.nextInt(serverRepository.size()); 
+			temp = serverRepository.get(i);
+			if((!serversToStart.contains(temp) ) && !this.activeServers.contains(temp)){	
+				serversToStart.add(temp);
+				count++;
+			}
+		}
+		logger.info ( "ECS will launch " + numberOfNodes + " servers " );
+		launchNodes ( serversToStart );
+		
+		//some nodes were not started successfully! 
+		if(serversToStart.size() < numberOfNodes){
+			int n = numberOfNodes - serversToStart.size();
+			count = 1; 
+			int i = 0,r;
+			while(count < n && i < (serverRepository.size() -1 )){
+				temp = serverRepository.get(i);
+				if((!serversToStart.contains(temp) ) && !this.activeServers.contains(temp)){	
+					r = launchNode(temp);
+					if(r == 0){
+						// server started successfully
+						serversToStart.add(temp);
+						temp.setServerLaunched(true);
+						count++;
+					}
+				}
+				i++;
+			}
+			if(count < n)
+				count += serversToStart.size();
+				logger.warn("Could not start all the " + numberOfNodes +
+						"servers! insetead started " + 
+						count + "server");
+		}
+		
+		logger.info("ECS started " +  serversToStart.toString() );
+		// calculate the metaData
+		serversToStart = calculateMetaData ( serversToStart );
+		
+		// communicate with servers and send call init
+		ECSMessage initMessage = getInitMessage ( serversToStart );
+		logger.info ( "Sending init signals to servers" );
+		
+		// create server connection
+		for ( ServerInfo server : this.activeServers ) {
+			ServerConnection channel = new ServerConnection ( server );
+			try {
+				channel.connect ();
+				channel.sendMessage ( initMessage );
+				activeConnections.put ( server , channel );
+			} catch ( IOException e ) {
+				logger.error ( "One server node couldn't be initiated" + server );
+				// this.activeServers.remove(server);
+			}
+
+		}
+
+		logger.info ( "Active servers are launched and handed meta-data." );
+
+	}
+			
+		
+		/*List < ServerInfo > serversToStart = this.serverRepository.subList ( 0 ,
 				numberOfNodes );
 		this.activeConnections = new HashMap < ServerInfo , ServerConnection > ();
 		logger.info ( "ECS will launch " + numberOfNodes + " servers" );
@@ -127,7 +198,9 @@ public class ECSImpl implements ECS {
 		logger.info ( "Active servers are launched and handed meta-data." );
 
 	}
-
+	*/
+	
+	
 	private ECSMessage getInitMessage ( List < ServerInfo > serversToStart ) {
 		ECSMessage initMessage = new ECSMessage ();
 		initMessage.setActionType ( ECSCommand.INIT );
@@ -142,15 +215,59 @@ public class ECSImpl implements ECS {
 		String command = "nohup java -jar " + path + "/ms3-server.jar ";
 		String arguments[] = new String [2];
 		arguments[1] = "  ERROR &";
-		for(ServerInfo server: serversToStart){
-			arguments[0] = String.valueOf(server.getPort());
-			processInvoker.invokeProcess(server.getAddress(), command, arguments);
+		int result;
+		
+		Iterator<ServerInfo> iterator = serversToStart.iterator() ;
+        while(iterator.hasNext()){
+            ServerInfo item = iterator.next();
+            //You can remove elements while iterating.
+			// if server process started 
+			arguments[0] = String.valueOf(item.getPort());
+			result = processInvoker.invokeProcess(item.getAddress(), command, arguments);
+            if(result == 0){
+				this.activeServers.add(item);
+				item.setServerLaunched(true);
+			}
+			else
+				iterator.remove();
 		}
 		
-		
+		/*for(ServerInfo server: serversToStart){
+			arguments[0] = String.valueOf(server.getPort());
+			result = processInvoker.invokeProcess(server.getAddress(), command, arguments);
 
+		}*/
+		
 	}
 
+	
+	/**
+	 * launch a single server
+	 * @param serverToStart
+	 * @return 0 in case of successful launch
+	 */
+	private int launchNode (  ServerInfo serverToStart ) {
+		
+		/* it is considered that the invoker and invoked processes are in the same folder and machine*/
+		String path = System.getProperty("user.dir");
+		String command = "nohup java -jar " + path + "/ms3-server.jar ";
+		String arguments[] = new String [2];
+		arguments[1] = "  ERROR &";
+		int result;
+		arguments[0] = String.valueOf(serverToStart.getPort());
+		result = processInvoker.invokeProcess(serverToStart.getAddress(), command, arguments);
+        if(result == 0){
+				this.activeServers.add(serverToStart);
+				serverToStart.setServerLaunched(true);
+				return 0;
+        }
+			else
+				return -1;
+	}
+		
+	
+	
+	
 	private List < ServerInfo > calculateMetaData (
 			List < ServerInfo > serversToStart ) {
 
@@ -187,7 +304,7 @@ public class ECSImpl implements ECS {
 			server.setFromIndex ( predecessor.getToIndex () );
 
 		}
-		this.activeServers = serversToStart;
+		//this.activeServers = serversToStart;
 		logger.debug ( "Calculated metadata " + serversToStart );
 		return serversToStart;
 	}
@@ -260,7 +377,7 @@ public class ECSImpl implements ECS {
 	public void addNode () {
 
 		// steps to add new node:
-		List < ServerInfo > serverList = new ArrayList < ServerInfo > ();
+		/*List < ServerInfo > serverList = new ArrayList < ServerInfo > ();
 		ServerInfo newNode = getAvailableNode ();
 		if ( newNode == null ) {
 			logger.info ( "No available node to add." );
@@ -271,8 +388,31 @@ public class ECSImpl implements ECS {
 		serverList.add ( newNode );
 		// will start the server and set the flag ti true
 		launchNodes ( serverList );
-		logger.debug ( "New node launched" );
-		this.activeServers.add ( newNode );
+		logger.debug ( "New node launched" );*/
+		
+		int result = -1;
+		int i = 0;
+		ServerInfo newNode = new ServerInfo();
+		while(i < (serverRepository.size() -1 )){
+			newNode = serverRepository.get(i);
+			if( !this.activeServers.contains(newNode)){	
+				result = launchNode(newNode);
+				if(result == 0){
+					// server started successfully
+					break;
+				}
+			}
+			i++;
+		}
+		if ( newNode == null  ) {
+			logger.info ( "No available node to add." );
+			return;
+		}else if ( result != 0  ) {
+			logger.info ( "Could not add a new Server!" );
+			return;
+		}
+		
+		//this.activeServers.add ( newNode ); // it is done in launchNode()
 		// need to re-calculate the new metadata
 		calculateMetaData ( activeServers );
 		System.out.println ( "The new node is" + newNode );
@@ -364,6 +504,8 @@ public class ECSImpl implements ECS {
 		}
 	}
 
+	
+	
 	private ServerInfo getSuccessor ( ServerInfo newNode ) {
 		ServerInfo successor;
 		int nodeIndex = this.activeServers.indexOf ( newNode );
