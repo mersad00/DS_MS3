@@ -76,6 +76,10 @@ public class SshCaller implements SshInvoker{
 			        	}
 			        	s += c;
 			        	
+			        	// the process did not start correctly
+			        	if(s.contains("$ERROR$"))
+			        		return -1;
+			        		
 			        	// no more input to read!
 			        	if((int)c < 0)
 			        		break;
