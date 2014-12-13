@@ -173,12 +173,12 @@ public class KVClient {
 			this.connection.updateMetadata ( ( ( ClientMessage ) result )
 					.getMetadata () );
 			
-			// the previous command was put because value is !=null
+			// the previous command was put because mode is 1
 			if(mode == 1){
 				result = this.connection.put(result.getKey(),result.getValue());	
 				resultText = handleResponse ( result, 1 );
 			}
-			// the previous command was get because value is ==null
+			// the previous command was get because mode is -1
 			else if(mode ==-1){
 				
 				result = this.connection.get(result.getKey());	
