@@ -73,18 +73,16 @@ public class KVClient {
 					if ( validationUtil.isValidStoreParams ( tokens ) ) {
 						KVMessage result = connection.put ( tokens [ 1 ] ,
 								tokens [ 2 ] );
-						String textResult = handleResponse ( result );
+						String textResult = handleResponse ( result, 1 );
 						logger.info ( textResult );
-						System.out.println ( textResult );
 					}
 					break;
 
 				case GET :
 					if ( tokens [ 1 ] != null && ! tokens [ 1 ].isEmpty () ) {
 						KVMessage result = connection.get ( tokens [ 1 ] );
-						String textResult = handleResponse ( result );
+						String textResult = handleResponse ( result , -1 );
 						logger.info ( textResult );
-						System.out.println ( textResult );
 					} else {
 						logger.warn ( "Key was not provided." );
 						System.out.println ( "Key was not provided." );
@@ -130,7 +128,15 @@ public class KVClient {
 
 	}
 
-	private String handleResponse ( KVMessage result ) throws IOException {
+	
+	/**
+	 * 
+	 * @param result
+	 * @param mode: 0 the default, 1 when handleResponse is called from put method, -1 called from get method
+	 * @return
+	 * @throws IOException
+	 */
+	private String handleResponse ( KVMessage result , int mode) throws IOException {
 		String resultText = "";
 		switch ( result.getStatus () ) {
 		case GET_ERROR :
@@ -166,9 +172,18 @@ public class KVClient {
 			//resultText = UserFacingMessages.SERVER_NOT_RESPONSIBLE;
 			this.connection.updateMetadata ( ( ( ClientMessage ) result )
 					.getMetadata () );
-			result = this.connection.get(result.getKey());
-			String textResult = handleResponse ( result );
-			logger.info ( textResult );
+			
+			// the previous command was put because value is !=null
+			if(mode == 1){
+				result = this.connection.put(result.getKey(),result.getValue());	
+				resultText = handleResponse ( result, 1 );
+			}
+			// the previous command was get because value is ==null
+			else if(mode ==-1){
+				
+				result = this.connection.get(result.getKey());	
+				resultText = handleResponse ( result ,-1 );
+			}
 			break;
 		}
 
