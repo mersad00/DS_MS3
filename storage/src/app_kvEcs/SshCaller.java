@@ -1,10 +1,16 @@
 package app_kvEcs;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+
 import logger.LogSetup;
+
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
@@ -44,6 +50,7 @@ public class SshCaller implements SshInvoker{
 
 	
 	public int invokeProcess(String host, String command, String[] arguments){
+		
 		try{
 
 			JSch jsch = new JSch();
@@ -112,6 +119,58 @@ public class SshCaller implements SshInvoker{
 		      return -1;
 		    }
 
+	}
+	
+	public int localInvokeProcess(String command, String[] arguments){
+		
+		try{
+			// adding the arguments to the command
+			for(String argument: arguments)
+				command += " " + argument;
+			//logger.debug("<<<<<<" + command + ">>>>>");
+			ProcessBuilder pb =
+					new ProcessBuilder("nohup","java", "-jar","ms3-server.jar", arguments[0],"&");
+			String path = System.getProperty("user.dir");
+			pb.directory(new File(path));
+			
+			Process p = pb.start();
+			InputStream in = p.getInputStream();
+			long start = System.currentTimeMillis();
+			long end = start + timeOut;
+					 
+		      String s="";
+		      char c;
+		      boolean waiting = true;
+		      while(System.currentTimeMillis() < end && waiting){
+			        while(in.available()>0){
+			        	c = (char)in.read();
+			        	
+			        	/* '\r' indicates that the process on the
+			        	 * remote machine started successfully 
+			        	 */
+			        	if(c == '\r'){ 
+			        		waiting = false;
+			        		break;
+			        	}
+			        	s += c;
+			        	
+			        	// the process did not start correctly
+			        	if(s.contains("$ERROR$"))
+			        		return -1;
+			        		
+			        	// no more input to read!
+			        	if((int)c < 0)
+			        		break;
+			        }
+		        
+		      }
+		      
+		    return 0;
+		    }
+		    catch(Exception e){	
+		      logger.error(e);
+		      return -1;
+		    }
 	}
 	
 	public static void main(String args[]){
