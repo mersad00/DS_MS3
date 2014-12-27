@@ -43,6 +43,25 @@ public class ECSApplication {
 	}
 
     }
+    
+    /**
+     * this constructor is used for testing application in local 
+     * (not SSH)
+     * @param: local : just a flag that used for calling this constructor can be any value
+     */
+    
+    public ECSApplication(int numberOfServers,String fileName, int local) {
+    	try {
+    		logger.debug("<<< WE ARE IN LOCAL WORD NO SSH CALL! Just for Testing Environment!>>>");
+    	    this.eCSService = new ECSImpl(numberOfServers,fileName, true);
+    	    this.eCSClient = new ECSClient(eCSService);
+    	    startCSClient();
+    	} catch (FileNotFoundException e) {
+    	    logger.error("ECS couldn't be started because config file was not found.");
+    	    System.exit(1);
+    	}
+
+        }
 
     public ECSApplication(ECS eCSService, ECSClient eCSClient) {
 	this.eCSService = eCSService;
@@ -63,7 +82,10 @@ public class ECSApplication {
 	} catch (IOException e) {
 	    e.printStackTrace();
 	}
-	new ECSApplication(Integer.valueOf(args[0]),args[1]);
+	if(args.length == 3)
+		new ECSApplication(Integer.valueOf(args[0]),args[1], 0);
+	else
+		new ECSApplication(Integer.valueOf(args[0]),args[1]);
     }
 
 }
