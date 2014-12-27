@@ -39,4 +39,7 @@ public interface SshInvoker {
 	 @return: 0 in case of Success and -1 in case of Error
 	 */
 	public int invokeProcess(String host,String command,String[]arguments);
+
+	public int localInvokeProcess(String command,String[]arguments);
+
 }
