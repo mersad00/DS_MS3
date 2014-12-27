@@ -33,6 +33,7 @@ public class ECSImpl implements ECS {
 	//private ProcessInvoker processInvoker;
 	private SshInvoker processInvoker;
 	private String fileName;
+	private boolean localCall;
 
 	/**
 	 * @param fileName
@@ -48,6 +49,14 @@ public class ECSImpl implements ECS {
 	
 	ECSImpl(int numberOfNodes , String fileName) throws FileNotFoundException{
 		this.fileName = fileName;
+		/* parse the server repository */
+		readServerInfo ( this.fileName );		
+		init ( numberOfNodes );	
+	}
+	
+	ECSImpl(int numberOfNodes , String fileName, boolean local) throws FileNotFoundException{
+		this.fileName = fileName;
+		localCall = local;
 		/* parse the server repository */
 		readServerInfo ( this.fileName );		
 		init ( numberOfNodes );	
@@ -223,8 +232,13 @@ public class ECSImpl implements ECS {
             //You can remove elements while iterating.
 			// if server process started 
 			arguments[0] = String.valueOf(item.getPort());
-			result = processInvoker.invokeProcess(item.getAddress(), command, arguments);
-            if(result == 0){
+			if(!localCall)
+				// for ssh calls
+				result = processInvoker.invokeProcess(item.getAddress(), command, arguments);
+			else
+				// for local calls
+				result = processInvoker.localInvokeProcess(command, arguments);	
+			if(result == 0){
 				this.activeServers.add(item);
 				item.setServerLaunched(true);
 			}
@@ -255,8 +269,14 @@ public class ECSImpl implements ECS {
 		arguments[1] = "  ERROR &";
 		int result;
 		arguments[0] = String.valueOf(serverToStart.getPort());
-		result = processInvoker.invokeProcess(serverToStart.getAddress(), command, arguments);
-        if(result == 0){
+		if(!localCall)
+			// for ssh calls
+			result = processInvoker.invokeProcess(serverToStart.getAddress(), command, arguments);
+		else
+			//for local invocations
+			result = processInvoker.localInvokeProcess(command, arguments);	
+		
+		if(result == 0){
 				this.activeServers.add(serverToStart);
 				serverToStart.setServerLaunched(true);
 				return 0;
