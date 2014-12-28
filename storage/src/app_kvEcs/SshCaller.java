@@ -82,14 +82,20 @@ public class SshCaller implements SshInvoker{
 			        	
 			        	/* '\r' indicates that the process on the
 			        	 * remote machine started successfully 
-			        	 */
+			        	 
 			        	if(c == '\r'){ 
 			        		channel.disconnect();
 			        		waiting = false;
 			        		break;
 			        	}
-			        	s += c;
+			        	*/
 			        	
+			        	s += c;
+			        	if(s.contains("$SUCCESS$")){
+			        		channel.disconnect();
+			        		waiting = false;
+			        		break;
+			        	}
 			        	// the process did not start correctly
 			        	if(s.contains("$ERROR$"))
 			        		return -1;
@@ -105,12 +111,15 @@ public class SshCaller implements SshInvoker{
 		        }
 		      }
 		      
-		      logger.info( s + " Process exit-status: "+channel.getExitStatus());
+		      //logger.info( s + " Process exit-status: "+channel.getExitStatus());
 		      channel.disconnect();
 		      session.disconnect();
 		      
-		      if(channel.getExitStatus() == 0)
+		      if(channel.getExitStatus() == 0){
+		    	  logger.info("Remote Server on host: " + host
+		    	  		+ " has started! Listening on Port " + arguments[0]);
 		    	  return 0;
+		      }
 		      else
 		    	  return -1;
 		    }
@@ -147,12 +156,21 @@ public class SshCaller implements SshInvoker{
 			        	
 			        	/* '\r' indicates that the process on the
 			        	 * remote machine started successfully 
-			        	 */
+			        	 
 			        	if(c == '\r'){ 
 			        		waiting = false;
 			        		break;
 			        	}
+			        	
+			        	*/
+			        	
 			        	s += c;
+			        	
+			        	if(s.contains("$SUCCESS$")){
+			        		s.replace("$SUCCESS$", "");
+			        		waiting = false;
+			        		break;
+			        	}
 			        	
 			        	// the process did not start correctly
 			        	if(s.contains("$ERROR$"))
@@ -164,7 +182,9 @@ public class SshCaller implements SshInvoker{
 			        }
 		        
 		      }
-		      
+		      logger.info("Local Server" 
+		    	  		+ " has started! Listening on Port " + arguments[0]);
+		    	 
 		    return 0;
 		    }
 		    catch(Exception e){	
