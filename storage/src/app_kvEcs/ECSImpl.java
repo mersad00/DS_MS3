@@ -150,8 +150,9 @@ public class ECSImpl implements ECS {
 		}
 		
 		logger.info("ECS started " +  serversToStart.toString() );
+		
 		// calculate the metaData
-		serversToStart = calculateMetaData ( serversToStart );
+		serversToStart = calculateMetaData ( activeServers );
 		
 		// communicate with servers and send call init
 		ECSMessage initMessage = getInitMessage ( serversToStart );
@@ -291,19 +292,16 @@ public class ECSImpl implements ECS {
 	private List < ServerInfo > calculateMetaData (
 			List < ServerInfo > serversToStart ) {
 
-		for ( ServerInfo server : serversToStart ) {// loop and the hash values
+		for ( ServerInfo server : serversToStart ) {
+			// loop and the hash values
 			String hashKey = md5Hasher.getHash ( server.getAddress () + ":"
 					+ server.getPort () );
 			// the to index is the value of the server hash
 			server.setToIndex ( hashKey );
 		}
 
-		Collections.sort ( serversToStart , new Comparator < ServerInfo > () { // sort
-																				// the
-																				// list
-																				// by
-																				// the
-																				// hashes
+		Collections.sort ( serversToStart , new Comparator < ServerInfo > () { 
+					// sort hashes
 					@Override
 					public int compare ( ServerInfo o1 , ServerInfo o2 ) {
 						return md5Hasher.compareHashes ( o1.getToIndex () ,
@@ -311,24 +309,23 @@ public class ECSImpl implements ECS {
 					}
 				} );
 
-		//logger.debug ( "Sorted list of servers " + serversToStart );
-
 		for ( int i = 0 ; i < serversToStart.size () ; i++ ) {
 			ServerInfo server = serversToStart.get ( i );
 			ServerInfo predecessor;
-			if ( i == 0 ) {// first node is a special case.
+			if ( i == 0 ) {
+				// first node is a special case.
 				predecessor = serversToStart.get ( serversToStart.size () - 1 );
 			} else {
 				predecessor = serversToStart.get ( i - 1 );
 			}
 			server.setFromIndex ( predecessor.getToIndex () );
-
 		}
 		//this.activeServers = serversToStart;
 		//logger.debug ( "Calculated metadata " + serversToStart );
 		return serversToStart;
 	}
 
+	
 	public Hasher getMd5Hasher () {
 		return md5Hasher;
 	}
@@ -395,24 +392,13 @@ public class ECSImpl implements ECS {
 
 	@Override
 	public void addNode () {
-
 		// steps to add new node:
-		/*List < ServerInfo > serverList = new ArrayList < ServerInfo > ();
-		ServerInfo newNode = getAvailableNode ();
-		if ( newNode == null ) {
-			logger.info ( "No available node to add." );
-			return;
-		}
-
-		logger.debug ( "Adding a new node." + newNode );
-		serverList.add ( newNode );
-		// will start the server and set the flag ti true
-		launchNodes ( serverList );
-		logger.debug ( "New node launched" );*/
-		
 		int result = -1;
 		int i = 0;
 		ServerInfo newNode = new ServerInfo();
+		
+		//search in serverRepository to find the servers which are
+		//not active (not launched yet), and try to launch them
 		while(i < (serverRepository.size() -1 )){
 			newNode = serverRepository.get(i);
 			if( !this.activeServers.contains(newNode)){	
@@ -435,7 +421,7 @@ public class ECSImpl implements ECS {
 		//this.activeServers.add ( newNode ); // it is done in launchNode()
 		// need to re-calculate the new metadata
 		calculateMetaData ( activeServers );
-		System.out.println ( "The new node is" + newNode );
+		logger.info ( "The new node is" + newNode.getAddress() + ":" + newNode.getPort() );
 
 		// 1.init the newNode and start it.
 		ECSMessage initMessage = getInitMessage ( this.activeServers );
@@ -444,83 +430,73 @@ public class ECSImpl implements ECS {
 			channel.connect ();
 			channel.sendMessage ( initMessage );
 			activeConnections.put ( newNode , channel );
+			logger.debug ( "New node initiated" + newNode);
 		} catch ( IOException e ) {
-			logger.error ( "One server node couldn't be initiated" + newNode );
+			logger.error ( " server node couldn't be initiated" + newNode.getAddress() + ":" +newNode.getPort() +
+					" Operation addNode Not Successfull");
+			// server could not be initiated so remove it from the list!
+			activeServers.remove(newNode);
+			calculateMetaData(activeServers);
+			//TODO
+			//maybe use the removeNode(newNode)
+			return;
 		}
-
-		logger.debug ( "New node initiated" );
-
+		
 		ECSMessage startMessage = new ECSMessage ();
 		startMessage.setActionType ( ECSCommand.START );
 		try {
 			channel.sendMessage ( startMessage );
 		} catch ( IOException e ) {
-			logger.error ( "Start message couldn't be sent." );
+			logger.error ( "Start message couldn't be sent to " + newNode.getAddress() + 
+					":" +newNode.getPort() + " Operation addNode Not Successfull");
+			// server could not be started so remove it from the list!
+			activeServers.remove(newNode);
+			activeConnections.remove(newNode);
+			calculateMetaData(activeServers);
+			//TODO
+			// maybe use the removeNode(newNode)
+			return;
 		}
+		
 		logger.debug ( "New node started" );
-
-		// Set write lock (lockWrite()) on the successor node
 		ServerInfo successor = getSuccessor ( newNode );
-		ServerConnection successorChannel = this.activeConnections
-				.get ( successor );
-		ECSMessage writeLock = new ECSMessage ();
-		writeLock.setActionType ( ECSCommand.SET_WRITE_LOCK );
-		try {
-			successorChannel.sendMessage ( writeLock );
-		} catch ( IOException e ) {
-			logger.error ( "Start message couldn't be sent." );
-		}
-
-		logger.debug ( "Successor node" + successor + " locked."
-				+ successorChannel.getServer () );
-		try {
-			Thread.sleep ( 200 );
-		} catch ( InterruptedException e1 ) {
-		}
-
-		// Invoke the transfer of the affected data items
-		ECSMessage moveDataMessage = new ECSMessage ();
-		moveDataMessage.setActionType ( ECSCommand.MOVE_DATA );
-		moveDataMessage.setMoveFromIndex ( newNode.getFromIndex () );
-		moveDataMessage.setMoveToIndex ( newNode.getToIndex () );
-		moveDataMessage.setMoveToServer ( newNode );
-		try {
-			successorChannel.sendMessage ( moveDataMessage );
-		} catch ( IOException e ) {
-			logger.error ( "Start message couldn't be sent." );
-		}
-
-		try {
-			if ( successorChannel.receiveMessage ().getActionType () == ECSCommand.ACK ) {
-
-				// send metadat update
-				ECSMessage metaDataUpdate = new ECSMessage ();
-				metaDataUpdate.setActionType ( ECSCommand.SEND_METADATA );
-				metaDataUpdate.setMetaData ( activeServers );
-				for ( ServerInfo server : this.activeServers ) {
-					try {
-						ServerConnection serverChannel = activeConnections
-								.get ( server );
-						serverChannel.sendMessage ( metaDataUpdate );
-					} catch ( IOException e ) {
-						logger.error ( "Could not send message to server"
-								+ server + e.getMessage () );
-					}
-				}
-				logger.debug ( "Updated Meta-data handed to servers." );
-				// release the lock
-				ECSMessage releaseLock = new ECSMessage ();
-				releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
-				try {
-					successorChannel.sendMessage ( releaseLock );
-				} catch ( IOException e ) {
-					logger.error ( "Start message couldn't be sent." );
-				}
-
-				logger.debug ( "Successor lock released." );
+		
+		// tells the sucessor to send data to the newNode
+		if(sendData(successor, newNode, newNode.getFromIndex(), newNode.getToIndex()) == 0){	
+			
+			//sends MetaData to all the servers!
+			sendMetaData();
+			
+			// release the lock
+			ECSMessage releaseLock = new ECSMessage ();
+			releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
+			try {	
+				ServerConnection successorChannel = this.activeConnections
+						.get ( successor );
+				successorChannel.sendMessage ( releaseLock );
+			} catch ( IOException e ) {
+				logger.error ( "ReLease Lock message couldn't be sent." );
+				//TODO
+				// what to do in this case!??? should we remove this server 
+				//from the list?? or just wait for failure detection system
+				//to detect the failure
 			}
-		} catch ( IOException e ) {
-			logger.error ( e.getMessage () );
+			
+			logger.debug ( "Successor lock released." );
+		}
+		
+		// when move data from successor to the receiver was not successful
+		else{
+			logger.error("Could not move data from " + successor.getServerName() +" to " + newNode.getServerName());
+			logger.error("Operation addNode Not Successfull");
+			// server could not be started so remove it from the list!
+			activeServers.remove(newNode);
+			activeConnections.remove(newNode);
+			calculateMetaData(activeServers);
+			//TODO
+			// remove node method for a specific node!(not just random)
+			// removeNode(newNode)
+			return;
 		}
 	}
 
@@ -651,6 +627,78 @@ public class ECSImpl implements ECS {
 		return true;
 	}
 
+	
+	/**
+	 * tells the sender to send data in range(fromIndex,toIndex) to the reciever
+	 * @param Sender : (ServerInfo)The KVServer that sends the data
+	 * @param reciever: (ServerINfo) The KVServer that recieves the data 
+	 * @param fromIndex
+	 * @param toIndex
+	 * @return 0 in case of success and -1 otherwise
+	 */
+	private int sendData(ServerInfo sender, ServerInfo reciever, String fromIndex, String toIndex){
+		
+		// Set write lock (lockWrite()) on the sender node
+		ServerConnection successorChannel = this.activeConnections
+				.get ( sender );
+		ECSMessage writeLock = new ECSMessage ();
+		writeLock.setActionType ( ECSCommand.SET_WRITE_LOCK );
+		try {
+			successorChannel.sendMessage ( writeLock );
+		} catch ( IOException e ) {
+			logger.error ( "WriteLock message couldn't be sent to " + sender.getPort() );
+			return -1;
+		}
+
+		logger.debug ( "Sender node" + sender + " locked."
+				+ successorChannel.getServer () );
+		try {
+			Thread.sleep ( 200 );
+		} catch ( InterruptedException e1 ) {
+		}
+
+		// Invoke the transfer of the affected data items
+		ECSMessage moveDataMessage = new ECSMessage ();
+		moveDataMessage.setActionType ( ECSCommand.MOVE_DATA );
+		moveDataMessage.setMoveFromIndex ( fromIndex );
+		moveDataMessage.setMoveToIndex ( toIndex );
+		moveDataMessage.setMoveToServer ( reciever );
+		try {
+			successorChannel.sendMessage ( moveDataMessage );	
+		if ( successorChannel.receiveMessage ().getActionType () == ECSCommand.ACK )
+			return 0;
+		} catch ( IOException e ) {
+			logger.error ( "MoveData message couldn't be sent to  " + sender.getPort() );
+			return -1;
+		}
+		return -1;
+	}
+	
+	/**
+	 * send metaData to the activeServers (in case of initialization or metaData Update) 
+	 * @return
+	 */
+	private int sendMetaData(){
+		// send meta data 
+		ECSMessage metaDataUpdate = new ECSMessage ();
+		metaDataUpdate.setActionType ( ECSCommand.SEND_METADATA );
+		metaDataUpdate.setMetaData ( activeServers );
+		for ( ServerInfo server : this.activeServers ) {
+			try {
+				ServerConnection serverChannel = activeConnections
+						.get ( server );
+				serverChannel.sendMessage ( metaDataUpdate );
+			} catch ( IOException e ) {
+				logger.error ( "Could not send message to server"
+						+ server + e.getMessage () );
+				return -1;
+				}
+			}
+			logger.debug ( "Updated Meta-data handed to servers." );	
+			return 0;
+	}
+	
+	
 	private void cleanUpNode ( ServerInfo nodeToDelete ) {
 		for ( ServerInfo server : this.serverRepository ) {
 			if ( server.equals ( nodeToDelete ) ) {
