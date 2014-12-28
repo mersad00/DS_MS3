@@ -31,7 +31,7 @@ import org.apache.log4j.Logger;
 import utilities.LoggingManager;
 import common.ServerInfo;
 
-public class KVServer {
+public class KVServer extends Thread{
 
 	private static Logger logger ;
 	
@@ -60,6 +60,15 @@ public class KVServer {
 		logger = LoggingManager.getInstance ().createLogger ( this.getClass () );
 	}
 
+	public void run(){
+		try {
+			startServer();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 	/**
 	 * initialize and the starts the server on a given port and 
 	 * starts to loop and accepts new connections, then it generates
@@ -143,12 +152,20 @@ public class KVServer {
 				server = new KVServer ( Integer.parseInt ( args [ 0 ] ),  10 , "FIFO" );
 			
 			
-			server.startServer ();
-			if(server.isRunning()){
+			//server.startServer ();
+			Thread t = new Thread(server);
+			t.start();
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			if(t.isAlive()){
 				/* informing the ProcessInvoker of the ECS Machine that
 				 * the KVServer process started successfully
 				 */
-				System.out.write("\r".getBytes());
+				System.out.write("$SUCCESS$".getBytes());
 				System.out.flush();
 			}else{
 				System.out.write("$ERROR$".getBytes());
