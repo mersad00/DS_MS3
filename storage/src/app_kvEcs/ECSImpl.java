@@ -395,7 +395,6 @@ public class ECSImpl implements ECS {
 	 */
 	@Override
 	public void addNode () {
-		// steps to add new node:
 		int result = -1;
 		int i = 0;
 		ServerInfo newNode = new ServerInfo();
@@ -423,7 +422,7 @@ public class ECSImpl implements ECS {
 		
 		calculateMetaData ( activeServers );
 		
-		// 1.init the newNode and start it.
+		// 1.init the newNode.
 		ECSMessage initMessage = getInitMessage ( this.activeServers );
 		ServerConnection channel = new ServerConnection ( newNode );
 		try {
@@ -432,9 +431,9 @@ public class ECSImpl implements ECS {
 			activeConnections.put ( newNode , channel );
 			logger.info ( "The new node added" + newNode.getAddress() + ":" + newNode.getPort() );
 		} catch ( IOException e ) {
+			// server could not be initiated so remove it from the list!
 			logger.error ( " server node couldn't be initiated" + newNode.getAddress() + ":" +newNode.getPort() +
 					" Operation addNode Not Successfull");
-			// server could not be initiated so remove it from the list!
 			activeServers.remove(newNode);
 			calculateMetaData(activeServers);
 			//TODO
@@ -442,14 +441,15 @@ public class ECSImpl implements ECS {
 			return;
 		}
 		
+		//2. start the newNode
 		ECSMessage startMessage = new ECSMessage ();
 		startMessage.setActionType ( ECSCommand.START );
 		try {
 			channel.sendMessage ( startMessage );
 		} catch ( IOException e ) {
+			// server could not be started so remove it from the list!
 			logger.error ( "Start message couldn't be sent to " + newNode.getAddress() + 
 					":" +newNode.getPort() + " Operation addNode Not Successfull");
-			// server could not be started so remove it from the list!
 			activeServers.remove(newNode);
 			activeConnections.remove(newNode);
 			calculateMetaData(activeServers);
@@ -458,14 +458,14 @@ public class ECSImpl implements ECS {
 			return;
 		}
 		
-		// tells the sucessor to send data to the newNode
+		//3. tell the sucessor to send data to the newNode
 		ServerInfo successor = getSuccessor ( newNode );
 		if(sendData(successor, newNode, newNode.getFromIndex(), newNode.getToIndex()) == 0){	
 			
 			//sends MetaData to all the servers!
 			sendMetaData();
 			
-			// release the lock
+			//4. release the lock from the successor
 			ECSMessage releaseLock = new ECSMessage ();
 			releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
 			try {	
@@ -485,14 +485,13 @@ public class ECSImpl implements ECS {
 		
 		// when move data from successor to the receiver was not successful
 		else{
+			// data could not be moved to the newly added Server
 			logger.error("Could not move data from " + successor.getServerName() +" to " + newNode.getServerName());
 			logger.error("Operation addNode Not Successfull");
-			// server could not be started so remove it from the list!
 			activeServers.remove(newNode);
 			activeConnections.remove(newNode);
 			calculateMetaData(activeServers);
 			//TODO
-			// remove node method for a specific node!(not just random)
 			// removeNode(newNode)
 			return;
 		}
@@ -513,6 +512,57 @@ public class ECSImpl implements ECS {
 
 		return successor;
 	}
+	
+	
+	/**
+	 * gets a serverInfo and return two other Server info which
+	 * are responsible for keeping the replicated data of the first server
+	 * @param s
+	 * @return
+	 */
+	private List<ServerInfo> getReplicas(ServerInfo s){
+		if(activeServers.contains(s)){
+			int i,r1,r2,l;
+			l = activeServers.size();
+			i = activeServers.indexOf(s);
+			r1 = i + 1;
+			r2 = i + 2;
+			r1 %= l;
+			r2 %= l;
+			ArrayList<ServerInfo> replicas = new ArrayList<ServerInfo>();
+			replicas.add(activeServers.get(r1));
+			replicas.add(activeServers.get(r2));
+			return replicas;
+		}
+		else return null;
+	}
+	
+	
+	/**
+	 * returns the two server which, the server s is keeping their replicated data
+	 * @param s
+	 * @return
+	 */
+	private List<ServerInfo> getMasters(ServerInfo s){
+		if(activeServers.contains(s)){
+			int i,m1,m2,l;
+			i = activeServers.indexOf(s);
+			l = activeServers.size();
+			m1 = i -1;
+			m2 = i -2;
+			if(m1 < 0)
+				m1 += l;
+			if(m2 < 0)
+				m2 += l;
+			ArrayList<ServerInfo> masters = new ArrayList<ServerInfo>();
+			masters.add(activeServers.get(m1));
+			masters.add(activeServers.get(m2));
+			return masters;
+		}
+		else return null;
+	}
+	
+	
 
 	/**
 	 * Gets a new node from repo to start
@@ -563,6 +613,8 @@ public class ECSImpl implements ECS {
 				.get ( nodeToDelete );
 		ServerConnection successorChannel = this.activeConnections
 				.get ( successor );
+		
+		//1. set lock on the nodeToDelete
 		ECSMessage writeLock = new ECSMessage ();
 		writeLock.setActionType ( ECSCommand.SET_WRITE_LOCK );
 		try {
@@ -574,11 +626,10 @@ public class ECSImpl implements ECS {
 
 		logger.debug ( "Node to delete " + nodeToDelete + " locked." );
 
-		// Send meta-data update to the successor node
+		//2.s Send meta-data update to the successor node
 		ECSMessage metaDataUpdate = new ECSMessage ();
 		metaDataUpdate.setActionType ( ECSCommand.SEND_METADATA );
 		metaDataUpdate.setMetaData ( activeServers );
-
 		try {
 			successorChannel.sendMessage ( metaDataUpdate );
 		} catch ( IOException e ) {
@@ -591,12 +642,14 @@ public class ECSImpl implements ECS {
 		} catch ( InterruptedException e1 ) {
 		}
 		
-		// Invoke the transfer of the affected data items
+		//3. Invoke the transfer of the affected data items
 		if(sendData(nodeToDelete, successor, nodeToDelete.getFromIndex (),
 				nodeToDelete.getToIndex ()) == 0){
 				
-			// send metadat update
+			//4. send metadat update to all
 			sendMetaData();
+			
+			//5. shut down the nodetoDelete
 			ECSMessage shutDown = new ECSMessage ();
 			shutDown.setActionType ( ECSCommand.SHUT_DOWN );
 			try {
@@ -607,8 +660,9 @@ public class ECSImpl implements ECS {
 				}
 		}
 		else{
+			// move data from nodeToDelet failed
+			//getting back the system to the previous stage:(before removing)
 			logger.error("SendData Unsuccessful! Delete Node Operation failed" );
-			//getting back the system to the previous stage:
 			logger.error("Getting back the system to the previous state ");
 			try {
 				this.activeServers.add(nodeToDelete);
@@ -623,6 +677,7 @@ public class ECSImpl implements ECS {
 						+ e.getMessage () );
 			}
 		}
+		
 		
 		cleanUpNode ( nodeToDelete );
 		return true;
@@ -700,8 +755,6 @@ public class ECSImpl implements ECS {
 			logger.debug ( "Updated Meta-data handed to servers." );	
 			return 0;
 	}
-	
-	
 	
 	
 	private void cleanUpNode ( ServerInfo nodeToDelete ) {
