@@ -436,8 +436,6 @@ public class ECSImpl implements ECS {
 					" Operation addNode Not Successfull");
 			activeServers.remove(newNode);
 			calculateMetaData(activeServers);
-			//TODO
-			//maybe use the removeNode(newNode)
 			return;
 		}
 		
@@ -453,25 +451,41 @@ public class ECSImpl implements ECS {
 			activeServers.remove(newNode);
 			activeConnections.remove(newNode);
 			calculateMetaData(activeServers);
-			//TODO
-			// maybe use the removeNode(newNode)
 			return;
 		}
 		
-		//3. tell the sucessor to send data to the newNode
+		/*3. tell the sucessor to send data to the newNode
+		 * tell the two new Masters to send their data for replication to the newNode
+		 */
 		ServerInfo successor = getSuccessor ( newNode );
-		if(sendData(successor, newNode, newNode.getFromIndex(), newNode.getToIndex()) == 0){	
+		List <ServerInfo> masters = getMasters(newNode); 
+		if(sendData(successor, newNode, newNode.getFromIndex(), newNode.getToIndex()) == 0 &&
+				sendData(masters.get(0), newNode, masters.get(0).getFromIndex(), masters.get(0).getToIndex()) == 0 &&
+				sendData(masters.get(1), newNode, masters.get(1).getFromIndex(), masters.get(1).getToIndex()) == 0){	
+			
+			/*4.tell to the next two nodes (newNodes replicas) to delete their replicated data which they 
+			 * used to store from newNode's Masters
+			 */
+			List <ServerInfo> replicas = getReplicas(newNode); 
+			removeData(replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex());
+			removeData(replicas.get(1), masters.get(1).getFromIndex(), masters.get(1).getToIndex());
+			
+			//5. tell the two replicas to store replicated data from newNode
+			if(	sendData(replicas.get(0), newNode, newNode.getFromIndex(), newNode.getToIndex()) == 1 ||
+				sendData(replicas.get(1), newNode, newNode.getFromIndex(), newNode.getToIndex()) == 1)
+				logger.warn("One or two of the replication operation for node " + newNode.getAddress()
+						+ ":" + newNode.getPort() + "failed");
 			
 			//sends MetaData to all the servers!
 			sendMetaData();
 			
-			//4. release the lock from the successor
+			//6. release the lock from the successor
 			ECSMessage releaseLock = new ECSMessage ();
 			releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
 			try {	
-				ServerConnection successorChannel = this.activeConnections
-						.get ( successor );
-				successorChannel.sendMessage ( releaseLock );
+			ServerConnection successorChannel = this.activeConnections
+					.get ( successor );
+			successorChannel.sendMessage ( releaseLock );
 			} catch ( IOException e ) {
 				logger.error ( "ReLease Lock message couldn't be sent." );
 				//TODO
@@ -491,8 +505,6 @@ public class ECSImpl implements ECS {
 			activeServers.remove(newNode);
 			activeConnections.remove(newNode);
 			calculateMetaData(activeServers);
-			//TODO
-			// removeNode(newNode)
 			return;
 		}
 	}
@@ -530,6 +542,7 @@ public class ECSImpl implements ECS {
 			r1 %= l;
 			r2 %= l;
 			ArrayList<ServerInfo> replicas = new ArrayList<ServerInfo>();
+			// first add the replica which is closer to the new node
 			replicas.add(activeServers.get(r1));
 			replicas.add(activeServers.get(r2));
 			return replicas;
@@ -555,8 +568,9 @@ public class ECSImpl implements ECS {
 			if(m2 < 0)
 				m2 += l;
 			ArrayList<ServerInfo> masters = new ArrayList<ServerInfo>();
-			masters.add(activeServers.get(m1));
+			//first add the master which is far from the node
 			masters.add(activeServers.get(m2));
+			masters.add(activeServers.get(m1));
 			return masters;
 		}
 		else return null;
@@ -731,6 +745,34 @@ public class ECSImpl implements ECS {
 		return -1;
 	}
 	
+
+	/**
+	 * tell the Server s to remove one of its replication storages
+	 */
+	private int removeData(ServerInfo server, String fromIndex, String toIndex){
+		// Invoke the removal of the replicated data items
+		//TODO change the ECSMessage if a new ECSMessage is defined for data removal 
+		ECSMessage moveDataMessage = new ECSMessage ();
+		moveDataMessage.setActionType ( ECSCommand.REMOVE_DATA );
+		moveDataMessage.setMoveFromIndex ( fromIndex );
+		moveDataMessage.setMoveToIndex ( toIndex );
+		moveDataMessage.setMoveToServer ( null );
+		try {
+			ServerConnection serverChannel = this.activeConnections
+					.get ( server );
+			serverChannel.connect();
+			serverChannel.sendMessage ( moveDataMessage );	
+			if ( serverChannel.receiveMessage ().getActionType () == ECSCommand.ACK ){
+				logger.info("Delete data Message sent to " + server.getAddress() + ":" + server.getPort());
+				return 0;
+			}
+		}catch ( IOException e ) {
+			logger.error ( "MoveData message couldn't be sent to  " + server.getAddress() + ":" + server.getPort() );
+			return -1;
+		}
+		return -1;
+
+	}
 	
 	/**
 	 * send metaData to the activeServers (in case of initialization or metaData Update) 
