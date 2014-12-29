@@ -454,6 +454,11 @@ public class ECSImpl implements ECS {
 			return;
 		}
 		
+		logger.debug("$$$$$$");
+		for(ServerInfo s: activeServers)
+			logger.debug(s.getPort());
+		logger.debug("$$$$$$");
+		
 		/*3. tell the sucessor to send data to the newNode
 		 * tell the two new Masters to send their data for replication to the newNode
 		 */
@@ -463,18 +468,29 @@ public class ECSImpl implements ECS {
 				sendData(masters.get(0), newNode, masters.get(0).getFromIndex(), masters.get(0).getToIndex()) == 0 &&
 				sendData(masters.get(1), newNode, masters.get(1).getFromIndex(), masters.get(1).getToIndex()) == 0){	
 			
+			logger.debug("Send move data to two new masters : " +
+			masters.get(0).getPort() + "   " + masters.get(1).getPort());
+			
 			/*4.tell to the next two nodes (newNodes replicas) to delete their replicated data which they 
 			 * used to store from newNode's Masters
 			 */
 			List <ServerInfo> replicas = getReplicas(newNode); 
-			removeData(replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex());
+			/*removeData(replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex());
 			removeData(replicas.get(1), masters.get(1).getFromIndex(), masters.get(1).getToIndex());
 			
+			logger.debug("Send remove data to two new replicas : " +
+					replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
+					
+			*/
 			//5. tell the two replicas to store replicated data from newNode
 			if(	sendData(replicas.get(0), newNode, newNode.getFromIndex(), newNode.getToIndex()) == 1 ||
 				sendData(replicas.get(1), newNode, newNode.getFromIndex(), newNode.getToIndex()) == 1)
 				logger.warn("One or two of the replication operation for node " + newNode.getAddress()
 						+ ":" + newNode.getPort() + "failed");
+			
+			logger.debug("Send move data to two new replicas : " +
+					replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
+			
 			
 			//sends MetaData to all the servers!
 			sendMetaData();
@@ -715,6 +731,7 @@ public class ECSImpl implements ECS {
 		ECSMessage writeLock = new ECSMessage ();
 		writeLock.setActionType ( ECSCommand.SET_WRITE_LOCK );
 		try {
+			senderChannel.connect();
 			senderChannel.sendMessage ( writeLock );
 		} catch ( IOException e ) {
 			logger.error ( "WriteLock message couldn't be sent to " + sender.getPort() );
@@ -736,8 +753,10 @@ public class ECSImpl implements ECS {
 		moveDataMessage.setMoveToServer ( reciever );
 		try {
 			senderChannel.sendMessage ( moveDataMessage );	
-		if ( senderChannel.receiveMessage ().getActionType () == ECSCommand.ACK )
+		if ( senderChannel.receiveMessage ().getActionType () == ECSCommand.ACK ){
+			senderChannel.disconnect();
 			return 0;
+		}
 		} catch ( IOException e ) {
 			logger.error ( "MoveData message couldn't be sent to  " + sender.getPort() );
 			return -1;
@@ -761,9 +780,17 @@ public class ECSImpl implements ECS {
 			ServerConnection serverChannel = this.activeConnections
 					.get ( server );
 			serverChannel.connect();
+			
+			logger.debug("in removeData after connecting to " + server.getPort());
+			
 			serverChannel.sendMessage ( moveDataMessage );	
+			
+
+			logger.debug("in removeData after sending to " + server.getPort());
+			
 			if ( serverChannel.receiveMessage ().getActionType () == ECSCommand.ACK ){
 				logger.info("Delete data Message sent to " + server.getAddress() + ":" + server.getPort());
+				serverChannel.disconnect();
 				return 0;
 			}
 		}catch ( IOException e ) {
