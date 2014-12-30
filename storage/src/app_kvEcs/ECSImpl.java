@@ -498,16 +498,20 @@ public class ECSImpl implements ECS {
 			
 			logger.debug("<<<< removing old replicated data from the two next nodes after the "
 					+ "new node >>>>>");
+			
 			/*4.tell to the next two nodes (newNodes replicas) to delete their replicated data which they 
 			 * used to store from newNode's Masters
 			 */
 			List <ServerInfo> replicas = getReplicas(newNode); 
-			removeData(replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex());
-			removeData(replicas.get(1), masters.get(1).getFromIndex(), masters.get(1).getToIndex());
-			
-			logger.debug("remove data message was sent to two new replicas : " +
-					replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
-					
+			int r = removeData(replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex());
+			r += removeData(replicas.get(1), masters.get(1).getFromIndex(), masters.get(1).getToIndex());
+			if(r == 0 )
+				logger.debug("remove data message was sent to two new replicas : " +
+						replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
+			else
+				logger.warn("remove data message could not be sent to two new replicas : " +
+						replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
+				
 			
 			logger.debug("<<<< sending new Nodes data to the new replicas >>>>");
 			//5. tell the two replicas to store replicated data from newNode
@@ -671,6 +675,15 @@ public class ECSImpl implements ECS {
 	 */
 	private boolean removeNode(ServerInfo nodeToDelete){
 		ServerInfo successor = getSuccessor ( nodeToDelete );
+		List <ServerConnection> locked = new ArrayList<ServerConnection>();
+		List <ServerInfo> masters = getMasters(nodeToDelete);
+		List <ServerInfo> replicas = getReplicas(nodeToDelete);
+
+		logger.debug("$$$$$$");
+		for(ServerInfo s: activeServers)
+			logger.debug(s.getPort());
+		logger.debug("$$$$$$");
+				
 		this.activeServers.remove ( nodeToDelete );
 		calculateMetaData ( this.activeServers );
 		
@@ -678,17 +691,22 @@ public class ECSImpl implements ECS {
 				.get ( nodeToDelete );
 		ServerConnection successorChannel = this.activeConnections
 				.get ( successor );
-		
-		//1. set lock on the nodeToDelete
+
+		/*
+		 * //1. set lock on the nodeToDelete
 		ECSMessage writeLock = new ECSMessage ();
 		writeLock.setActionType ( ECSCommand.SET_WRITE_LOCK );
+		List <ServerConnection> locked = new ArrayList<ServerConnection>();
 		try {
+			nodeToDeleteChannel.connect();
 			nodeToDeleteChannel.sendMessage ( writeLock );
+			locked.add(nodeToDeleteChannel);
 		} catch ( IOException e ) {
 			logger.error ( "Write lock message couldn't be sent."
 					+ e.getMessage () );
 		}
-
+		*/
+			
 		logger.debug ( "Node to delete " + nodeToDelete + " locked." );
 
 		//2.s Send meta-data update to the successor node
@@ -696,7 +714,9 @@ public class ECSImpl implements ECS {
 		metaDataUpdate.setActionType ( ECSCommand.SEND_METADATA );
 		metaDataUpdate.setMetaData ( activeServers );
 		try {
+			successorChannel.connect();
 			successorChannel.sendMessage ( metaDataUpdate );
+			successorChannel.disconnect();
 		} catch ( IOException e ) {
 			logger.error ( "Meta-data update couldn't be sent."
 					+ e.getMessage () );
@@ -707,14 +727,31 @@ public class ECSImpl implements ECS {
 		} catch ( InterruptedException e1 ) {
 		}
 		
+		logger.debug("<<<< invoking transfers of data >>>>");
 		//3. Invoke the transfer of the affected data items
-		if(sendData(nodeToDelete, successor, nodeToDelete.getFromIndex (),
-				nodeToDelete.getToIndex ()) == 0){
-				
-			//4. send metadat update to all
+		//4.invoke the two masters to send their data as replicas to the two replicas
+		if(sendData(nodeToDelete, successor, nodeToDelete.getFromIndex (),nodeToDelete.getToIndex ()) == 0 
+				&&
+				sendData(masters.get(0), replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex()) == 0 
+				&&
+				sendData(masters.get(1), replicas.get(1), masters.get(1).getFromIndex(), masters.get(1).getToIndex()) == 0)
+			{
+			
+			locked.add(activeConnections.get(masters.get(0)));
+			locked.add(activeConnections.get(masters.get(1)));
+			
+
+			logger.debug("Data sent from " + nodeToDelete.getPort() + " to "
+					+ successor.getPort());
+			logger.debug("Data for replication sent from " + masters.get(0).getPort() + " to "
+					+ replicas.get(0).getPort());
+			logger.debug("Data sent for replication from " + masters.get(1).getPort() + " to "
+					+ replicas.get(1).getPort());
+			
+			//5. send metadat update to all
 			sendMetaData();
 			
-			//5. shut down the nodetoDelete
+			//6. shut down the nodetoDelete
 			ECSMessage shutDown = new ECSMessage ();
 			shutDown.setActionType ( ECSCommand.SHUT_DOWN );
 			try {
@@ -734,6 +771,7 @@ public class ECSImpl implements ECS {
 				ECSMessage releaseLock = new ECSMessage ();
 				releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
 				nodeToDeleteChannel.sendMessage ( releaseLock );
+				nodeToDeleteChannel.disconnect();
 				calculateMetaData(activeServers);
 				sendMetaData();
 				return false;
@@ -744,7 +782,31 @@ public class ECSImpl implements ECS {
 		}
 		
 		
+		logger.debug("releasing all locks!! ");
+		//7. step releasing all locks
+		ECSMessage releaseLock = new ECSMessage ();
+		releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
+		try {	
+			for(ServerConnection sChannel:locked){
+				sChannel.connect();
+				sChannel.sendMessage ( releaseLock );
+				sChannel.disconnect();
+				logger.debug("lock on " + sChannel.getServer().getPort() + " released");
+			}
+		logger.debug ( "All locks are released." );
+		} catch ( IOException e ) {
+			logger.error ( "ReLease Lock message couldn't be sent." );
+			//TODO
+			// what to do in this case!??? should we remove this server 
+			//from the list?? or just wait for failure detection system
+			//to detect the failure
+		}
+		nodeToDeleteChannel.disconnect();
 		cleanUpNode ( nodeToDelete );
+		logger.debug("$$$$$$ New SYSTEM STATE $$$$$$");
+		for(ServerInfo s: activeServers)
+			logger.debug(s.getPort());
+		logger.debug("$$$$$$");
 		return true;
 
 	}
@@ -761,8 +823,10 @@ public class ECSImpl implements ECS {
 	private int sendData(ServerInfo sender, ServerInfo reciever, String fromIndex, String toIndex){
 		
 		// Set write lock (lockWrite()) on the sender node
-		ServerConnection senderChannel = this.activeConnections
-				.get ( sender );
+		/*ServerConnection serverChannel = this.activeConnections
+				.get ( sender );*/
+		// in order to handle concurrent send from the same serverConnection I used new objects!
+		ServerConnection senderChannel = new ServerConnection(sender);
 		ECSMessage writeLock = new ECSMessage ();
 		writeLock.setActionType ( ECSCommand.SET_WRITE_LOCK );
 		try {
@@ -793,17 +857,19 @@ public class ECSImpl implements ECS {
 			temp.start();
 			//3000 is timeout
 			synchronized (temp) {
-			temp.wait(2000);
+			temp.wait(3000);
 			}
 			// sender channel got the Ack message
 			if(senderChannel.gotResponse()){
 				logger.debug("Successfully got the Ack from " + sender.getPort());
+				senderChannel.setResponse(false);
 				return 0;
 			}
 			else{
 				logger.warn(" TimeOut reached ! could not recieve Message from "
 					+ senderChannel.getServer().getPort());
 				senderChannel.disconnect();
+				senderChannel.setResponse(false);
 				return -1;
 			}
 			
@@ -831,25 +897,29 @@ public class ECSImpl implements ECS {
 		moveDataMessage.setMoveToIndex ( toIndex );
 		moveDataMessage.setMoveToServer ( null );
 		try {
-			ServerConnection serverChannel = this.activeConnections
-					.get ( server );
+			/*ServerConnection serverChannel = this.activeConnections
+					.get ( server );*/
+			// in order to handle concurrent send from the same serverConnection I used new objects!
+			ServerConnection serverChannel = new ServerConnection(server);
 			serverChannel.connect();
-			serverChannel.sendMessage ( moveDataMessage );	
+			serverChannel.sendMessage ( moveDataMessage );
 			Thread temp = new Thread(serverChannel);
-			temp.start();
-			//2000 is timeout
+			temp.start();	
+			//3000 is timeout
 			synchronized (temp) {
-				temp.wait(2000);
+				temp.wait(3000);
 			}
 			// sender channel got the Ack message
 			if(serverChannel.gotResponse()){
 				logger.debug("Successfully got the Ack from" + server.getPort());
+				serverChannel.setResponse(false);
 				return 0;
 			}
 			else{
 				logger.warn(" TimeOut reached ! could not recieve Message from "
 					+ serverChannel.getServer().getPort());
 				serverChannel.disconnect();
+				serverChannel.setResponse(false);
 				return -1;
 			}	
 		}catch ( IOException e ) {
