@@ -165,6 +165,8 @@ public class ECSImpl implements ECS {
 				channel.connect ();
 				channel.sendMessage ( initMessage );
 				activeConnections.put ( server , channel );
+				//added this line to
+				channel.disconnect();
 			} catch ( IOException e ) {
 				logger.error ( "One server node couldn't be initiated" + server );
 				// this.activeServers.remove(server);
@@ -330,6 +332,7 @@ public class ECSImpl implements ECS {
 		return md5Hasher;
 	}
 
+	
 	@Override
 	public void start () {
 		// communicate with servers and send call init
@@ -338,7 +341,11 @@ public class ECSImpl implements ECS {
 		for ( ServerInfo server : this.activeServers ) {
 			try {
 				ServerConnection channel = activeConnections.get ( server );
+				// added connect
+				channel.connect();
 				channel.sendMessage ( startMessage );
+				// added disconnect
+				channel.disconnect();
 			} catch ( IOException e ) {
 				logger.error ( "Could not send message to server" + server
 						+ e.getMessage () );
@@ -357,8 +364,11 @@ public class ECSImpl implements ECS {
 		for ( ServerInfo server : this.activeServers ) {
 			try {
 				ServerConnection channel = activeConnections.get ( server );
+				// added this line
+				channel.connect();
 				channel.sendMessage ( shutDownMessage );
-
+				//added this line
+				channel.disconnect();
 			} catch ( IOException e ) {
 				logger.error ( "Could not send message to server" + server
 						+ e.getMessage () );
@@ -380,7 +390,11 @@ public class ECSImpl implements ECS {
 		for ( ServerInfo server : this.activeServers ) {
 			try {
 				ServerConnection channel = activeConnections.get ( server );
+				// added this line
+				channel.connect();
 				channel.sendMessage ( stopMessage );
+				// added this line
+				channel.disconnect();
 			} catch ( IOException e ) {
 				logger.error ( "Could not send message to server" + server
 						+ e.getMessage () );
@@ -435,6 +449,8 @@ public class ECSImpl implements ECS {
 			logger.error ( " server node couldn't be initiated" + newNode.getAddress() + ":" +newNode.getPort() +
 					" Operation addNode Not Successfull");
 			activeServers.remove(newNode);
+			channel.disconnect();
+			activeConnections.remove(channel);
 			calculateMetaData(activeServers);
 			return;
 		}
@@ -449,6 +465,7 @@ public class ECSImpl implements ECS {
 			logger.error ( "Start message couldn't be sent to " + newNode.getAddress() + 
 					":" +newNode.getPort() + " Operation addNode Not Successfull");
 			activeServers.remove(newNode);
+			channel.disconnect();
 			activeConnections.remove(newNode);
 			calculateMetaData(activeServers);
 			return;
@@ -462,46 +479,65 @@ public class ECSImpl implements ECS {
 		/*3. tell the sucessor to send data to the newNode
 		 * tell the two new Masters to send their data for replication to the newNode
 		 */
+		logger.debug("<<<<< Getting data from the successor and two masters >>>>>");
 		ServerInfo successor = getSuccessor ( newNode );
-		List <ServerInfo> masters = getMasters(newNode); 
+		List <ServerInfo> masters = getMasters(newNode);
+		List <ServerConnection> locked = new ArrayList<ServerConnection>();
+		
 		if(sendData(successor, newNode, newNode.getFromIndex(), newNode.getToIndex()) == 0 &&
 				sendData(masters.get(0), newNode, masters.get(0).getFromIndex(), masters.get(0).getToIndex()) == 0 &&
 				sendData(masters.get(1), newNode, masters.get(1).getFromIndex(), masters.get(1).getToIndex()) == 0){	
 			
-			logger.debug("Send move data to two new masters : " +
+			locked.add(activeConnections.get(successor));
+			locked.add(activeConnections.get(masters.get(0)));
+			locked.add(activeConnections.get(masters.get(1)));
+			
+			
+			logger.debug("move data message was sent to the new masters : " +
 			masters.get(0).getPort() + "   " + masters.get(1).getPort());
 			
+			logger.debug("<<<< removing old replicated data from the two next nodes after the "
+					+ "new node >>>>>");
 			/*4.tell to the next two nodes (newNodes replicas) to delete their replicated data which they 
 			 * used to store from newNode's Masters
 			 */
 			List <ServerInfo> replicas = getReplicas(newNode); 
-			/*removeData(replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex());
+			removeData(replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex());
 			removeData(replicas.get(1), masters.get(1).getFromIndex(), masters.get(1).getToIndex());
 			
-			logger.debug("Send remove data to two new replicas : " +
+			logger.debug("remove data message was sent to two new replicas : " +
 					replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
 					
-			*/
+			
+			logger.debug("<<<< sending new Nodes data to the new replicas >>>>");
 			//5. tell the two replicas to store replicated data from newNode
-			if(	sendData(replicas.get(0), newNode, newNode.getFromIndex(), newNode.getToIndex()) == 1 ||
-				sendData(replicas.get(1), newNode, newNode.getFromIndex(), newNode.getToIndex()) == 1)
-				logger.warn("One or two of the replication operation for node " + newNode.getAddress()
+			if(	sendData(newNode, replicas.get(0), newNode.getFromIndex(), newNode.getToIndex()) == 1 ||
+				sendData(newNode, replicas.get(1), newNode.getFromIndex(), newNode.getToIndex()) == 1)
+					logger.warn("One or two of the replication operation for node " + newNode.getAddress()
 						+ ":" + newNode.getPort() + "failed");
-			
-			logger.debug("Send move data to two new replicas : " +
+			else{
+				logger.debug("move data was sent to new Node to move"
+						+ " its replication to two new replicas : " +
 					replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
-			
+				locked.add(activeConnections.get(newNode));
+
+			}
+			channel.disconnect();
 			
 			//sends MetaData to all the servers!
 			sendMetaData();
 			
-			//6. release the lock from the successor
+			logger.debug("releaing the locks");
+			//6. release the lock from the successor, new Node and masters
 			ECSMessage releaseLock = new ECSMessage ();
 			releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
 			try {	
-			ServerConnection successorChannel = this.activeConnections
-					.get ( successor );
-			successorChannel.sendMessage ( releaseLock );
+				for(ServerConnection sChannel:locked){
+					sChannel.connect();
+					sChannel.sendMessage ( releaseLock );
+					sChannel.disconnect();
+				}
+			logger.debug ( "All locks are released." );
 			} catch ( IOException e ) {
 				logger.error ( "ReLease Lock message couldn't be sent." );
 				//TODO
@@ -509,8 +545,6 @@ public class ECSImpl implements ECS {
 				//from the list?? or just wait for failure detection system
 				//to detect the failure
 			}
-			
-			logger.debug ( "Successor lock released." );
 		}
 		
 		// when move data from successor to the receiver was not successful
@@ -519,6 +553,7 @@ public class ECSImpl implements ECS {
 			logger.error("Could not move data from " + successor.getServerName() +" to " + newNode.getServerName());
 			logger.error("Operation addNode Not Successfull");
 			activeServers.remove(newNode);
+			channel.disconnect();
 			activeConnections.remove(newNode);
 			calculateMetaData(activeServers);
 			return;
@@ -735,6 +770,7 @@ public class ECSImpl implements ECS {
 			senderChannel.sendMessage ( writeLock );
 		} catch ( IOException e ) {
 			logger.error ( "WriteLock message couldn't be sent to " + sender.getPort() );
+			senderChannel.disconnect();
 			return -1;
 		}
 
@@ -752,16 +788,34 @@ public class ECSImpl implements ECS {
 		moveDataMessage.setMoveToIndex ( toIndex );
 		moveDataMessage.setMoveToServer ( reciever );
 		try {
-			senderChannel.sendMessage ( moveDataMessage );	
-		if ( senderChannel.receiveMessage ().getActionType () == ECSCommand.ACK ){
-			senderChannel.disconnect();
-			return 0;
-		}
+			senderChannel.sendMessage ( moveDataMessage );
+			Thread temp = new Thread(senderChannel);
+			temp.start();
+			//3000 is timeout
+			synchronized (temp) {
+			temp.wait(2000);
+			}
+			// sender channel got the Ack message
+			if(senderChannel.gotResponse()){
+				logger.debug("Successfully got the Ack from " + sender.getPort());
+				return 0;
+			}
+			else{
+				logger.warn(" TimeOut reached ! could not recieve Message from "
+					+ senderChannel.getServer().getPort());
+				senderChannel.disconnect();
+				return -1;
+			}
+			
 		} catch ( IOException e ) {
 			logger.error ( "MoveData message couldn't be sent to  " + sender.getPort() );
+			senderChannel.disconnect();
+			return -1;
+		} catch (InterruptedException e) {
+			logger.error ( "MoveData message couldn't be sent to  " + sender.getPort() );
+			senderChannel.disconnect();
 			return -1;
 		}
-		return -1;
 	}
 	
 
@@ -780,25 +834,31 @@ public class ECSImpl implements ECS {
 			ServerConnection serverChannel = this.activeConnections
 					.get ( server );
 			serverChannel.connect();
-			
-			logger.debug("in removeData after connecting to " + server.getPort());
-			
 			serverChannel.sendMessage ( moveDataMessage );	
-			
-
-			logger.debug("in removeData after sending to " + server.getPort());
-			
-			if ( serverChannel.receiveMessage ().getActionType () == ECSCommand.ACK ){
-				logger.info("Delete data Message sent to " + server.getAddress() + ":" + server.getPort());
-				serverChannel.disconnect();
+			Thread temp = new Thread(serverChannel);
+			temp.start();
+			//2000 is timeout
+			synchronized (temp) {
+				temp.wait(2000);
+			}
+			// sender channel got the Ack message
+			if(serverChannel.gotResponse()){
+				logger.debug("Successfully got the Ack from" + server.getPort());
 				return 0;
 			}
+			else{
+				logger.warn(" TimeOut reached ! could not recieve Message from "
+					+ serverChannel.getServer().getPort());
+				serverChannel.disconnect();
+				return -1;
+			}	
 		}catch ( IOException e ) {
-			logger.error ( "MoveData message couldn't be sent to  " + server.getAddress() + ":" + server.getPort() );
+			logger.error ( "RemoveData message couldn't be sent to  " + server.getAddress() + ":" + server.getPort() );
+			return -1;
+		}catch(InterruptedException e){
+			logger.error ( "RemoveData message couldn't be sent to  " + server.getAddress() + ":" + server.getPort() );
 			return -1;
 		}
-		return -1;
-
 	}
 	
 	/**
@@ -814,13 +874,16 @@ public class ECSImpl implements ECS {
 			try {
 				ServerConnection serverChannel = activeConnections
 						.get ( server );
+				serverChannel.connect();
 				serverChannel.sendMessage ( metaDataUpdate );
+				serverChannel.disconnect();
 			} catch ( IOException e ) {
 				logger.error ( "Could not send message to server"
 						+ server + e.getMessage () );
 				return -1;
 				}
 			}
+		
 			logger.debug ( "Updated Meta-data handed to servers." );	
 			return 0;
 	}
