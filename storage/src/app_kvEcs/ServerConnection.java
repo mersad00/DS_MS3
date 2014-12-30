@@ -8,17 +8,17 @@ import java.net.Socket;
 import org.apache.log4j.Logger;
 
 import client.SerializationUtil;
-
 import common.ServerInfo;
 
-public class ServerConnection {
+public class ServerConnection extends Thread{
 
 	private Logger logger = Logger.getRootLogger ();
 
 	private Socket connection;
 	private OutputStream output;
 	private InputStream input;
-
+	private boolean connected;
+	private boolean response;
 	private static final int BUFFER_SIZE = 1024;
 	private static final int DROP_SIZE = 1024 * BUFFER_SIZE;
 
@@ -41,13 +41,34 @@ public class ServerConnection {
 		this.server = serverInfo;
 	}
 
+	public void run(){
+		try{
+			while(isConnected()){
+				ECSMessage e =  receiveMessage();
+				if ( e.getActionType () == ECSCommand.ACK ){
+					synchronized (this) {
+						setResponse(true);
+						notify();
+					}
+					disconnect();
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			logger.error(e);
+		}
+		finally{
+			disconnect();
+		}
+	}
+	
 	public void connect () throws IOException {
 		try {
 			connection = new Socket ( server.getAddress () , server.getPort () );
 			output     = connection.getOutputStream ();
 			input      = connection.getInputStream  ();
-			
-			logger.info ( "Connection established with " + server.toString () );
+			connected = true;
+			//logger.info ( "Connection established with " + server.toString () );
 		} catch ( IOException ioe ) {
 
 			logger.error ( "Connection could not be established!" );
@@ -56,7 +77,7 @@ public class ServerConnection {
 	}
 
 	
-	public void disconnect () {
+	public synchronized void disconnect () {
 		try {
 			tearDownConnection ();
 		} catch ( IOException ioe ) {
@@ -65,18 +86,20 @@ public class ServerConnection {
 	}
 
 	private void tearDownConnection () throws IOException {
-		logger.info ( "tearing down the connection ..." );
+	//	logger.info ( "tearing down the connection ..." );
 		if ( connection != null ) {
 			input.close ();
 			output.close ();
 			connection.close ();
 			connection = null;
-
-			logger.info ( "connection closed!" );
+			connected = false;
+		//	logger.info ( "connection closed!" );
 		}
 	}
 
-	
+	public synchronized boolean isConnected(){
+		return connected;
+	}
 
 	public ECSMessage receiveMessage () throws IOException {
 		int index = 0;
@@ -151,5 +174,12 @@ public class ServerConnection {
 	public void setServer(ServerInfo server) {
 	    this.server = server;
 	}
+	
+	public synchronized boolean gotResponse(){
+		return response;
+	}
 
+	public synchronized  void setResponse(boolean response){
+		this.response = response;;
+	}
 }
