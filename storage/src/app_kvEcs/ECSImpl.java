@@ -413,6 +413,12 @@ public class ECSImpl implements ECS {
 		int i = 0;
 		ServerInfo newNode = new ServerInfo();
 		
+		logger.debug("$$$$$$ SYSTEM BEFORE ADDING A NODE $$$$$$");
+		for(ServerInfo s: activeServers)
+			logger.debug(s.getPort());
+		logger.debug("$$$$$$");
+		
+		
 		//search in serverRepository to find the servers which are
 		//not active (not launched yet), and try to launch them
 		while(i < (serverRepository.size() -1 )){
@@ -679,7 +685,7 @@ public class ECSImpl implements ECS {
 		List <ServerInfo> masters = getMasters(nodeToDelete);
 		List <ServerInfo> replicas = getReplicas(nodeToDelete);
 
-		logger.debug("$$$$$$");
+		logger.debug("$$$$$$ SYSTEM BEFORE REMOVING $$$$$$");
 		for(ServerInfo s: activeServers)
 			logger.debug(s.getPort());
 		logger.debug("$$$$$$");
@@ -728,9 +734,42 @@ public class ECSImpl implements ECS {
 		}
 		
 		logger.debug("<<<< invoking transfers of data >>>>");
+		
+		// special cases when we would have just one or two nodes left after removal
+		if(activeServers.size() <=2 ){
+			
+			if(activeServers.size() ==2 ){
+			
+				sendData(activeServers.get(0), activeServers.get(1), activeServers.get(0).getFromIndex(), activeServers.get(0).getToIndex());
+				sendData(activeServers.get(1), activeServers.get(0), activeServers.get(1).getFromIndex(), activeServers.get(1).getToIndex());
+				locked.add(activeConnections.get(activeServers.get(0)));
+				locked.add(activeConnections.get(activeServers.get(1)));
+				logger.debug("Data sent from " + nodeToDelete.getPort() + " to "
+						+ successor.getPort());
+				logger.debug("Data for replication sent from " + activeServers.get(0).getPort() + " to "
+						+ activeServers.get(1).getPort());
+				logger.debug("Data sent for replication from " + activeServers.get(1).getPort() + " to "
+						+ activeServers.get(0).getPort());
+				
+				//5. send metadat update to all
+				sendMetaData();
+			}
+			//6. shut down the nodetoDelete
+			ECSMessage shutDown = new ECSMessage ();
+			shutDown.setActionType ( ECSCommand.SHUT_DOWN );
+			try {
+				nodeToDeleteChannel.connect();
+				nodeToDeleteChannel.sendMessage ( shutDown );
+				nodeToDeleteChannel.disconnect();
+			} catch ( IOException e ) {
+				logger.error ( "shut down message couldn't be sent."
+					+ e.getMessage () );
+				}
+		}
+		// in normal cases when we have more than 2 nodes left after removal
 		//3. Invoke the transfer of the affected data items
 		//4.invoke the two masters to send their data as replicas to the two replicas
-		if(sendData(nodeToDelete, successor, nodeToDelete.getFromIndex (),nodeToDelete.getToIndex ()) == 0 
+		else if(sendData(nodeToDelete, successor, nodeToDelete.getFromIndex (),nodeToDelete.getToIndex ()) == 0 
 				&&
 				sendData(masters.get(0), replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex()) == 0 
 				&&
@@ -740,7 +779,6 @@ public class ECSImpl implements ECS {
 			locked.add(activeConnections.get(masters.get(0)));
 			locked.add(activeConnections.get(masters.get(1)));
 			
-
 			logger.debug("Data sent from " + nodeToDelete.getPort() + " to "
 					+ successor.getPort());
 			logger.debug("Data for replication sent from " + masters.get(0).getPort() + " to "
@@ -755,7 +793,9 @@ public class ECSImpl implements ECS {
 			ECSMessage shutDown = new ECSMessage ();
 			shutDown.setActionType ( ECSCommand.SHUT_DOWN );
 			try {
+				nodeToDeleteChannel.connect();
 				nodeToDeleteChannel.sendMessage ( shutDown );
+				nodeToDeleteChannel.disconnect();
 			} catch ( IOException e ) {
 				logger.error ( "shut down message couldn't be sent."
 					+ e.getMessage () );
@@ -781,7 +821,6 @@ public class ECSImpl implements ECS {
 			}
 		}
 		
-		
 		logger.debug("releasing all locks!! ");
 		//7. step releasing all locks
 		ECSMessage releaseLock = new ECSMessage ();
@@ -801,12 +840,15 @@ public class ECSImpl implements ECS {
 			//from the list?? or just wait for failure detection system
 			//to detect the failure
 		}
+		
 		nodeToDeleteChannel.disconnect();
 		cleanUpNode ( nodeToDelete );
+		
 		logger.debug("$$$$$$ New SYSTEM STATE $$$$$$");
 		for(ServerInfo s: activeServers)
 			logger.debug(s.getPort());
 		logger.debug("$$$$$$");
+		
 		return true;
 
 	}
@@ -861,7 +903,6 @@ public class ECSImpl implements ECS {
 			}
 			// sender channel got the Ack message
 			if(senderChannel.gotResponse()){
-				logger.debug("Successfully got the Ack from " + sender.getPort());
 				senderChannel.setResponse(false);
 				return 0;
 			}
@@ -911,7 +952,6 @@ public class ECSImpl implements ECS {
 			}
 			// sender channel got the Ack message
 			if(serverChannel.gotResponse()){
-				logger.debug("Successfully got the Ack from" + server.getPort());
 				serverChannel.setResponse(false);
 				return 0;
 			}
