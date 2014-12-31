@@ -4,7 +4,7 @@ public interface AbstractMessage {
 
 	
 	public enum MessageType {
-		CLIENT_MESSAGE, SERVER_MESSAGE, ECS_MESSAGE
+		CLIENT_MESSAGE, SERVER_MESSAGE, ECS_MESSAGE, REPLICA_MESSAGE
 	}
 	
 	/**
