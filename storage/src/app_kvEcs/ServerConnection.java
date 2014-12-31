@@ -69,7 +69,7 @@ public class ServerConnection extends Thread{
 			output     = connection.getOutputStream ();
 			input      = connection.getInputStream  ();
 			connected = true;
-			logger.info ( "Connection established with " + server.toString () );
+			//logger.info ( "Connection established with " + server.toString () );
 		} catch ( IOException ioe ) {
 
 			logger.error ( "Connection could not be established!" );
@@ -88,7 +88,7 @@ public class ServerConnection extends Thread{
 	}
 
 	private synchronized void tearDownConnection () throws IOException {
-		logger.info ( "tearing down the connection from " + connection.getPort() + "..." );
+		//logger.info ( "tearing down the connection from " + connection.getPort() + "..." );
 		if ( connection != null ) {
 			connected = false;
 			input.close ();
@@ -160,7 +160,7 @@ public class ServerConnection extends Thread{
 	
 			/* build final String */
 			ECSMessage msg = ( ECSMessage ) SerializationUtil.toObject ( msgBytes );
-			logger.info ( "Receive ECSMessage :\t '" + msg.getActionType () + "'" );
+			logger.info ( "Receive ECSMessage from "+ connection.getPort() + ":\t '" + msg.getActionType () + "'" );
 			return msg;
 		}
 		else
@@ -171,7 +171,7 @@ public class ServerConnection extends Thread{
 		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
 		output.write ( msgBytes , 0 , msgBytes.length );
 		output.flush ();
-		logger.info ( "Send message :\t '" + msg.getActionType () + "' to : " + server.toString () );
+		logger.info ( "Send message to "+ connection.getPort() + ":\t '" + msg.getActionType () + "' to : " + server.toString () );
 	}
 
 	public ServerInfo getServer() {
