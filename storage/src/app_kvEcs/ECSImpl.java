@@ -485,90 +485,157 @@ public class ECSImpl implements ECS {
 		/*3. tell the sucessor to send data to the newNode
 		 * tell the two new Masters to send their data for replication to the newNode
 		 */
-		logger.debug("<<<<< Getting data from the successor and two masters >>>>>");
+		logger.debug("<<<<< Getting data from the successor >>>>>");
 		ServerInfo successor = getSuccessor ( newNode );
 		List <ServerInfo> masters = getMasters(newNode);
 		List <ServerConnection> locked = new ArrayList<ServerConnection>();
+		List <ServerInfo> replicas = getReplicas(newNode); 
 		
-		if(sendData(successor, newNode, newNode.getFromIndex(), newNode.getToIndex()) == 0 &&
-				sendData(masters.get(0), newNode, masters.get(0).getFromIndex(), masters.get(0).getToIndex()) == 0 &&
-				sendData(masters.get(1), newNode, masters.get(1).getFromIndex(), masters.get(1).getToIndex()) == 0){	
-			
-			locked.add(activeConnections.get(successor));
-			locked.add(activeConnections.get(masters.get(0)));
-			locked.add(activeConnections.get(masters.get(1)));
-			
-			
-			logger.debug("move data message was sent to the new masters : " +
-			masters.get(0).getPort() + "   " + masters.get(1).getPort());
-			
-			logger.debug("<<<< removing old replicated data from the two next nodes after the "
-					+ "new node >>>>>");
-			
-			/*4.tell to the next two nodes (newNodes replicas) to delete their replicated data which they 
-			 * used to store from newNode's Masters
-			 */
-			List <ServerInfo> replicas = getReplicas(newNode); 
-			int r = removeData(replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex());
-			r += removeData(replicas.get(1), masters.get(1).getFromIndex(), masters.get(1).getToIndex());
-			if(r == 0 )
-				logger.debug("remove data message was sent to two new replicas : " +
-						replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
-			else
-				logger.warn("remove data message could not be sent to two new replicas : " +
-						replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
-				
-			
-			logger.debug("<<<< sending new Nodes data to the new replicas >>>>");
-			//5. tell the two replicas to store replicated data from newNode
-			if(	sendData(newNode, replicas.get(0), newNode.getFromIndex(), newNode.getToIndex()) == 1 ||
-				sendData(newNode, replicas.get(1), newNode.getFromIndex(), newNode.getToIndex()) == 1)
-					logger.warn("One or two of the replication operation for node " + newNode.getAddress()
-						+ ":" + newNode.getPort() + "failed");
-			else{
-				logger.debug("move data was sent to new Node to move"
-						+ " its replication to two new replicas : " +
-					replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
-				locked.add(activeConnections.get(newNode));
 
-			}
-			channel.disconnect();
-			
-			//sends MetaData to all the servers!
-			sendMetaData();
-			
-			logger.debug("releaing the locks");
-			//6. release the lock from the successor, new Node and masters
-			ECSMessage releaseLock = new ECSMessage ();
-			releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
-			try {	
-				for(ServerConnection sChannel:locked){
-					sChannel.connect();
-					sChannel.sendMessage ( releaseLock );
-					sChannel.disconnect();
+		// handling special case where there is just one node in the system
+		if(activeServers.size() <=2 ){
+			if(sendData(successor, newNode, newNode.getFromIndex(), newNode.getToIndex()) == 0){
+				locked.add(activeConnections.get(successor));
+				logger.debug("move data was successfull to the new Node");
+				sendMetaData();
+				
+				//replicate data on both sides
+				if(sendData(newNode, successor, newNode.getFromIndex(), newNode.getToIndex()) == 1 ||
+						sendData(successor, newNode, successor.getFromIndex(), successor.getToIndex()) == 1)
+					
+					logger.warn("One or two of the replication operation for node " + newNode.getAddress()
+							+ ":" + newNode.getPort() + "failed");
+				else{
+					logger.debug("move data was sent to new Node to move"
+							+ " its replication to two new replica : " +
+						successor.getPort()) ;
+
+					logger.debug("data from " + successor.getPort() +
+							 " is replicated in : " +
+						newNode.getPort()) ;
+					
+					locked.add(activeConnections.get(newNode));
+					
+					// release the lock from the successor, new Node
+					logger.debug("releaing the locks");
+					ECSMessage releaseLock = new ECSMessage ();
+					releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
+					try {	
+						for(ServerConnection sChannel:locked){
+							sendECSCommand(sChannel, releaseLock);
+						}
+					logger.debug ( "All locks are released." );
+					} catch ( IOException e ) {
+						logger.error ( "ReLease Lock message couldn't be sent." );
+					}
+					channel.disconnect();
+					return;
 				}
-			logger.debug ( "All locks are released." );
-			} catch ( IOException e ) {
-				logger.error ( "ReLease Lock message couldn't be sent." );
-				//TODO
-				// what to do in this case!??? should we remove this server 
-				//from the list?? or just wait for failure detection system
-				//to detect the failure
+			}
+			else{
+				// when move data from successor to the newNode was not successful
+				// data could not be moved to the newly added Server
+				logger.error("Could not move data from " + successor.getServerName() +" to " + newNode.getServerName());
+				logger.error("Operation addNode Not Successfull");
+				activeServers.remove(newNode);
+				channel.disconnect();
+				activeConnections.remove(newNode);
+				calculateMetaData(activeServers);
+				return;
 			}
 		}
-		
-		// when move data from successor to the receiver was not successful
 		else{
-			// data could not be moved to the newly added Server
-			logger.error("Could not move data from " + successor.getServerName() +" to " + newNode.getServerName());
-			logger.error("Operation addNode Not Successfull");
-			activeServers.remove(newNode);
-			channel.disconnect();
-			activeConnections.remove(newNode);
-			calculateMetaData(activeServers);
-			return;
+			//normal cases when there is more than two nodes in the system before adding the new node
+			if(sendData(successor, newNode, newNode.getFromIndex(), newNode.getToIndex()) == 0 &&
+					sendData(masters.get(0), newNode, masters.get(0).getFromIndex(), masters.get(0).getToIndex()) == 0 &&
+					sendData(masters.get(1), newNode, masters.get(1).getFromIndex(), masters.get(1).getToIndex()) == 0){	
+				
+				locked.add(activeConnections.get(successor));
+				locked.add(activeConnections.get(masters.get(0)));
+				locked.add(activeConnections.get(masters.get(1)));
+				
+				logger.debug("move data message was sent to the new masters : " +
+				masters.get(0).getPort() + "   " + masters.get(1).getPort());
+				
+				logger.debug("<<<< removing old replicated data from the two next nodes after the "
+						+ "new node >>>>>");
+				
+				//4.Sending metaData updates to two new replicas
+				ECSMessage metaDataUpdate = new ECSMessage ();
+				metaDataUpdate.setActionType ( ECSCommand.SEND_METADATA );
+				metaDataUpdate.setMetaData ( activeServers );
+				try {
+					ServerConnection replicaChannel = new ServerConnection(replicas.get(0));
+					sendECSCommand(replicaChannel, metaDataUpdate);
+					replicaChannel = new ServerConnection(replicas.get(1));
+					sendECSCommand(replicaChannel, metaDataUpdate);
+				} catch ( IOException e ) {
+					logger.error ( "Meta-data update couldn't be sent."
+							+ e.getMessage () );
+				}
+				
+				//5. sending newNode's data for replication to the its replicas
+				if(	sendData(newNode, replicas.get(0), newNode.getFromIndex(), newNode.getToIndex()) == 1 ||
+					sendData(newNode, replicas.get(1), newNode.getFromIndex(), newNode.getToIndex()) == 1)
+						logger.warn("One or two of the replication operation for node " + newNode.getAddress()
+							+ ":" + newNode.getPort() + "failed");
+				else{
+					logger.debug("move data was sent to new Node to move"
+							+ " its replication to two new replicas : " +
+						replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
+					locked.add(activeConnections.get(newNode));
+					
+					/*6.tell to the next two nodes (newNodes replicas) to delete their replicated data which they 
+					 * used to store from newNode's Masters
+					 */
+					// when we have 3 nodes in system This is not needed!
+					if(activeServers.size() > 3){
+						int r = removeData(replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex());
+						r += removeData(replicas.get(1), masters.get(1).getFromIndex(), masters.get(1).getToIndex());
+						if(r == 0 )
+							logger.debug("remove data message was sent to two new replicas : " +
+									replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
+						else
+							logger.warn("remove data message could not be sent to two new replicas : " +
+									replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
+							
+						
+						logger.debug("<<<< sending new Nodes data to the new replicas >>>>");
+					}
+				}
+				
+				//7.sends MetaData to all the servers!
+				sendMetaData();
+				channel.disconnect();
+				
+				logger.debug("releaing the locks");
+				//8. release the lock from the successor, new Node and masters
+				ECSMessage releaseLock = new ECSMessage ();
+				releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
+				try {	
+					for(ServerConnection sChannel:locked){
+						sendECSCommand(sChannel, releaseLock);
+					}
+				logger.debug ( "All locks are released." );
+				} catch ( IOException e ) {
+					logger.error ( "ReLease Lock message couldn't be sent." );
+				}
+			}
+			
+			// when move data from successor to the newNode was not successful
+			else{
+				// data could not be moved to the newly added Server
+				logger.error("Could not move data from " + successor.getServerName() +" to " + newNode.getServerName());
+				logger.error("Operation addNode Not Successfull");
+				activeServers.remove(newNode);
+				channel.disconnect();
+				activeConnections.remove(newNode);
+				calculateMetaData(activeServers);
+				return;
+			}
 		}
-	}
+		}
+
 
 	
 	
@@ -684,7 +751,11 @@ public class ECSImpl implements ECS {
 		List <ServerConnection> locked = new ArrayList<ServerConnection>();
 		List <ServerInfo> masters = getMasters(nodeToDelete);
 		List <ServerInfo> replicas = getReplicas(nodeToDelete);
-
+		ServerConnection nodeToDeleteChannel = this.activeConnections
+				.get ( nodeToDelete );
+		ServerConnection successorChannel = this.activeConnections
+				.get ( successor );
+	
 		logger.debug("$$$$$$ SYSTEM BEFORE REMOVING $$$$$$");
 		for(ServerInfo s: activeServers)
 			logger.debug(s.getPort());
@@ -692,155 +763,160 @@ public class ECSImpl implements ECS {
 				
 		this.activeServers.remove ( nodeToDelete );
 		calculateMetaData ( this.activeServers );
-		
-		ServerConnection nodeToDeleteChannel = this.activeConnections
-				.get ( nodeToDelete );
-		ServerConnection successorChannel = this.activeConnections
-				.get ( successor );
 
-		/*
-		 * //1. set lock on the nodeToDelete
-		ECSMessage writeLock = new ECSMessage ();
-		writeLock.setActionType ( ECSCommand.SET_WRITE_LOCK );
-		List <ServerConnection> locked = new ArrayList<ServerConnection>();
-		try {
-			nodeToDeleteChannel.connect();
-			nodeToDeleteChannel.sendMessage ( writeLock );
-			locked.add(nodeToDeleteChannel);
-		} catch ( IOException e ) {
-			logger.error ( "Write lock message couldn't be sent."
-					+ e.getMessage () );
-		}
-		*/
-			
-		logger.debug ( "Node to delete " + nodeToDelete + " locked." );
-
-		//2.s Send meta-data update to the successor node
-		ECSMessage metaDataUpdate = new ECSMessage ();
-		metaDataUpdate.setActionType ( ECSCommand.SEND_METADATA );
-		metaDataUpdate.setMetaData ( activeServers );
-		try {
-			successorChannel.connect();
-			successorChannel.sendMessage ( metaDataUpdate );
-			successorChannel.disconnect();
-		} catch ( IOException e ) {
-			logger.error ( "Meta-data update couldn't be sent."
-					+ e.getMessage () );
-		}
-
-		try {
-			Thread.sleep ( 200 );
-		} catch ( InterruptedException e1 ) {
-		}
-		
-		logger.debug("<<<< invoking transfers of data >>>>");
-		
 		// special cases when we would have just one or two nodes left after removal
-		if(activeServers.size() <=2 ){
+		if(activeServers.size() <=2 ){	
+			logger.debug("<<<< invoking transfers of data >>>>");
+			sendMetaData(); // same as to sending metaData to replicas because just two node is left
+			int result = sendData(nodeToDelete, successor, nodeToDelete.getFromIndex (),nodeToDelete.getToIndex ());
 			
-			if(activeServers.size() ==2 ){
-			
-				sendData(activeServers.get(0), activeServers.get(1), activeServers.get(0).getFromIndex(), activeServers.get(0).getToIndex());
-				sendData(activeServers.get(1), activeServers.get(0), activeServers.get(1).getFromIndex(), activeServers.get(1).getToIndex());
+			// telling to the remaining Nodes to replicate their data on each other
+			if(activeServers.size() == 2 ){
+				result += sendData(activeServers.get(0), activeServers.get(1), activeServers.get(0).getFromIndex(), activeServers.get(0).getToIndex());
+				result += sendData(activeServers.get(1), activeServers.get(0), activeServers.get(1).getFromIndex(), activeServers.get(1).getToIndex());
 				locked.add(activeConnections.get(activeServers.get(0)));
 				locked.add(activeConnections.get(activeServers.get(1)));
-				logger.debug("Data sent from " + nodeToDelete.getPort() + " to "
-						+ successor.getPort());
+				
 				logger.debug("Data for replication sent from " + activeServers.get(0).getPort() + " to "
 						+ activeServers.get(1).getPort());
-				logger.debug("Data sent for replication from " + activeServers.get(1).getPort() + " to "
-						+ activeServers.get(0).getPort());
-				
-				//5. send metadat update to all
-				sendMetaData();
+					logger.debug("Data sent for replication from " + activeServers.get(1).getPort() + " to "
+						+ activeServers.get(0).getPort());	
 			}
-			//6. shut down the nodetoDelete
-			ECSMessage shutDown = new ECSMessage ();
-			shutDown.setActionType ( ECSCommand.SHUT_DOWN );
-			try {
-				nodeToDeleteChannel.connect();
-				nodeToDeleteChannel.sendMessage ( shutDown );
-				nodeToDeleteChannel.disconnect();
-			} catch ( IOException e ) {
-				logger.error ( "shut down message couldn't be sent."
-					+ e.getMessage () );
-				}
+			if(result == 0){
+				// everything went perfect
+
+				logger.debug("Data sent from " + nodeToDelete.getPort() + " to "
+						+ successor.getPort());
+			}	
+			else{
+				// move data from nodeToDelet failed
+				//getting back the system to the previous stage:(before removing)
+				logger.error("SendData Unsuccessful! Delete Node Operation failed" );
+				logger.error("Getting back the system to the previous state ");
+				try {
+					this.activeServers.add(nodeToDelete);
+					ECSMessage releaseLock = new ECSMessage ();
+					releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
+					sendECSCommand(nodeToDeleteChannel, releaseLock);
+					sendECSCommand(new ServerConnection(masters.get(0)), releaseLock);
+					sendECSCommand(new ServerConnection(masters.get(1)), releaseLock);
+					calculateMetaData(activeServers);
+					sendMetaData();
+					return false;
+				} catch ( IOException e ) {
+					logger.error ( "Write lock message couldn't be sent."
+						+ e.getMessage () );
+					}
+			}
 		}
-		// in normal cases when we have more than 2 nodes left after removal
-		//3. Invoke the transfer of the affected data items
-		//4.invoke the two masters to send their data as replicas to the two replicas
-		else if(sendData(nodeToDelete, successor, nodeToDelete.getFromIndex (),nodeToDelete.getToIndex ()) == 0 
+		/* in normal cases when we have more than 2 nodes left after removal*/
+		else{
+			//1.s Send meta-data update to the successor node
+			ECSMessage metaDataUpdate = new ECSMessage ();
+			metaDataUpdate.setActionType ( ECSCommand.SEND_METADATA );
+			metaDataUpdate.setMetaData ( activeServers );
+			try {
+				sendECSCommand(successorChannel, metaDataUpdate);
+			} catch ( IOException e ) {
+				logger.error ( "Meta-data update couldn't be sent."
+						+ e.getMessage () );
+			}
+	
+			logger.debug("<<<< invoking transfers of data >>>>");
+	
+			//2. Invoke the transfer of the affected data items
+			//3.invoke the two masters to send their data as replicas to the two replicas			
+			
+			//Sending metaData updates to two new replicas
+			try {
+				// we dont send metaData update to replica(0) because replica(0) is same as successor!
+				ServerConnection replicaChannel = new ServerConnection(replicas.get(1));
+				sendECSCommand(replicaChannel, metaDataUpdate);
+			} catch ( IOException e ) {
+				logger.error ( "Meta-data update couldn't be sent."
+						+ e.getMessage () );
+			}
+	
+			if(sendData(nodeToDelete, successor, nodeToDelete.getFromIndex (),nodeToDelete.getToIndex ()) == 0 
 				&&
 				sendData(masters.get(0), replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex()) == 0 
 				&&
 				sendData(masters.get(1), replicas.get(1), masters.get(1).getFromIndex(), masters.get(1).getToIndex()) == 0)
 			{
-			
-			locked.add(activeConnections.get(masters.get(0)));
-			locked.add(activeConnections.get(masters.get(1)));
-			
-			logger.debug("Data sent from " + nodeToDelete.getPort() + " to "
-					+ successor.getPort());
-			logger.debug("Data for replication sent from " + masters.get(0).getPort() + " to "
-					+ replicas.get(0).getPort());
-			logger.debug("Data sent for replication from " + masters.get(1).getPort() + " to "
-					+ replicas.get(1).getPort());
-			
-			//5. send metadat update to all
-			sendMetaData();
-			
-			//6. shut down the nodetoDelete
-			ECSMessage shutDown = new ECSMessage ();
-			shutDown.setActionType ( ECSCommand.SHUT_DOWN );
-			try {
-				nodeToDeleteChannel.connect();
-				nodeToDeleteChannel.sendMessage ( shutDown );
-				nodeToDeleteChannel.disconnect();
-			} catch ( IOException e ) {
-				logger.error ( "shut down message couldn't be sent."
-					+ e.getMessage () );
-				}
-		}
-		else{
-			// move data from nodeToDelet failed
-			//getting back the system to the previous stage:(before removing)
-			logger.error("SendData Unsuccessful! Delete Node Operation failed" );
-			logger.error("Getting back the system to the previous state ");
-			try {
-				this.activeServers.add(nodeToDelete);
-				ECSMessage releaseLock = new ECSMessage ();
-				releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
-				nodeToDeleteChannel.sendMessage ( releaseLock );
-				nodeToDeleteChannel.disconnect();
-				calculateMetaData(activeServers);
+				locked.add(activeConnections.get(masters.get(0)));
+				locked.add(activeConnections.get(masters.get(1)));
+					
+				logger.debug("Data sent from " + nodeToDelete.getPort() + " to "
+						+ successor.getPort());
+				logger.debug("Data for replication sent from " + masters.get(0).getPort() + " to "
+						+ replicas.get(0).getPort());
+				logger.debug("Data sent for replication from " + masters.get(1).getPort() + " to "
+						+ replicas.get(1).getPort());
+					
+				/*4.tell to the next two nodes (newNodes replicas) to delete their replicated data which they 
+				* used to store from newNode's Masters
+				* we don't send remove data to the replica(0) because replica(0) is the successor and owns the data
+				* which used to belong to the node to be removed
+				*/
+				int r = removeData(replicas.get(1), nodeToDelete.getFromIndex(), nodeToDelete.getToIndex());
+				if(r == 0 )
+					logger.debug("remove data message was sent to two new replicas : " +
+							replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
+				else
+					logger.warn("remove data message could not be sent to two new replicas : " +
+							replicas.get(0).getPort() + "   " + replicas.get(1).getPort());
+				
+				//5. send metadat update to all
 				sendMetaData();
-				return false;
-			} catch ( IOException e ) {
-				logger.error ( "Write lock message couldn't be sent."
-						+ e.getMessage () );
+				
 			}
-		}
+			else{
+				// move data from nodeToDelet failed
+				//getting back the system to the previous stage:(before removing)
+				logger.error("SendData Unsuccessful! Delete Node Operation failed" );
+				logger.error("Getting back the system to the previous state ");
+				try {
+					this.activeServers.add(nodeToDelete);
+					ECSMessage releaseLock = new ECSMessage ();
+					releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
+					sendECSCommand(nodeToDeleteChannel, releaseLock);
+					sendECSCommand(new ServerConnection(masters.get(0)), releaseLock);
+					sendECSCommand(new ServerConnection(masters.get(1)), releaseLock);
+					calculateMetaData(activeServers);
+					sendMetaData();
+					return false;
+				} catch ( IOException e ) {
+					logger.error ( "Write lock message couldn't be sent."
+							+ e.getMessage () );
+					}
+			}	
+		}	
 		
-		logger.debug("releasing all locks!! ");
+		//6. shut down the nodetoDelete
+		ECSMessage shutDown = new ECSMessage ();
+		shutDown.setActionType ( ECSCommand.SHUT_DOWN );
+		try {
+			sendECSCommand(nodeToDeleteChannel, shutDown);
+		} catch ( IOException e ) {
+			logger.error ( "shut down message couldn't be sent."
+				+ e.getMessage () );
+			}
+
 		//7. step releasing all locks
+		logger.debug("releasing all locks!! ");
 		ECSMessage releaseLock = new ECSMessage ();
 		releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
 		try {	
 			for(ServerConnection sChannel:locked){
-				sChannel.connect();
-				sChannel.sendMessage ( releaseLock );
-				sChannel.disconnect();
+				sendECSCommand(sChannel, releaseLock);
 				logger.debug("lock on " + sChannel.getServer().getPort() + " released");
 			}
 		logger.debug ( "All locks are released." );
 		} catch ( IOException e ) {
 			logger.error ( "ReLease Lock message couldn't be sent." );
-			//TODO
-			// what to do in this case!??? should we remove this server 
-			//from the list?? or just wait for failure detection system
-			//to detect the failure
 		}
 		
+		//8.
 		nodeToDeleteChannel.disconnect();
 		cleanUpNode ( nodeToDelete );
 		
@@ -853,6 +929,106 @@ public class ECSImpl implements ECS {
 
 	}
 
+	
+	/**
+	 * tries to recover the System when a failure is detected
+	 * @param failed
+	 */
+	private void recovery(ServerInfo failedNode){
+		
+		List <ServerConnection> locked = new ArrayList<ServerConnection>();
+		// The failed node has not been removed from activeServers yet --> the real activeServers.size() is one value less
+		if(activeServers.size() == 1 )
+			logger.error("System failed! All nodes are dead! All data is lost!");
+		else if(activeServers.size() == 2 ){
+			calculateMetaData(activeServers);
+			sendMetaData();
+			//TODO on server side
+			// send a command to store replicated data as the main data on the remaining server
+		}else if(activeServers.size() == 3){
+			calculateMetaData(activeServers);
+			sendMetaData();
+			//TODO on the server side
+			// send a message to the successor to store replicated data of the failed node as its own data 
+			activeServers.remove(failedNode);
+			activeConnections.remove(failedNode);
+			sendData(activeServers.get(0), activeServers.get(1), activeServers.get(0).getFromIndex(), activeServers.get(0).getToIndex());
+			sendData(activeServers.get(1), activeServers.get(0), activeServers.get(1).getFromIndex(), activeServers.get(1).getToIndex());
+			locked.add(activeConnections.get(activeServers.get(0)));
+			locked.add(activeConnections.get(activeServers.get(1)));
+			
+			logger.debug("Data for replication sent from " + activeServers.get(0).getPort() + " to "
+					+ activeServers.get(1).getPort());
+			logger.debug("Data sent for replication from " + activeServers.get(1).getPort() + " to "
+					+ activeServers.get(0).getPort());	
+		}	
+		else{
+			ServerInfo successor = getSuccessor ( failedNode );
+			List <ServerInfo> masters = getMasters(failedNode);
+			List <ServerInfo> replicas = getReplicas(failedNode);
+			
+			activeServers.remove(failedNode);
+			activeConnections.remove(failedNode);
+			calculateMetaData(activeServers);
+			//1. sending new metaData
+			sendMetaData();
+			
+			//2. recovering lost data from the replicas
+			if(sendData(replicas.get(0), successor, failedNode.getFromIndex(), failedNode.getToIndex()) !=0 ){
+				if( sendData(replicas.get(1), successor, failedNode.getFromIndex(), failedNode.getToIndex()) == 0)
+					logger.info("Data recovered from replica " + replicas.get(1).getPort()
+							+ " sent to " + successor.getPort());
+				else
+					logger.warn(" Data owned by " + failedNode.getPort() + " could not be recovered");
+	
+			}
+			logger.info("Data recovered from replica " + replicas.get(0).getPort()
+					+ " sent to " + successor.getPort());
+			
+			//3. storing data as replica : sent from failed node's masters to failed node's replicas
+			if(sendData(masters.get(0), replicas.get(0), masters.get(0).getFromIndex(), masters.get(0).getToIndex()) == 0)
+				logger.debug("Data for replication sent from " + masters.get(0).getPort() + " to "
+						+ replicas.get(0).getPort());
+			else
+				logger.warn("Data transfer for replication  from " + masters.get(0).getPort() + " to "
+						+ replicas.get(0).getPort() + " FAILED");
+					
+			if(sendData(masters.get(1), replicas.get(1), masters.get(1).getFromIndex(), masters.get(1).getToIndex()) == 0)
+				logger.debug("Data sent for replication from " + masters.get(1).getPort() + " to "
+						+ replicas.get(1).getPort());
+			else
+				logger.warn("Data transfer for replication  from " + masters.get(1).getPort() + " to "
+						+ replicas.get(1).getPort() + " FAILED");
+				
+			locked.add(activeConnections.get(masters.get(0)));
+			locked.add(activeConnections.get(masters.get(1)));
+		}
+			
+		//4. releasing locks
+		logger.debug("releasing all locks!! ");
+		ECSMessage releaseLock = new ECSMessage ();
+		releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
+		try {	
+			for(ServerConnection sChannel:locked){
+				sendECSCommand(sChannel, releaseLock);
+				logger.debug("lock on " + sChannel.getServer().getPort() + " released");
+			}
+		} catch ( IOException e ){
+			logger.error ( "ReLease Lock message couldn't be sent." );
+		}
+		
+		cleanUpNode ( failedNode );
+		
+		//5. adding a new node to the system
+		addNode();
+		
+		logger.debug("$$$$$$ New SYSTEM STATE $$$$$$");
+		for(ServerInfo s: activeServers)
+			logger.debug(s.getPort());
+		logger.debug("$$$$$$");
+
+	}
+	
 	
 	/**
 	 * tells the sender to send data in range(fromIndex,toIndex) to the reciever
@@ -1021,6 +1197,12 @@ public class ECSImpl implements ECS {
 
 	public Map<ServerInfo, ServerConnection> getActiveConnections() {
 	    return activeConnections;
+	}
+	
+	private void sendECSCommand(ServerConnection channel, ECSMessage message) throws IOException{
+		channel.connect();
+		channel.sendMessage ( message );
+		channel.disconnect();
 	}
 
 	
