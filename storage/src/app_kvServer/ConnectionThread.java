@@ -363,7 +363,7 @@ public class ConnectionThread implements Runnable {
 			sendReplicationMessage(replicationMessage, replicationMessage
 					.getCoordinatorServerInfo().getFirstReplicaInfo());
 			sendReplicationMessage(replicationMessage, replicationMessage
-					.getCoordinatorServerInfo().getFirstReplicaInfo());
+					.getCoordinatorServerInfo().getSecondReplicaInfo());
 
 		} else {
 			/* in case the received message is in the range of this server */

@@ -226,7 +226,6 @@ public class ECSImpl implements ECS {
 		String path = System.getProperty("user.dir");
 		String command = "java -jar " + path + "/ms3-server.jar ";
 		String arguments[] = new String [2];
-		arguments[1] = "  ERROR &";
 		int result;
 		
 		Iterator<ServerInfo> iterator = serversToStart.iterator() ;
@@ -269,7 +268,6 @@ public class ECSImpl implements ECS {
 		String path = System.getProperty("user.dir");
 		String command = "java -jar " + path + "/ms3-server.jar ";
 		String arguments[] = new String [2];
-		arguments[1] = "  ERROR &";
 		int result;
 		arguments[0] = String.valueOf(serverToStart.getPort());
 		if(!localCall)
