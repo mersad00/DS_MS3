@@ -322,6 +322,12 @@ public class ECSImpl implements ECS {
 			}
 			server.setFromIndex ( predecessor.getToIndex () );
 		}
+		
+		//set the replicas info in the metadata
+				for(int i=0; i<serversToStart.size();i++){
+					serversToStart.get(i).setFirstReplicaInfo(serversToStart.get((i+1) % serversToStart.size()));
+					serversToStart.get(i).setSecondReplicaInfo(serversToStart.get((i+2) % serversToStart.size()));
+				}
 		//this.activeServers = serversToStart;
 		//logger.debug ( "Calculated metadata " + serversToStart );
 		return serversToStart;

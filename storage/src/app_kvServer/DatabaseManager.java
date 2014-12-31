@@ -39,7 +39,7 @@ public class DatabaseManager {
 	private int id;
 	private String dataBaseUri;
 	
-	public DatabaseManager(int id, int cacheSize,String cacheStrategy ){
+	public DatabaseManager(int id, int cacheSize,String cacheStrategy ,String databaseType ){
 		
 		/* path added in order to handle invocation by a remote process through ssh
 		in order to avoid Filenotfound exception when creating Presistentstorage. 
@@ -60,7 +60,7 @@ public class DatabaseManager {
 		for handling calls within ssh */
 		path = path.replace("ms3-server.jar", "");
 		
-		this.dataBaseUri = path +"src/app_kvServer/PersistentStorage-"+ id + ".ser"; 
+		this.dataBaseUri = path +"src/app_kvServer/PersistentStorage-"+ id + "."+ databaseType ; 
 		File f = new File(dataBaseUri);
 		
 		if(!f.exists()){

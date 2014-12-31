@@ -45,8 +45,10 @@ public class KVServer extends Thread{
 	private ServerInfo thisServerInfo;
 
 	/* added in order to handle Persistent storage */
-	private static DatabaseManager db;
-
+	private DatabaseManager db;
+	private  DatabaseManager firstReplicaManager;
+	private  DatabaseManager secondReplicaManager;
+	
 	/**
 	 * Start KV Server at given port
 	 * 
@@ -56,7 +58,9 @@ public class KVServer extends Thread{
 	public KVServer ( int port, int cacheSize ,String cacheStrategy ) {
 		this.port = port;		
 		/* creating persistent storage  */
-		db = new DatabaseManager(this.port,cacheSize,cacheStrategy);
+		db = new DatabaseManager(this.port,cacheSize,cacheStrategy,".ser");
+		firstReplicaManager = new DatabaseManager(this.port,cacheSize,cacheStrategy, ".rep1");
+		secondReplicaManager = new DatabaseManager(this.port,cacheSize,cacheStrategy, "rep2");
 		logger = LoggingManager.getInstance ().createLogger ( this.getClass () );
 	}
 
@@ -85,7 +89,7 @@ public class KVServer extends Thread{
 				try {
 					Socket client = serverSocket.accept ();
 					ConnectionThread connection = new ConnectionThread (
-							client , this, this.db );
+							client , this, db , firstReplicaManager,secondReplicaManager );
 					new Thread ( connection ).start ();
 
 					logger.info ( "new Connection: Connected to "
