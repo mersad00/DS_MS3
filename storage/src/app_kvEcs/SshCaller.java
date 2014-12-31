@@ -138,7 +138,7 @@ public class SshCaller implements SshInvoker{
 				command += " " + argument;
 			//logger.debug("<<<<<<" + command + ">>>>>");
 			ProcessBuilder pb =
-					new ProcessBuilder("nohup","java", "-jar","ms3-server.jar", arguments[0],"&");
+					new ProcessBuilder("java", "-jar","ms3-server.jar", arguments[0],"&");
 			String path = System.getProperty("user.dir");
 			pb.directory(new File(path));
 			

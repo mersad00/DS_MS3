@@ -224,7 +224,7 @@ public class ECSImpl implements ECS {
 		
 		/* it is considered that the invoker and invoked processes are in the same folder and machine*/
 		String path = System.getProperty("user.dir");
-		String command = "nohup java -jar " + path + "/ms3-server.jar ";
+		String command = "java -jar " + path + "/ms3-server.jar ";
 		String arguments[] = new String [2];
 		arguments[1] = "  ERROR &";
 		int result;
@@ -267,7 +267,7 @@ public class ECSImpl implements ECS {
 		
 		/* it is considered that the invoker and invoked processes are in the same folder and machine*/
 		String path = System.getProperty("user.dir");
-		String command = "nohup java -jar " + path + "/ms3-server.jar ";
+		String command = "java -jar " + path + "/ms3-server.jar ";
 		String arguments[] = new String [2];
 		arguments[1] = "  ERROR &";
 		int result;
