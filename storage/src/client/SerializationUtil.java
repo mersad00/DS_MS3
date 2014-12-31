@@ -11,6 +11,7 @@ import javax.activation.UnsupportedDataTypeException;
 
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
+import app_kvServer.ReplicaMessage;
 import app_kvServer.ServerMessage;
 import common.ServerInfo;
 import common.messages.AbstractMessage;
@@ -23,6 +24,7 @@ public class SerializationUtil {
     private static final String LINE_FEED = "&&";
     private static final String INNER_LINE_FEED = "##";
     private static final String INNER_LINE_FEED2 = "%%";
+    private static final String INNER_LINE_FEED3 = "@@";
     private static final String ECS_MESSAGE = "0";
     private static final String SERVER_MESSAGE = "1";
     private static final String CLIENT_MESSAGE = "2";
@@ -123,6 +125,35 @@ public class SerializationUtil {
 			}
 			
 		break;
+		
+	    case REPLICA_MESSAGE: {
+			retrivedMessage = new ReplicaMessage();
+			// 1: is always the status
+			// 2: could be the key value or error
+			// 3: could be value or error
+			if (tokens[1] != null) {// should always be the status
+				int statusOrdinal = Integer.parseInt(tokens[1]);
+				((ReplicaMessage) retrivedMessage).setStatusType(StatusType
+						.values()[statusOrdinal]);
+			}
+			if (tokens[2] != null) {// is always the key
+				((ReplicaMessage) retrivedMessage).setKey(tokens[2]);
+
+			}
+			if (tokens[3] != null) {
+				((ReplicaMessage) retrivedMessage).setValue(tokens[3]
+						.trim());
+			}
+			if (tokens[4] != null) {
+				ServerInfo coordinator = getServerInfo(tokens[4].trim());
+				coordinator.setFirstReplicaInfo(getServerInfo(tokens[5].trim()));
+				coordinator.setSecondReplicaInfo(getServerInfo(tokens[6].trim()));
+				((ReplicaMessage) retrivedMessage)
+						.setCoordinatorServer(coordinator);
+			}
+			
+			break;
+		}
 	    default:
 		    break;
 
@@ -143,16 +174,30 @@ public class SerializationUtil {
     }
 
     private static List<ServerInfo> getMetaData(String metaDataStr) {
-	List<ServerInfo> serverInfoList = new ArrayList<ServerInfo>();
-	String[] tokens = metaDataStr.split(INNER_LINE_FEED2);
-	for (String serverInfoStr : tokens) {
-	    String[] serverInfoTokens = serverInfoStr.split(INNER_LINE_FEED);
-	    ServerInfo serverInfo = new ServerInfo(serverInfoTokens[0], Integer.parseInt(serverInfoTokens[1]),serverInfoTokens[2],serverInfoTokens[3]);
-	    serverInfoList.add(serverInfo);
+		List<ServerInfo> serverInfoList = new ArrayList<ServerInfo>();
+		String[] tokens = metaDataStr.split(INNER_LINE_FEED2);
+		for (String serverInfoStr : tokens) {
+			String[] serverInfoTokens = serverInfoStr.split(INNER_LINE_FEED);
+			ServerInfo serverInfo = new ServerInfo(serverInfoTokens[0],
+					Integer.parseInt(serverInfoTokens[1]), serverInfoTokens[2],
+					serverInfoTokens[3]);
+			if (serverInfoTokens.length > 4) {
+				String[] replicasInfo = serverInfoTokens[4]
+						.split(INNER_LINE_FEED3);
+				ServerInfo replica1 = new ServerInfo(replicasInfo[0],
+						Integer.parseInt(replicasInfo[1]), replicasInfo[2],
+						replicasInfo[3]);
+				ServerInfo replica2 = new ServerInfo(replicasInfo[4],
+						Integer.parseInt(replicasInfo[5]), replicasInfo[6],
+						replicasInfo[7]);
+				serverInfo.setFirstReplicaInfo(replica1);
+				serverInfo.setSecondReplicaInfo(replica2);
+			}
+			serverInfoList.add(serverInfo);
+		}
+
+		return serverInfoList;
 	}
-	
-	return serverInfoList;
-    }
 
     private static MessageType toMessageType(String messageTypeStr) throws UnsupportedDataTypeException {
 
@@ -162,6 +207,8 @@ public class SerializationUtil {
 	    return MessageType.SERVER_MESSAGE;
 	else if (messageTypeStr.equals(ECS_MESSAGE))
 	    return MessageType.ECS_MESSAGE;
+	else if (messageTypeStr.equals(MessageType.REPLICA_MESSAGE))
+		return MessageType.REPLICA_MESSAGE;
 	else 
 	    throw new UnsupportedDataTypeException("Unsupported message type");
 
@@ -190,30 +237,91 @@ public class SerializationUtil {
     }
 
     public static byte[] toByteArray(ECSMessage message) {
-	// message : number(messageType)-- number(actionType)--list of meta data/fromindex--toindex-- to_serverInfo
-	String messageStr = (ECS_MESSAGE+LINE_FEED+message.getActionType().ordinal() );
-	if (message.getActionType() == ECSCommand.INIT || message.getActionType() == ECSCommand.SEND_METADATA){
-	    // add metadata
-	    messageStr += LINE_FEED;
-	    for (ServerInfo server : message.getMetaData()) {
-		messageStr += server.getAddress()+INNER_LINE_FEED+server.getPort()+INNER_LINE_FEED+server.getFromIndex()+INNER_LINE_FEED+server.getToIndex();
-		messageStr+=INNER_LINE_FEED2;
-	    }
+		// message : number(messageType)-- number(actionType)--list of meta
+		// data/fromindex--toindex-- to_serverInfo
+		String messageStr = (ECS_MESSAGE + LINE_FEED + message.getActionType()
+				.ordinal());
+		if (message.getActionType() == ECSCommand.INIT
+				|| message.getActionType() == ECSCommand.SEND_METADATA) {
+			// add metadata
+			messageStr += LINE_FEED;
+			for (ServerInfo server : message.getMetaData()) {
+				messageStr += server.getAddress() + INNER_LINE_FEED
+						+ server.getPort() + INNER_LINE_FEED
+						+ server.getFromIndex() + INNER_LINE_FEED
+						+ server.getToIndex() + INNER_LINE_FEED
+						+ server.getFirstReplicaInfo().getAddress()
+						+ INNER_LINE_FEED3
+						+ server.getFirstReplicaInfo().getPort()
+						+ INNER_LINE_FEED3
+						+ server.getFirstReplicaInfo().getFromIndex()
+						+ INNER_LINE_FEED3
+						+ server.getFirstReplicaInfo().getToIndex()
+						+ INNER_LINE_FEED3
+						+ server.getSecondReplicaInfo().getAddress()
+						+ INNER_LINE_FEED3
+						+ server.getSecondReplicaInfo().getPort()
+						+ INNER_LINE_FEED3
+						+ server.getSecondReplicaInfo().getFromIndex()
+						+ INNER_LINE_FEED3
+						+ server.getSecondReplicaInfo().getToIndex()
+						+ INNER_LINE_FEED;
+				messageStr += INNER_LINE_FEED2;
+			}
 
-	}else if (message.getActionType() == ECSCommand.MOVE_DATA)
-	{
-	    // add the from and to and the server info
-	    ServerInfo server = message.getMoveToServer();
-	    messageStr += LINE_FEED+ message.getMoveFromIndex()+LINE_FEED+message.getMoveToIndex()+LINE_FEED+server.getAddress()+LINE_FEED+server.getPort();
+		} else if (message.getActionType() == ECSCommand.MOVE_DATA) {
+			// add the from and to and the server info
+			ServerInfo server = message.getMoveToServer();
+			messageStr += LINE_FEED + message.getMoveFromIndex() + LINE_FEED
+					+ message.getMoveToIndex() + LINE_FEED
+					+ server.getAddress() + LINE_FEED + server.getPort();
 
+		}
+		
+		byte[] bytes = messageStr.getBytes();
+		byte[] ctrBytes = new byte[] { RETURN };
+		byte[] tmp = new byte[bytes.length + ctrBytes.length];
+		System.arraycopy(bytes, 0, tmp, 0, bytes.length);
+		System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
+		return tmp;
+    }
+    
+    public static byte[] toByteArray(ReplicaMessage message) {
+		String messageStr = (MessageType.REPLICA_MESSAGE + LINE_FEED
+				+ message.getStatus().ordinal() + LINE_FEED + message.getKey()
+				+ LINE_FEED + message.getValue() + LINE_FEED
+				+ message.getCoordinatorServerInfo().getAddress()
+				+ INNER_LINE_FEED
+				+ message.getCoordinatorServerInfo().getPort()
+				+ INNER_LINE_FEED
+				+ message.getCoordinatorServerInfo().getFromIndex()
+				+ INNER_LINE_FEED + message.getCoordinatorServerInfo()
+				.getToIndex())
+				+ LINE_FEED + message.getCoordinatorServerInfo().getFirstReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getCoordinatorServerInfo().getFirstReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getCoordinatorServerInfo().getFirstReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getCoordinatorServerInfo().getFirstReplicaInfo().getToIndex() + INNER_LINE_FEED
+				+ LINE_FEED + message.getCoordinatorServerInfo().getSecondReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getCoordinatorServerInfo().getSecondReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getCoordinatorServerInfo().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getCoordinatorServerInfo().getSecondReplicaInfo().getToIndex() + INNER_LINE_FEED;
+		
+
+		byte[] bytes = messageStr.getBytes();
+		byte[] ctrBytes = new byte[] { RETURN };
+		byte[] tmp = new byte[bytes.length + ctrBytes.length];
+		System.arraycopy(bytes, 0, tmp, 0, bytes.length);
+		System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
+		return tmp;
 	}
 
-	byte[] bytes = messageStr.getBytes();
-	byte[] ctrBytes = new byte[] { RETURN };
-	byte[] tmp = new byte[bytes.length + ctrBytes.length];
-	System.arraycopy(bytes, 0, tmp, 0, bytes.length);
-	System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
-	return tmp;
-    }
+    private static ServerInfo getServerInfo(String serverInfoStr) {
+		ServerInfo serverInfo = new ServerInfo();
+		String[] serverInfoTokens = serverInfoStr.split(INNER_LINE_FEED);
+		serverInfo = new ServerInfo(serverInfoTokens[0],
+				Integer.parseInt(serverInfoTokens[1]), serverInfoTokens[2],
+				serverInfoTokens[3]);
 
+		return serverInfo;
+	}
 }

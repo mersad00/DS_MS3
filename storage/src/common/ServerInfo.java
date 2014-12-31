@@ -18,6 +18,8 @@ public class ServerInfo {
 	private boolean isServerLaunched;
 	private String fromIndex;
 	private String toIndex;
+	private ServerInfo firstReplicaInfo;
+	private ServerInfo secondReplicaInfo;
 
 	public ServerInfo () {
 	}
@@ -106,6 +108,22 @@ public class ServerInfo {
 
 	public void setToIndex ( String toIndex ) {
 		this.toIndex = toIndex;
+	}
+	
+	public ServerInfo getFirstReplicaInfo(){
+		return this.firstReplicaInfo;
+	}
+
+	public ServerInfo getSecondReplicaInfo(){
+		return this.secondReplicaInfo;
+	}
+	
+	public void setFirstReplicaInfo(ServerInfo serverInfo){
+		this.firstReplicaInfo = serverInfo;
+	}
+	
+	public void setSecondReplicaInfo(ServerInfo serverInfo){
+		this.secondReplicaInfo = serverInfo;
 	}
 
 	@Override

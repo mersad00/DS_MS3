@@ -28,12 +28,25 @@ public class AdditionalTest extends TestCase {
 		message.setStatus ( StatusType.SERVER_NOT_RESPONSIBLE );
 		List < ServerInfo > metaData = new ArrayList < ServerInfo > ();
 		ServerInfo s1 = new ServerInfo ( "1222" , 900 , "1" , "10" );
-		metaData.add ( s1 );
 		ServerInfo s2 = new ServerInfo ( "1333" , 880 , "11" , "20" );
-		metaData.add ( s2 );
 		ServerInfo s3 = new ServerInfo ( "3333" , 333 , "33" , "43" );
-		metaData.add ( s3 );
 		ServerInfo s4 = new ServerInfo ( "4444" , 666 , "44" , "55" );
+		
+		s1.setFirstReplicaInfo(s2);
+		s1.setSecondReplicaInfo(s3);
+		
+		s2.setFirstReplicaInfo(s3);
+		s2.setSecondReplicaInfo(s4);
+		
+		s3.setFirstReplicaInfo(s4);
+		s3.setSecondReplicaInfo(s1);
+		
+		s4.setFirstReplicaInfo(s1);
+		s4.setSecondReplicaInfo(s2);
+		
+		metaData.add ( s1 );
+		metaData.add ( s2 );
+		metaData.add ( s3 );
 		metaData.add ( s4 );
 		message.setMetadata ( metaData );
 
@@ -166,13 +179,28 @@ public class AdditionalTest extends TestCase {
 		initMessage.setActionType ( ECSCommand.INIT );
 		List < ServerInfo > metaData = new ArrayList < ServerInfo > ();
 		ServerInfo s1 = new ServerInfo ( "1222" , 900 , "1" , "10" );
-		metaData.add ( s1 );
 		ServerInfo s2 = new ServerInfo ( "1333" , 880 , "11" , "20" );
-		metaData.add ( s2 );
 		ServerInfo s3 = new ServerInfo ( "3333" , 333 , "33" , "43" );
-		metaData.add ( s3 );
 		ServerInfo s4 = new ServerInfo ( "4444" , 666 , "44" , "55" );
+		
+		s1.setFirstReplicaInfo(s2);
+		s1.setSecondReplicaInfo(s3);
+		
+		s2.setFirstReplicaInfo(s3);
+		s2.setSecondReplicaInfo(s4);
+		
+		s3.setFirstReplicaInfo(s4);
+		s3.setSecondReplicaInfo(s1);
+		
+		s4.setFirstReplicaInfo(s1);
+		s4.setSecondReplicaInfo(s2);
+		
+		
+		metaData.add ( s1 );
+		metaData.add ( s2 );
+		metaData.add ( s3 );
 		metaData.add ( s4 );
+		
 		initMessage.setMetaData ( metaData );
 
 		assertNotNull ( "Message is null" , initMessage );
@@ -191,6 +219,11 @@ public class AdditionalTest extends TestCase {
 					deserializedMessage.getActionType () ) );
 			assertTrue ( initMessage.getMetaData ().equals (
 					deserializedMessage.getMetaData () ) );
+			for(int i=0;i <initMessage.getMetaData().size();i++){
+				assertTrue (initMessage.getMetaData().get(i).getFirstReplicaInfo()
+						.equals(deserializedMessage.getMetaData().get(i).getFirstReplicaInfo()));				
+			}
+			
 		} catch ( UnsupportedDataTypeException e ) {
 			System.out.println ( e.getMessage () );
 
