@@ -11,6 +11,8 @@ import org.junit.Test;
 
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
+import app_kvServer.HeartbeatMessage;
+import app_kvServer.ReplicaMessage;
 import app_kvServer.ServerMessage;
 import client.SerializationUtil;
 import common.ServerInfo;
@@ -534,4 +536,98 @@ public class AdditionalTest extends TestCase {
 
 	}
 
+	@Test
+	public void testHeartbeatMessageSerialization(){
+		ServerInfo s1 = new ServerInfo ( "1222" , 900 , "1" , "10" );
+		ServerInfo s2 = new ServerInfo ( "1333" , 880 , "11" , "20" );
+		ServerInfo s3 = new ServerInfo ( "3333" , 333 , "33" , "43" );
+		
+		s1.setFirstReplicaInfo(s2);
+		s1.setSecondReplicaInfo(s3);
+		
+		s2.setFirstReplicaInfo(s3);
+		s2.setSecondReplicaInfo(s1);
+		
+		s3.setFirstReplicaInfo(s1);
+		s3.setSecondReplicaInfo(s2);
+		
+		//constructor with coordinator server
+		HeartbeatMessage message  = new HeartbeatMessage(s1);
+		byte []byteMsg = SerializationUtil.toByteArray(message);
+		try {
+			HeartbeatMessage deserializedMessage = (HeartbeatMessage)SerializationUtil.toObject(byteMsg);
+
+			assertEquals(message.getCoordinatorServer(), deserializedMessage.getCoordinatorServer());
+			assertEquals(message.getCoordinatorServer().getFirstReplicaInfo(), deserializedMessage.getCoordinatorServer().getFirstReplicaInfo());
+			assertEquals(message.getCoordinatorServer().getSecondReplicaInfo(), deserializedMessage.getCoordinatorServer().getSecondReplicaInfo());
+			assertEquals(message.getMessageType(), deserializedMessage.getMessageType());
+		} catch (UnsupportedDataTypeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		
+	}
+	
+	@Test
+	public void testReplicaMessageSerialization() throws UnsupportedDataTypeException{
+		final String mockKey = "key";
+		final String mockValue = "value";
+		final String mockAddress = "mockAddress";
+		final int mockPort = 0;
+		final String mockFromAdress = "mockFromIndex";
+		final String mockToAddress = "mockToIndex";
+		
+		final String mockReplica1Address = "mockAddress1";
+		final int mockReplica1port = 33;
+		final String mockReplica1FromAddress = "mockFromIndex1";
+		final String mockReplica1ToAddress = "mockToIndex2";
+		
+		final String mockReplica2Address = "mockAddress2";
+		final int mockReplica2port = 44;
+		final String mockReplica2FromAddress = "mockFromIndex2";
+		final String mockReplica2ToAddress = "mockToIndex2";
+		
+		
+		
+		ReplicaMessage msg = new ReplicaMessage();
+		ServerInfo coordinatorServer = new ServerInfo();
+		coordinatorServer.setAddress(mockAddress);
+		coordinatorServer.setPort(mockPort);
+		coordinatorServer.setFromIndex(mockFromAdress);
+		coordinatorServer.setToIndex(mockToAddress);
+		
+		ServerInfo replica1 = new ServerInfo();
+		replica1.setAddress(mockReplica1Address);
+		replica1.setPort(mockReplica1port);
+		replica1.setFromIndex(mockReplica1FromAddress);
+		replica1.setToIndex(mockReplica1ToAddress);
+		
+		ServerInfo replica2 = new ServerInfo();
+		replica2.setAddress(mockReplica2Address);
+		replica2.setPort(mockReplica2port);
+		replica2.setFromIndex(mockReplica2FromAddress);
+		replica2.setToIndex(mockReplica2ToAddress);
+		
+		coordinatorServer.setFirstReplicaInfo(replica1);
+		coordinatorServer.setSecondReplicaInfo(replica2);
+		
+		msg.setStatusType(StatusType.PUT);
+		msg.setKey(mockKey);
+		msg.setValue(mockValue);
+		msg.setCoordinatorServer(coordinatorServer);
+		
+		byte[] byteMessage = SerializationUtil.toByteArray(msg);
+		ReplicaMessage deserializedMsg = (ReplicaMessage)SerializationUtil.toObject(byteMessage);
+		
+		assertEquals(mockKey, deserializedMsg.getKey());
+		assertEquals(mockValue, deserializedMsg.getValue());
+		assertEquals(coordinatorServer, deserializedMsg.getCoordinatorServerInfo());
+		assertEquals(StatusType.PUT, deserializedMsg.getStatus());
+		assertEquals(replica1, deserializedMsg.getCoordinatorServerInfo().getFirstReplicaInfo());
+		assertEquals(replica2, deserializedMsg.getCoordinatorServerInfo().getSecondReplicaInfo());
+	}
+	
+	
 }

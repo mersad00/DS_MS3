@@ -11,6 +11,10 @@ public class HeartbeatMessage implements AbstractMessage{
 		this.coordinatorServer = coordinatorServer;
 	}
 	
+	public HeartbeatMessage(){
+		
+	}
+	
 	public void setCoordinatorServer(ServerInfo coordinatorServer) {
 		this.coordinatorServer = coordinatorServer;
 	}

@@ -11,6 +11,7 @@ import javax.activation.UnsupportedDataTypeException;
 
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
+import app_kvServer.HeartbeatMessage;
 import app_kvServer.ReplicaMessage;
 import app_kvServer.ServerMessage;
 import common.ServerInfo;
@@ -28,6 +29,8 @@ public class SerializationUtil {
     private static final String ECS_MESSAGE = "0";
     private static final String SERVER_MESSAGE = "1";
     private static final String CLIENT_MESSAGE = "2";
+    private static final String REPLICA_MESSAGE = "3";
+    private static final String HEARTBEAT_MESSAGE = "4";
 
     private static final char RETURN = 0x0D;
 
@@ -154,6 +157,23 @@ public class SerializationUtil {
 			
 			break;
 		}
+	    
+	    case HEARTBEAT_MESSAGE : {
+	    	System.out.println(tokens[0]);
+			System.out.println(tokens[1]);
+			System.out.println(tokens[2]);
+			System.out.println(tokens[3]);
+	    	retrivedMessage = new HeartbeatMessage();
+			
+			if (tokens[1] != null) {
+				ServerInfo coordinator = getServerInfo(tokens[1].trim());
+				coordinator.setFirstReplicaInfo(getServerInfo(tokens[2].trim()));
+				coordinator.setSecondReplicaInfo(getServerInfo(tokens[3].trim()));
+				((HeartbeatMessage) retrivedMessage)
+						.setCoordinatorServer(coordinator);
+			}
+	    	break;
+	    }
 	    default:
 		    break;
 
@@ -207,8 +227,10 @@ public class SerializationUtil {
 	    return MessageType.SERVER_MESSAGE;
 	else if (messageTypeStr.equals(ECS_MESSAGE))
 	    return MessageType.ECS_MESSAGE;
-	else if (messageTypeStr.equals(MessageType.REPLICA_MESSAGE))
+	else if (messageTypeStr.equals(REPLICA_MESSAGE))
 		return MessageType.REPLICA_MESSAGE;
+	else if (messageTypeStr.equals(HEARTBEAT_MESSAGE))
+		return MessageType.HEARTBEAT_MESSAGE;
 	else 
 	    throw new UnsupportedDataTypeException("Unsupported message type");
 
@@ -287,7 +309,8 @@ public class SerializationUtil {
     }
     
     public static byte[] toByteArray(ReplicaMessage message) {
-		String messageStr = (MessageType.REPLICA_MESSAGE + LINE_FEED
+    	
+		String messageStr = (REPLICA_MESSAGE + LINE_FEED
 				+ message.getStatus().ordinal() + LINE_FEED + message.getKey()
 				+ LINE_FEED + message.getValue() + LINE_FEED
 				+ message.getCoordinatorServerInfo().getAddress()
@@ -306,7 +329,7 @@ public class SerializationUtil {
 				+ message.getCoordinatorServerInfo().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
 				+ message.getCoordinatorServerInfo().getSecondReplicaInfo().getToIndex() + INNER_LINE_FEED;
 		
-
+		
 		byte[] bytes = messageStr.getBytes();
 		byte[] ctrBytes = new byte[] { RETURN };
 		byte[] tmp = new byte[bytes.length + ctrBytes.length];
@@ -324,4 +347,30 @@ public class SerializationUtil {
 
 		return serverInfo;
 	}
+
+    public static byte[] toByteArray(HeartbeatMessage message){
+    	String messageStr = (HEARTBEAT_MESSAGE + LINE_FEED				
+				+ message.getCoordinatorServer().getAddress()
+				+ INNER_LINE_FEED
+				+ message.getCoordinatorServer().getPort()
+				+ INNER_LINE_FEED
+				+ message.getCoordinatorServer().getFromIndex()
+				+ INNER_LINE_FEED + message.getCoordinatorServer()
+				.getToIndex())
+				+ LINE_FEED + message.getCoordinatorServer().getFirstReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getCoordinatorServer().getFirstReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getCoordinatorServer().getFirstReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getCoordinatorServer().getFirstReplicaInfo().getToIndex() + INNER_LINE_FEED
+				+ LINE_FEED + message.getCoordinatorServer().getSecondReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getCoordinatorServer().getSecondReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getCoordinatorServer().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getCoordinatorServer().getSecondReplicaInfo().getToIndex();
+    	
+    	byte[] bytes = messageStr.getBytes();
+		byte[] ctrBytes = new byte[] { RETURN };
+		byte[] tmp = new byte[bytes.length + ctrBytes.length];
+		System.arraycopy(bytes, 0, tmp, 0, bytes.length);
+		System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
+		return tmp;
+    }
 }
