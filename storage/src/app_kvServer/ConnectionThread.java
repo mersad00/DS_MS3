@@ -329,6 +329,7 @@ public class ConnectionThread implements Runnable {
 	 */
 	private void handleClientRequest(ClientMessage msg) throws IOException {
 		KVMessage responseMessage = null;
+		Hasher hasher = new Hasher();
 		if (parent.getServerStatus()
 				.equals(ServerStatuses.UNDER_INITIALIZATION)
 				|| parent.getServerStatus().equals(ServerStatuses.STOPPED)) {
@@ -346,26 +347,42 @@ public class ConnectionThread implements Runnable {
 			msg.setStatus(StatusType.SERVER_WRITE_LOCK);
 			responseMessage = new ClientMessage(msg);
 
-		} else if (msg.getStatus().equals(KVMessage.StatusType.PUT)) {
-			/*
-			 * responseMessage = DatabaseManager.put ( msg.getKey () ,
-			 * msg.getValue () );
-			 */
-			responseMessage = dbManager.put(msg.getKey(), msg.getValue());
+		}
 
-			ReplicaMessage replicationMessage = new ReplicaMessage();
-			replicationMessage.setCoordinatorServer(parent.getThisServerInfo());
+		/* check if the received message is in this server range */
 
-			replicationMessage.setKey(msg.getKey());
-			replicationMessage.setValue(msg.getValue());
-			replicationMessage.setStatusType(StatusType.PUT);
-			logger.debug("replication message prepared ");
-			sendReplicationMessage(replicationMessage, replicationMessage
-					.getCoordinatorServerInfo().getFirstReplicaInfo());
-			sendReplicationMessage(replicationMessage, replicationMessage
-					.getCoordinatorServerInfo().getSecondReplicaInfo());
+		else if (hasher.isInRange(parent.getThisServerInfo().getFromIndex(),
+				parent.getThisServerInfo().getToIndex(),
+				hasher.getHash(msg.getKey()))) {
 
+			if (msg.getStatus().equals(KVMessage.StatusType.PUT)) {
+				/*
+				 * responseMessage = DatabaseManager.put ( msg.getKey () ,
+				 * msg.getValue () );
+				 */
+				responseMessage = dbManager.put(msg.getKey(), msg.getValue());
+
+				ReplicaMessage replicationMessage = new ReplicaMessage();
+				replicationMessage.setCoordinatorServer(parent
+						.getThisServerInfo());
+
+				replicationMessage.setKey(msg.getKey());
+				replicationMessage.setValue(msg.getValue());
+				replicationMessage.setStatusType(StatusType.PUT);
+				logger.debug("replication message prepared ");
+				sendReplicationMessage(replicationMessage, replicationMessage
+						.getCoordinatorServerInfo().getFirstReplicaInfo());
+				sendReplicationMessage(replicationMessage, replicationMessage
+						.getCoordinatorServerInfo().getSecondReplicaInfo());
+
+			} else if (msg.getStatus().equals(KVMessage.StatusType.GET)) {
+				/// TODO: check if replica(s) have the key
+				// responseMessage = DatabaseManager.get ( msg.getKey () );
+				responseMessage = dbManager.get(msg.getKey());
+
+			}
 		} else {
+			/// TODO: check if replica(s) have the key
 			/* in case the received message is in the range of this server */
 			msg.setStatus(StatusType.SERVER_NOT_RESPONSIBLE);
 			responseMessage = new ClientMessage(msg);
