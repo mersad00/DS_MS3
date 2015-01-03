@@ -175,19 +175,34 @@ public class KVClient {
 			logger.info("SERVER NOT RESPONSIB");
 			logger.info(( ( ClientMessage ) result )
 					.getMetadata () );
-			/*
+			
 			// the previous command was put because mode is 1
 			if(mode == 1){
+				// if clause added to avoid infinite loop when a server is faulty
+				if(connection.getCurrentConnection().equals(connection.getDestinationServerInfo
+						(result.getKey()))){
+						resultText = "SERVER IS NOT RESPONSIBLE RECIEVED"
+								+ " FROM THE RESPONSIBLE SERVER! PLEASE CHANGE CONNECTION AND TRY AGAIN!";
+								return resultText;
+				}
+				
 				result = this.connection.put(result.getKey(),result.getValue());	
 				resultText = handleResponse ( result, 1 );
 			}
+			
 			// the previous command was get because mode is -1
 			else if(mode ==-1){
+				// if clause added to avoid infinite loop when a server is faulty
+				if(connection.getCurrentConnection().equals(connection.getDestinationServerInfo
+						(result.getKey()))){
+						resultText = "SERVER IS NOT RESPONSIBLE RECIEVED"
+								+ " FROM THE RESPONSIBLE SERVER! PLEASE CHANGE CONNECTION AND TRY AGAIN!";
+								return resultText;
+				}
 				
 				result = this.connection.get(result.getKey());	
 				resultText = handleResponse ( result ,-1 );
-			}*/
-			logger.debug("RESPONSIBLE SEVER IS" +this.connection.getDestinationServerInfo(result.getKey()));
+			}
 			break;
 		
 		}
