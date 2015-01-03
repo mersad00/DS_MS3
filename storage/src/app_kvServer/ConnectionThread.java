@@ -351,38 +351,49 @@ public class ConnectionThread implements Runnable {
 
 		/* check if the received message is in this server range */
 
-		else if (hasher.isInRange(parent.getThisServerInfo().getFromIndex(),
-				parent.getThisServerInfo().getToIndex(),
-				hasher.getHash(msg.getKey()))) {
+		else if (isInMyRange(msg.getKey())
+				&& msg.getStatus().equals(KVMessage.StatusType.PUT)) {
+			/*
+			 * responseMessage = DatabaseManager.put ( msg.getKey () ,
+			 * msg.getValue () );
+			 */
+			responseMessage = dbManager.put(msg.getKey(), msg.getValue());
 
-			if (msg.getStatus().equals(KVMessage.StatusType.PUT)) {
-				/*
-				 * responseMessage = DatabaseManager.put ( msg.getKey () ,
-				 * msg.getValue () );
-				 */
-				responseMessage = dbManager.put(msg.getKey(), msg.getValue());
+			ReplicaMessage replicationMessage = new ReplicaMessage();
+			replicationMessage.setCoordinatorServer(parent.getThisServerInfo());
 
-				ReplicaMessage replicationMessage = new ReplicaMessage();
-				replicationMessage.setCoordinatorServer(parent
-						.getThisServerInfo());
+			replicationMessage.setKey(msg.getKey());
+			replicationMessage.setValue(msg.getValue());
+			replicationMessage.setStatusType(StatusType.PUT);
+			logger.debug("replication message prepared ");
+			sendReplicationMessage(replicationMessage, replicationMessage
+					.getCoordinatorServerInfo().getFirstReplicaInfo());
+			sendReplicationMessage(replicationMessage, replicationMessage
+					.getCoordinatorServerInfo().getSecondReplicaInfo());
 
-				replicationMessage.setKey(msg.getKey());
-				replicationMessage.setValue(msg.getValue());
-				replicationMessage.setStatusType(StatusType.PUT);
-				logger.debug("replication message prepared ");
-				sendReplicationMessage(replicationMessage, replicationMessage
-						.getCoordinatorServerInfo().getFirstReplicaInfo());
-				sendReplicationMessage(replicationMessage, replicationMessage
-						.getCoordinatorServerInfo().getSecondReplicaInfo());
-
-			} else if (msg.getStatus().equals(KVMessage.StatusType.GET)) {
-				/// TODO: check if replica(s) have the key
+		} else if (msg.getStatus().equals(KVMessage.StatusType.GET)) {
+			if (isInMyRange(msg.getKey())) {
 				// responseMessage = DatabaseManager.get ( msg.getKey () );
 				responseMessage = dbManager.get(msg.getKey());
-
 			}
+			else {
+				// /check if replica(s) storages have the key
+				KVMessage replicaServeGet = serveIfInMyReplicaRange(msg
+						.getKey());
+				if (replicaServeGet != null) {
+					responseMessage = replicaServeGet;
+				}
+				else
+				{
+					/// this is a get request which neither server nor replicas storages 
+					/// have the data, therefore reply not responsible 
+					msg.setStatus(StatusType.SERVER_NOT_RESPONSIBLE);
+					responseMessage = new ClientMessage(msg);
+					((ClientMessage) responseMessage).setMetadata(parent.getMetadata());
+				}
+			}
+
 		} else {
-			/// TODO: check if replica(s) have the key
 			/* in case the received message is in the range of this server */
 			msg.setStatus(StatusType.SERVER_NOT_RESPONSIBLE);
 			responseMessage = new ClientMessage(msg);
@@ -391,6 +402,46 @@ public class ConnectionThread implements Runnable {
 
 		this.sendClientMessage(responseMessage);
 		logger.info("response message sent to client ");
+	}
+
+	private boolean isInMyRange(String key) {
+		Hasher hasher = new Hasher();
+		return hasher.isInRange(parent.getThisServerInfo().getFromIndex(),
+				parent.getThisServerInfo().getToIndex(), hasher.getHash(key));
+	}
+
+	private KVMessage serveIfInMyReplicaRange(String key) {
+
+		ServerInfo responsibleServer = null;
+		Hasher hasher = new Hasher();
+		if (parent.getMetadata().size() != 0) {
+			for (ServerInfo server : parent.getMetadata()) {
+				if (hasher.isInRange(server.getFromIndex(),
+						server.getToIndex(), hasher.getHash(key))) {
+					logger.debug("Requested key is in the resposibility of the server:"
+							+ server);
+					responsibleServer = server;
+				}
+			}
+		}
+		if (responsibleServer != null) {
+			if (parent.getThisServerInfo().getFirstReplicaInfo()
+					.equals(responsibleServer)) {
+				logger.debug("Requested key is in the replica database of server:"
+						+ parent.getThisServerInfo()
+						+ " replication of:"
+						+ responsibleServer);
+				return rep1.get(key);
+			} else if (parent.getThisServerInfo().getSecondReplicaInfo()
+					.equals(responsibleServer)) {
+				logger.debug("Requested key is in the replica database of server:"
+						+ parent.getThisServerInfo()
+						+ " replication of:"
+						+ responsibleServer);
+				return rep2.get(key);
+			}
+		}
+		return null;
 	}
 
 	/**
