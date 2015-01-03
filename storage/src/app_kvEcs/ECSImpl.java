@@ -149,8 +149,6 @@ public class ECSImpl implements ECS {
 						this.activeServers.size() + " servers");
 		}
 		
-		logger.info("ECS started " +  serversToStart.toString() );
-		
 		// calculate the metaData
 		serversToStart = calculateMetaData ( activeServers );
 		
@@ -175,43 +173,41 @@ public class ECSImpl implements ECS {
 		}
 
 		logger.info ( "Active servers are launched and handed meta-data." );
-
-	}
-			
 		
-		/*List < ServerInfo > serversToStart = this.serverRepository.subList ( 0 ,
-				numberOfNodes );
-		this.activeConnections = new HashMap < ServerInfo , ServerConnection > ();
-		logger.info ( "ECS will launch " + numberOfNodes + " servers" );
-		logger.debug ( "ECS will launch" + serversToStart );
-		// calculate the metaData
-		serversToStart = calculateMetaData ( serversToStart );
-		launchNodes ( serversToStart );
+		logger.debug("Staring Replication Operation...");
+		replicationOperation();
+		logger.info(" Replication operation is done");
 
-		logger.debug ( "Nodes launched by SSH calls." );
-
-		// communicate with servers and send call init
-		ECSMessage initMessage = getInitMessage ( serversToStart );
-		logger.info ( "Sending init signals to servers" );
-		// create server connection
-		for ( ServerInfo server : this.activeServers ) {
-			ServerConnection channel = new ServerConnection ( server );
-			try {
-				channel.connect ();
-				channel.sendMessage ( initMessage );
-				activeConnections.put ( server , channel );
-			} catch ( IOException e ) {
-				logger.error ( "One server node couldn't be initiated" + server );
-				// this.activeServers.remove(server);
-			}
-
-		}
-
-		logger.info ( "Active servers are launched and handed meta-data." );
-
+		logger.info("ECS started " +  serversToStart.toString() );
+		
 	}
-	*/
+		
+	/**
+	 * tell each server to replicated its data on the next two nodes!
+	 * @param serversToStart
+	 * @return
+	 */
 	
+	private void replicationOperation(){
+		List<ServerConnection> locked = new ArrayList<ServerConnection>();
+		for(ServerInfo serverNode: activeServers){
+			List<ServerInfo> replicas = getReplicas(serverNode);
+			sendData(serverNode, replicas.get(0), serverNode.getFromIndex(), serverNode.getToIndex());
+			sendData(serverNode, replicas.get(1), serverNode.getFromIndex(), serverNode.getToIndex());
+			locked.add(activeConnections.get(serverNode));
+		}
+		//releasing locks
+		ECSMessage releaseLock = new ECSMessage ();
+		releaseLock.setActionType ( ECSCommand.RELEASE_LOCK );
+		try {	
+			for(ServerConnection sChannel:locked){
+				sendECSCommand(sChannel, releaseLock);
+			}
+		logger.debug ( "All locks are released." );
+		} catch ( IOException e ) {
+			logger.error ( "ReLease Lock message couldn't be sent." );
+		}	
+	}
 	
 	private ECSMessage getInitMessage ( List < ServerInfo > serversToStart ) {
 		ECSMessage initMessage = new ECSMessage ();
@@ -224,8 +220,9 @@ public class ECSImpl implements ECS {
 		
 		/* it is considered that the invoker and invoked processes are in the same folder and machine*/
 		String path = System.getProperty("user.dir");
-		String command = "java -jar " + path + "/ms3-server.jar ";
+		String command = "nohup java -jar " + path + "/ms3-server.jar ";
 		String arguments[] = new String [2];
+		arguments[1] = "  ERROR &";
 		int result;
 		
 		Iterator<ServerInfo> iterator = serversToStart.iterator() ;
@@ -266,8 +263,9 @@ public class ECSImpl implements ECS {
 		
 		/* it is considered that the invoker and invoked processes are in the same folder and machine*/
 		String path = System.getProperty("user.dir");
-		String command = "java -jar " + path + "/ms3-server.jar ";
+		String command = "nohup java -jar " + path + "/ms3-server.jar ";
 		String arguments[] = new String [2];
+		arguments[1] = "  ERROR &";
 		int result;
 		arguments[0] = String.valueOf(serverToStart.getPort());
 		if(!localCall)
@@ -320,12 +318,6 @@ public class ECSImpl implements ECS {
 			}
 			server.setFromIndex ( predecessor.getToIndex () );
 		}
-		
-		//set the replicas info in the metadata
-				for(int i=0; i<serversToStart.size();i++){
-					serversToStart.get(i).setFirstReplicaInfo(serversToStart.get((i+1) % serversToStart.size()));
-					serversToStart.get(i).setSecondReplicaInfo(serversToStart.get((i+2) % serversToStart.size()));
-				}
 		//this.activeServers = serversToStart;
 		//logger.debug ( "Calculated metadata " + serversToStart );
 		return serversToStart;
