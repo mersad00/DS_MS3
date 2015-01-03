@@ -132,9 +132,65 @@ public class SshCaller implements SshInvoker{
 	
 	public int localInvokeProcess(String command, String[] arguments){
 		
-		ProcessThread thread = new ProcessThread(command, arguments);
-		thread.start();
-		return 0;
+		try{
+			// adding the arguments to the command
+			for(String argument: arguments)
+				command += " " + argument;
+			//logger.debug("<<<<<<" + command + ">>>>>");
+			ProcessBuilder pb =
+					new ProcessBuilder("nohup","java", "-jar","ms3-server.jar", arguments[0],"&");
+			String path = System.getProperty("user.dir");
+			pb.directory(new File(path));
+			
+			Process p = pb.start();
+			InputStream in = p.getInputStream();
+			long start = System.currentTimeMillis();
+			long end = start + timeOut;
+					 
+		      String s="";
+		      char c;
+		      boolean waiting = true;
+		      while(System.currentTimeMillis() < end && waiting){
+			        while(in.available()>0){
+			        	c = (char)in.read();
+			        	
+			        	/* '\r' indicates that the process on the
+			        	 * remote machine started successfully 
+			        	 
+			        	if(c == '\r'){ 
+			        		waiting = false;
+			        		break;
+			        	}
+			        	
+			        	*/
+			        	
+			        	s += c;
+			        	
+			        	if(s.contains("$SUCCESS$")){
+			        		s.replace("$SUCCESS$", "");
+			        		waiting = false;
+			        		break;
+			        	}
+			        	
+			        	// the process did not start correctly
+			        	if(s.contains("$ERROR$"))
+			        		return -1;
+			        		
+			        	// no more input to read!
+			        	if((int)c < 0)
+			        		break;
+			        }
+		        
+		      }
+		      logger.info("Local Server" 
+		    	  		+ " has started! Listening on Port " + arguments[0]);
+		    	 
+		    return 0;
+		    }
+		    catch(Exception e){	
+		      logger.error(e);
+		      return -1;
+		    }
 	}
 	
 	public static void main(String args[]){
@@ -144,43 +200,5 @@ public class SshCaller implements SshInvoker{
 			e.printStackTrace();
 		}
 		
-	}
-	
-	class ProcessThread extends Thread {
-		private String command;
-		private String [] arguments;
-		
-		public ProcessThread ( String command, String[] arguments ) {
-			// adding the arguments to the command
-			this.arguments = arguments;
-						for(String argument: arguments)
-							command += " " + argument;
-						this.command = command;
-						//logger.debug("<<<<<<" + command + ">>>>>");						
-		}
-
-		public void run () {			
-			
-			try {
-				logger.debug("the arguments are " + arguments[0]);
-				logger.debug("the command is : " + command);
-				ProcessBuilder pb =
-						new ProcessBuilder("java", "-jar","ms3-server.jar", arguments[0],"&");
-				String path = System.getProperty("user.dir");
-				pb.directory(new File(path));
-				
-				Process p = Runtime.getRuntime ().exec ( command );	
-				InputStream in = p.getInputStream();
-				BufferedReader reader = new BufferedReader ( new InputStreamReader(in)  );
-				while(reader.readLine ()!= null){
-					
-				}
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			
-			
-		}
 	}
 	}
