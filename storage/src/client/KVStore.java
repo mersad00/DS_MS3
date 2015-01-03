@@ -258,7 +258,7 @@ public class KVStore implements KVCommInterface {
 		return this.lastSentMessage;
 	}
 
-	/*private*/public ServerInfo getDestinationServerInfo ( String key ) {
+	public ServerInfo getDestinationServerInfo ( String key ) {
 		ServerInfo destinationServer = null;
 		Hasher hasher = new Hasher ();
 		if ( metadata.size () != 0 ) {
@@ -275,6 +275,10 @@ public class KVStore implements KVCommInterface {
 		}
 
 		return destinationServer;
+	}
+	
+	public ServerInfo getCurrentConnection(){
+		return this.currentDestinationServer;
 	}
 
 }
