@@ -258,7 +258,7 @@ public class KVStore implements KVCommInterface {
 		return this.lastSentMessage;
 	}
 
-	private ServerInfo getDestinationServerInfo ( String key ) {
+	/*private*/public ServerInfo getDestinationServerInfo ( String key ) {
 		ServerInfo destinationServer = null;
 		Hasher hasher = new Hasher ();
 		if ( metadata.size () != 0 ) {

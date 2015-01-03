@@ -172,7 +172,10 @@ public class KVClient {
 			//resultText = UserFacingMessages.SERVER_NOT_RESPONSIBLE;
 			this.connection.updateMetadata ( ( ( ClientMessage ) result )
 					.getMetadata () );
-			
+			logger.info("SERVER NOT RESPONSIB");
+			logger.info(( ( ClientMessage ) result )
+					.getMetadata () );
+			/*
 			// the previous command was put because mode is 1
 			if(mode == 1){
 				result = this.connection.put(result.getKey(),result.getValue());	
@@ -183,8 +186,10 @@ public class KVClient {
 				
 				result = this.connection.get(result.getKey());	
 				resultText = handleResponse ( result ,-1 );
-			}
+			}*/
+			logger.debug("RESPONSIBLE SEVER IS" +this.connection.getDestinationServerInfo(result.getKey()));
 			break;
+		
 		}
 
 		case SERVER_STOPPED : {

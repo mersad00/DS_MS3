@@ -60,7 +60,7 @@ public class DatabaseManager {
 		for handling calls within ssh */
 		path = path.replace("ms3-server.jar", "");
 		
-		this.dataBaseUri = path +"src/app_kvServer/PersistentStorage-"+ id + "."+ databaseType ; 
+		this.dataBaseUri = path +"/PersistentStorage-"+ id + "."+ databaseType ; 
 		File f = new File(dataBaseUri);
 		
 		if(!f.exists()){
