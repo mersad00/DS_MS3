@@ -409,7 +409,7 @@ public class ConnectionThread implements Runnable {
 		return hasher.isInRange(parent.getThisServerInfo().getFromIndex(),
 				parent.getThisServerInfo().getToIndex(), hasher.getHash(key));
 	}
-
+	
 	private KVMessage serveIfInMyReplicaRange(String key) {
 
 		ServerInfo responsibleServer = null;
@@ -524,7 +524,34 @@ public class ConnectionThread implements Runnable {
 			this.sendECSMessage(acknowledgeMessage);
 			logger.info("send acknowledgment back to  ECS");
 
-		} else if (msg.getActionType().equals(ECSCommand.SEND_METADATA)) {
+		} else if (msg.getActionType().equals(ECSCommand.REMOVE_DATA)) {
+			String fromIndex = msg.getMoveFromIndex();
+			String toIndex = msg.getMoveToIndex();
+			
+			if(parent.getThisServerInfo().isIndexInMyRange(fromIndex) &&
+					parent.getThisServerInfo().isIndexInMyRange(toIndex)){
+				logger.info("removing data form main storage from "+
+					fromIndex + " to: "+ toIndex);
+				dbManager.removeDataInRange(fromIndex, toIndex);				
+			}else if(parent.getThisServerInfo().getFirstReplicaInfo().isIndexInMyRange(fromIndex) &&
+					parent.getThisServerInfo().getFirstReplicaInfo().isIndexInMyRange(toIndex)){
+				logger.info("removing data form first replica storage from "+
+					fromIndex + " to: "+ toIndex);
+				rep1.removeDataInRange(fromIndex, toIndex);				
+			}else if(parent.getThisServerInfo().getSecondReplicaInfo().isIndexInMyRange(fromIndex) &&
+					parent.getThisServerInfo().getSecondReplicaInfo().isIndexInMyRange(toIndex)){
+				logger.info("removing data form second replica storage from "+
+					fromIndex + " to: "+ toIndex);
+				rep2.removeDataInRange(fromIndex, toIndex);				
+			}
+			// sending ack even if the operation was not successful
+			//TODO send Nack when is unsuccessful
+			ECSMessage acknowledgeMessage = new ECSMessage();
+			acknowledgeMessage.setActionType(ECSCommand.ACK);
+			this.sendECSMessage(acknowledgeMessage);
+			logger.info("send acknowledgment back to  ECS");
+			
+		}else if (msg.getActionType().equals(ECSCommand.SEND_METADATA)) {
 			logger.info("updating metadata ...");
 			parent.setMetadata(msg.getMetaData());
 		}
