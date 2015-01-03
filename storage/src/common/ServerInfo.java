@@ -160,5 +160,24 @@ public class ServerInfo {
 		return "Server address : " + this.getAddress () + " on port : "
 				+ this.getPort ();
 	}
+	
+	
+	
+	public boolean isIndexInMyRange(String index) {
+		// the last node in the ring
+		if(this.getFromIndex().compareTo( 
+				this.getToIndex()) > 0){
+			if(index.compareTo(this.getFromIndex()) >=0 )
+					return true;
+			else{
+				return (index.compareTo(this.getToIndex()) <= 0);
+			}
+	}
+		//for the other nodes
+		else
+			return (index.compareTo(this.getFromIndex()) >= 0 &&
+					index.compareTo(this.getToIndex()) <= 0);
+			
+	}
 
 }
