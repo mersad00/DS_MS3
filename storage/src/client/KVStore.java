@@ -136,11 +136,11 @@ public class KVStore implements KVCommInterface {
 		msg.setKey ( key );
 		msg.setValue ( value );
 		msg.setStatus ( KVMessage.StatusType.PUT );
-		ServerInfo tempInfo = this.getDestinationServerInfo ( key );
+		//ServerInfo tempInfo = this.getDestinationServerInfo ( key );
 		try {
-			if ( ! this.currentDestinationServer.equals ( tempInfo ) ) {
+			/*if ( ! this.currentDestinationServer.equals ( tempInfo ) ) {
 				this.switchConnection ( tempInfo );
-			}
+			}*/
 			this.sendMessage ( msg );
 			receivedMsg = this.receiveMessage ();
 
@@ -164,11 +164,11 @@ public class KVStore implements KVCommInterface {
 		KVMessage receivedMsg = null;
 		msg.setKey ( key );
 		msg.setStatus ( KVMessage.StatusType.GET );
-		ServerInfo tempInfo = this.getDestinationServerInfo ( key );
+		//ServerInfo tempInfo = this.getDestinationServerInfo ( key );
 		try {
-			if ( ! this.currentDestinationServer.equals ( tempInfo ) ) {
+			/*if ( ! this.currentDestinationServer.equals ( tempInfo ) ) {
 				this.switchConnection ( tempInfo );
-			}
+			}*/
 			this.sendMessage ( msg );
 			receivedMsg = this.receiveMessage ();
 

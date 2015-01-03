@@ -172,10 +172,6 @@ public class KVClient {
 			//resultText = UserFacingMessages.SERVER_NOT_RESPONSIBLE;
 			this.connection.updateMetadata ( ( ( ClientMessage ) result )
 					.getMetadata () );
-			logger.info("SERVER NOT RESPONSIB");
-			logger.info(( ( ClientMessage ) result )
-					.getMetadata () );
-			
 			// the previous command was put because mode is 1
 			if(mode == 1){
 				// if clause added to avoid infinite loop when a server is faulty
@@ -185,7 +181,11 @@ public class KVClient {
 								+ " FROM THE RESPONSIBLE SERVER! PLEASE CHANGE CONNECTION AND TRY AGAIN!";
 								return resultText;
 				}
-				
+
+				logger.info("SERVER NOT RESPONSIBLE.\n Changing Connection...");
+				// tell the connection to switch the connection to the responsible server
+				this.connection.switchConnection(connection.getDestinationServerInfo
+						(result.getKey()));
 				result = this.connection.put(result.getKey(),result.getValue());	
 				resultText = handleResponse ( result, 1 );
 			}
@@ -199,7 +199,10 @@ public class KVClient {
 								+ " FROM THE RESPONSIBLE SERVER! PLEASE CHANGE CONNECTION AND TRY AGAIN!";
 								return resultText;
 				}
-				
+				logger.info("SERVER NOT RESPONSIBLE.\n Changing Connection...");
+				// tell the connection to switch the connection to the responsible server
+				this.connection.switchConnection(connection.getDestinationServerInfo
+						(result.getKey()));
 				result = this.connection.get(result.getKey());	
 				resultText = handleResponse ( result ,-1 );
 			}
