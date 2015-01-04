@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
+import app_kvEcs.FailureMessage;
 import app_kvServer.HeartbeatMessage;
 import app_kvServer.ReplicaMessage;
 import app_kvServer.ServerMessage;
@@ -627,6 +628,41 @@ public class AdditionalTest extends TestCase {
 		assertEquals(StatusType.PUT, deserializedMsg.getStatus());
 		assertEquals(replica1, deserializedMsg.getCoordinatorServerInfo().getFirstReplicaInfo());
 		assertEquals(replica2, deserializedMsg.getCoordinatorServerInfo().getSecondReplicaInfo());
+	}
+	
+	@Test
+	public void testFailureMessageMessageSerialization(){
+		ServerInfo s1 = new ServerInfo ( "1222" , 900 , "1" , "10" );
+		ServerInfo s2 = new ServerInfo ( "1333" , 880 , "11" , "20" );
+		ServerInfo s3 = new ServerInfo ( "3333" , 333 , "33" , "43" );
+		
+		s1.setFirstReplicaInfo(s2);
+		s1.setSecondReplicaInfo(s3);
+		
+		s2.setFirstReplicaInfo(s3);
+		s2.setSecondReplicaInfo(s1);
+		
+		s3.setFirstReplicaInfo(s1);
+		s3.setSecondReplicaInfo(s2);
+		
+		//constructor with coordinator server
+		FailureMessage message  = new FailureMessage();
+		message.setFailedServer(s1);
+		byte []byteMsg = SerializationUtil.toByteArray(message);
+		try {
+			FailureMessage deserializedMessage = (FailureMessage)SerializationUtil.toObject(byteMsg);
+
+			assertEquals(message.getFailedServer(), deserializedMessage.getFailedServer());
+			assertEquals(message.getFailedServer().getFirstReplicaInfo(), deserializedMessage.getFailedServer().getFirstReplicaInfo());
+			assertEquals(message.getFailedServer().getSecondReplicaInfo(), deserializedMessage.getFailedServer().getSecondReplicaInfo());
+			assertEquals(message.getMessageType(), deserializedMessage.getMessageType());
+		} catch (UnsupportedDataTypeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		
 	}
 	
 	
