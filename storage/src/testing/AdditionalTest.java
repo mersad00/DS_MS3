@@ -648,6 +648,8 @@ public class AdditionalTest extends TestCase {
 		//constructor with coordinator server
 		FailureMessage message  = new FailureMessage();
 		message.setFailedServer(s1);
+		message.setReporteeServer(s2);
+		
 		byte []byteMsg = SerializationUtil.toByteArray(message);
 		try {
 			FailureMessage deserializedMessage = (FailureMessage)SerializationUtil.toObject(byteMsg);
@@ -655,6 +657,11 @@ public class AdditionalTest extends TestCase {
 			assertEquals(message.getFailedServer(), deserializedMessage.getFailedServer());
 			assertEquals(message.getFailedServer().getFirstReplicaInfo(), deserializedMessage.getFailedServer().getFirstReplicaInfo());
 			assertEquals(message.getFailedServer().getSecondReplicaInfo(), deserializedMessage.getFailedServer().getSecondReplicaInfo());
+			
+			assertEquals(message.getReporteeServer(), deserializedMessage.getReporteeServer());
+			assertEquals(message.getReporteeServer().getFirstReplicaInfo(), deserializedMessage.getReporteeServer().getFirstReplicaInfo());
+			assertEquals(message.getReporteeServer().getSecondReplicaInfo(), deserializedMessage.getReporteeServer().getSecondReplicaInfo());
+			
 			assertEquals(message.getMessageType(), deserializedMessage.getMessageType());
 		} catch (UnsupportedDataTypeException e) {
 			// TODO Auto-generated catch block

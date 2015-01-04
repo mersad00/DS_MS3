@@ -180,8 +180,15 @@ public class SerializationUtil {
 	    		ServerInfo failedServer = getServerInfo(tokens[1].trim());
 	    		failedServer.setFirstReplicaInfo(getServerInfo(tokens[2].trim()));
 	    		failedServer.setSecondReplicaInfo(getServerInfo(tokens[3].trim()));
+	    		
+	    		ServerInfo reporterServer = getServerInfo(tokens[4].trim());
+	    		reporterServer.setFirstReplicaInfo(getServerInfo(tokens[5].trim()));
+	    		reporterServer.setSecondReplicaInfo(getServerInfo(tokens[6].trim()));
+	    		
 				((FailureMessage) retrivedMessage)
 						.setFailedServer(failedServer);
+				((FailureMessage) retrivedMessage)
+				.setReporteeServer(reporterServer);
 	    	}
 	    	break;
 	    }
@@ -409,7 +416,22 @@ public class SerializationUtil {
 				+ LINE_FEED + message.getFailedServer().getSecondReplicaInfo().getAddress() + INNER_LINE_FEED
 				+ message.getFailedServer().getSecondReplicaInfo().getPort() + INNER_LINE_FEED
 				+ message.getFailedServer().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
-				+ message.getFailedServer().getSecondReplicaInfo().getToIndex();
+				+ message.getFailedServer().getSecondReplicaInfo().getToIndex() + LINE_FEED
+				+ message.getReporteeServer().getAddress()
+				+ INNER_LINE_FEED
+				+ message.getReporteeServer().getPort()
+				+ INNER_LINE_FEED
+				+ message.getReporteeServer().getFromIndex()
+				+ INNER_LINE_FEED + message.getReporteeServer()
+				.getToIndex()
+				+ LINE_FEED + message.getReporteeServer().getFirstReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getReporteeServer().getFirstReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getReporteeServer().getFirstReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getReporteeServer().getFirstReplicaInfo().getToIndex() + INNER_LINE_FEED
+				+ LINE_FEED + message.getReporteeServer().getSecondReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getReporteeServer().getSecondReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getReporteeServer().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getReporteeServer().getSecondReplicaInfo().getToIndex();
     	
     	byte[] bytes = messageStr.getBytes();
 		byte[] ctrBytes = new byte[] { RETURN };
