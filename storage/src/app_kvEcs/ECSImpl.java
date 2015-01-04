@@ -68,7 +68,7 @@ public class ECSImpl implements ECS {
 		this.processInvoker = new SshCaller();
 		initService ( numberOfNodes );	
 	}
-	
+	 
 
 	private void readServerInfo ( String fileName )
 			throws FileNotFoundException {
@@ -1208,6 +1208,22 @@ public class ECSImpl implements ECS {
 		channel.connect();
 		channel.sendMessage ( message );
 		channel.disconnect();
+	}
+
+	public void reportFailure(ServerInfo failedServer,ServerInfo reportee) {
+		logger.debug("Failure detected Failed:"+failedServer + " reporter:"+reportee);
+		
+		for (ServerInfo serverInfo : activeServers) {
+			if(serverInfo.equals(failedServer)){
+				serverInfo.reportFailure(reportee);
+			}
+			
+			if(serverInfo.getNumberofFailReports()>1){
+				///TODO: @Arash add your recovery codes
+				logger.debug("Failure detected more than one server reported");
+			}
+		}
+		
 	}
 
 	

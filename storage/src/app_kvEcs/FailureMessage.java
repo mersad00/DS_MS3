@@ -19,4 +19,5 @@ public class FailureMessage implements AbstractMessage {
 		this.failedServer = value;
 	}
 
+
 }

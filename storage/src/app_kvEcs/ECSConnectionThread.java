@@ -4,15 +4,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketAddress;
 
 import org.apache.log4j.Logger;
 
-import app_kvServer.HeartbeatMessage;
-import app_kvServer.ReplicaMessage;
-import app_kvServer.ServerMessage;
 import client.SerializationUtil;
+import common.ServerInfo;
 import common.messages.AbstractMessage;
-import common.messages.ClientMessage;
 import common.messages.AbstractMessage.MessageType;
 import utilities.LoggingManager;
 
@@ -26,9 +24,9 @@ public class ECSConnectionThread implements Runnable {
 	private OutputStream output;
 	private static final int BUFFER_SIZE = 1024;
 	private static final int DROP_SIZE = 1024 * BUFFER_SIZE;
-	private ECS parent;
+	private ECSImpl parent;
 	
-	public ECSConnectionThread(Socket client, ECS ecs){
+	public ECSConnectionThread(Socket client, ECSImpl ecs){
 		this.clientSocket = client;
 		this.parent = ecs;
 		logger = LoggingManager.getInstance().createLogger(this.getClass());
@@ -42,7 +40,11 @@ public class ECSConnectionThread implements Runnable {
 			while (isOpen) {
 				try {
 					AbstractMessage msg = receiveMessage();
-					handleRequest(msg); // to determine the connection type
+					SocketAddress reporter = clientSocket.getRemoteSocketAddress();
+					ServerInfo reporter1 = new ServerInfo(reporter.toString(), clientSocket.getPort());
+					logger.debug("FAILURE REPORTER"+ reporter +" "+ reporter1);
+					
+					handleRequest(msg,reporter1); // to determine the connection type
 					/*
 					 * connection either terminated by the client or lost due to
 					 * network problems
@@ -134,14 +136,11 @@ public class ECSConnectionThread implements Runnable {
 		return msg;
 	}
 
-	private void handleRequest(AbstractMessage msg) throws IOException {
+	private void handleRequest(AbstractMessage msg, ServerInfo reporter) throws IOException {
 		if (msg.getMessageType().equals(MessageType.FAILURE_DETECTION)) {
-			handleFailureDetection((FailureMessage) msg);
+			parent.reportFailure(((FailureMessage)msg).failedServer,reporter);
 		} 
 	}
-	private void handleFailureDetection(FailureMessage msg) {
-		// TODO Auto-generated method stub
-		
-	}
+
 	
 }
