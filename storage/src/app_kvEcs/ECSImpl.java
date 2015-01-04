@@ -318,7 +318,7 @@ public class ECSImpl implements ECS {
 			}
 			server.setFromIndex ( predecessor.getToIndex () );
 		}
-		
+		//TODO change set replica
 		for(int i=0; i<serversToStart.size();i++){
 			serversToStart.get(i).setFirstReplicaInfo(serversToStart.get((i+1) % serversToStart.size()));
 			serversToStart.get(i).setSecondReplicaInfo(serversToStart.get((i+2) % serversToStart.size()));
@@ -1081,6 +1081,8 @@ public class ECSImpl implements ECS {
 			// sender channel got the Ack message
 			if(senderChannel.gotResponse()){
 				senderChannel.setResponse(false);
+				senderChannel.disconnect();
+				
 				return 0;
 			}
 			else{
@@ -1108,19 +1110,19 @@ public class ECSImpl implements ECS {
 	 */
 	private int removeData(ServerInfo server, String fromIndex, String toIndex){
 		// Invoke the removal of the replicated data items
-		//TODO change the ECSMessage if a new ECSMessage is defined for data removal 
-		ECSMessage moveDataMessage = new ECSMessage ();
-		moveDataMessage.setActionType ( ECSCommand.REMOVE_DATA );
-		moveDataMessage.setMoveFromIndex ( fromIndex );
-		moveDataMessage.setMoveToIndex ( toIndex );
-		moveDataMessage.setMoveToServer ( null );
+		ECSMessage removeDataMessage = new ECSMessage ();
+		removeDataMessage.setActionType ( ECSCommand.REMOVE_DATA );
+		removeDataMessage.setMoveFromIndex ( fromIndex );
+		removeDataMessage.setMoveToIndex ( toIndex );
+		
 		try {
 			/*ServerConnection serverChannel = this.activeConnections
 					.get ( server );*/
 			// in order to handle concurrent send from the same serverConnection I used new objects!
+			
 			ServerConnection serverChannel = new ServerConnection(server);
 			serverChannel.connect();
-			serverChannel.sendMessage ( moveDataMessage );
+			serverChannel.sendMessage ( removeDataMessage );
 			Thread temp = new Thread(serverChannel);
 			temp.start();	
 			//3000 is timeout
@@ -1130,6 +1132,8 @@ public class ECSImpl implements ECS {
 			// sender channel got the Ack message
 			if(serverChannel.gotResponse()){
 				serverChannel.setResponse(false);
+				serverChannel.disconnect();
+				
 				return 0;
 			}
 			else{
