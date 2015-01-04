@@ -33,6 +33,7 @@ import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import app_kvEcs.FailureMessage;
 import client.SerializationUtil;
 import utilities.LoggingManager;
 import common.ServerInfo;
@@ -57,22 +58,23 @@ public class KVServer extends Thread {
 
 	private Date firstCoordinatorLastSeen;
 	private Date secondCoordinatorLastSeen;
-	
-	
-	public Date getFirstCoordinatorLastSeen(){
+
+	public Date getFirstCoordinatorLastSeen() {
 		return firstCoordinatorLastSeen;
 	}
-	public synchronized void setFirstCoordinatorLastSeen(Date value){
+
+	public synchronized void setFirstCoordinatorLastSeen(Date value) {
 		this.firstCoordinatorLastSeen = value;
 	}
-	public Date getSecondCoordinatorLastSeen(){
+
+	public Date getSecondCoordinatorLastSeen() {
 		return secondCoordinatorLastSeen;
 	}
-	public synchronized void setSecondCoordinatorLastSeen(Date value){
+
+	public synchronized void setSecondCoordinatorLastSeen(Date value) {
 		this.secondCoordinatorLastSeen = value;
 	}
-	
-	
+
 	/**
 	 * Start KV Server at given port
 	 * 
@@ -107,10 +109,10 @@ public class KVServer extends Thread {
 	 * @throws IOException
 	 */
 
-	public void startServer () throws IOException{
+	public void startServer() throws IOException {
 		this.serverStatus = ServerStatuses.UNDER_INITIALIZATION;
 		running = initializeServer();
-		if (serverSocket != null) {	
+		if (serverSocket != null) {
 			while (isRunning()) {
 				try {
 					Socket client = serverSocket.accept();
@@ -152,8 +154,42 @@ public class KVServer extends Thread {
 		}
 	}
 
-	void sendHeartbeatMessage(HeartbeatMessage msg,
-			ServerInfo server) {
+	void sendFailureMessage(FailureMessage msg) {
+
+		ServerInfo ecsFailure = new ServerInfo("127.0.0.1", 50018);
+		logger.debug("FAILURE: inside send failure method");
+		byte[] msgBytes = SerializationUtil.toByteArray(msg);
+		Socket connectionToOtherServer = null;
+		OutputStream output = null;
+		try {
+			connectionToOtherServer = new Socket(ecsFailure.getAddress(),
+					ecsFailure.getPort());
+			output = connectionToOtherServer.getOutputStream();
+			output.write(msgBytes, 0, msgBytes.length);
+			output.flush();
+		} catch (UnknownHostException e) {
+			logger.error("FAILURE: Error in failure data : " + ecsFailure.toString()
+					+ "Can not find server ");
+		} catch (IOException e) {
+			logger.error("FAILURE: Error in failure data : "
+					+ ecsFailure.toString() + "Can not make connection ");
+		} finally {
+			try {
+				if (output != null && connectionToOtherServer != null) {
+					output.close();
+					connectionToOtherServer.close();
+				}
+			} catch (IOException e) {
+				logger.error("FAILURE: Error in heartbeat data : " + ecsFailure.toString()
+						+ "Can not close connection ");
+			}
+
+		}
+
+		logger.info("FAILURE: to '" + ecsFailure.toString() + "'");
+	}
+
+	void sendHeartbeatMessage(HeartbeatMessage msg, ServerInfo server) {
 
 		logger.debug("inside send heartbeat method");
 		byte[] msgBytes = SerializationUtil.toByteArray(msg);
@@ -190,14 +226,26 @@ public class KVServer extends Thread {
 	HeartbeatThread heartbeatTimer;
 
 	private boolean initHeartbeat() {
-		logger.debug("INIT HeartBeat("
-				+ this.getThisServerInfo().getPort() + ") => R1["
-				+ this.getThisServerInfo().getFirstReplicaInfo().getPort() + "] R2["+
-				this.getThisServerInfo().getSecondReplicaInfo().getPort() + "] <= C1{"
-				+ this.getThisServerInfo().getFirstCoordinatorInfo().getPort()+"} C2{"
-				+ this.getThisServerInfo().getSecondCoordinatorInfo().getPort()+"}");
+		logger.debug("INIT HeartBeat(" + this.getThisServerInfo().getPort()
+				+ ") => R1["
+				+ this.getThisServerInfo().getFirstReplicaInfo().getPort()
+				+ "] R2["
+				+ this.getThisServerInfo().getSecondReplicaInfo().getPort()
+				+ "] <= C1{"
+				+ this.getThisServerInfo().getFirstCoordinatorInfo().getPort()
+				+ "} C2{"
+				+ this.getThisServerInfo().getSecondCoordinatorInfo().getPort()
+				+ "}");
+		/*FailureMessage fmsg = new FailureMessage();
+		fmsg.setFailedServer(this.getThisServerInfo().getFirstCoordinatorInfo());
+		this.sendFailureMessage(fmsg);
+		logger.debug("FAILURE: 1st test send fail message");
 		
-		if(this.heartbeatTimer!=null) {
+		fmsg.setFailedServer(this.getThisServerInfo().getSecondCoordinatorInfo());
+		this.sendFailureMessage(fmsg);
+		logger.debug("FAILURE: 2nd test send fail message");*/
+		
+		if (this.heartbeatTimer != null) {
 			heartbeatTimer.stopTicking();
 		}
 		this.heartbeatTimer = new HeartbeatThread(this);
@@ -205,7 +253,7 @@ public class KVServer extends Thread {
 		return true;
 	}
 
-	private  boolean initializeServer() {
+	private boolean initializeServer() {
 		logger.info("Initialize server ...");
 		try {
 			serverSocket = new ServerSocket(port);
@@ -230,12 +278,12 @@ public class KVServer extends Thread {
 				server = new KVServer(Integer.parseInt(args[0]),
 						Integer.parseInt(args[1]), args[2]);
 			else
-				server = new KVServer ( Integer.parseInt ( args [ 0 ] ),  10 , "FIFO" );
-			
-			new LogSetup ( server.getPath() + "logs/server/server" + args[ 0 ] + ".log" , Level.ALL );
-			
-			
-			//server.startServer ();
+				server = new KVServer(Integer.parseInt(args[0]), 10, "FIFO");
+
+			new LogSetup(server.getPath() + "logs/server/server" + args[0]
+					+ ".log", Level.ALL);
+
+			// server.startServer ();
 			Thread t = new Thread(server);
 			t.start();
 			try {
@@ -298,7 +346,7 @@ public class KVServer extends Thread {
 		this.metadata = metadata;
 		logger.info("metadata updated with : " + metadata.size() + " values ");
 		for (ServerInfo server : metadata) {
-			
+
 			if (server.getPort() == this.port) {
 				this.thisServerInfo = server;
 				break;
@@ -329,7 +377,7 @@ public class KVServer extends Thread {
 
 			this.heartbeatTimer.stopTicking();
 			this.heartbeatTimer.join();
-			
+
 			logger.debug("heartbeat timer cancelled!");
 
 			serverSocket.close();
@@ -339,30 +387,34 @@ public class KVServer extends Thread {
 			System.exit(1);
 		}
 	}
-	
-	
+
 	/**
 	 * 
 	 * @return the uri of the server jar file in the Operating System
 	 */
-	private String getPath(){
+	private String getPath() {
 
-		/* path added in order to handle invocation by a remote process through ssh
-		in order to avoid Filenotfound exception when creating Log. 
-		Because when this program
-		is called from a remote process, the user directory will link to 
-		"/home/<user>"
-		 it is sufficient to delete path variable from this code when there is no
-		 remote process calling this object
-		*/
-		String path = this.getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
-		
-		/* for local invoking of the KVserver programs(no ssh call), we remove /bin to refer the path to
-		project's root path*/ 
+		/*
+		 * path added in order to handle invocation by a remote process through
+		 * ssh in order to avoid Filenotfound exception when creating Log.
+		 * Because when this program is called from a remote process, the user
+		 * directory will link to "/home/<user>" it is sufficient to delete path
+		 * variable from this code when there is no remote process calling this
+		 * object
+		 */
+		String path = this.getClass().getProtectionDomain().getCodeSource()
+				.getLocation().getPath();
+
+		/*
+		 * for local invoking of the KVserver programs(no ssh call), we remove
+		 * /bin to refer the path to project's root path
+		 */
 		path = path.replace("/bin", "");
-		
-		/* if the name of the jar file changed! this line of code must be updated
-		for handling calls within ssh */
+
+		/*
+		 * if the name of the jar file changed! this line of code must be
+		 * updated for handling calls within ssh
+		 */
 		path = path.replace("ms3-server.jar", "");
 		return path;
 	}

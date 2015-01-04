@@ -11,6 +11,7 @@ import javax.activation.UnsupportedDataTypeException;
 
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
+import app_kvEcs.FailureMessage;
 import app_kvServer.HeartbeatMessage;
 import app_kvServer.ReplicaMessage;
 import app_kvServer.ServerMessage;
@@ -30,8 +31,9 @@ public class SerializationUtil {
     private static final String SERVER_MESSAGE = "1";
     private static final String CLIENT_MESSAGE = "2";
     private static final String REPLICA_MESSAGE = "3";
-    private static final String HEARTBEAT_MESSAGE = "4";
-
+    private static final String HEARTBEAT_MESSAGE = "4"; 
+    private static final String FAILURE_DETECTION = "5";
+    
     private static final char RETURN = 0x0D;
 
     public static byte[] toByteArray(ClientMessage message) {
@@ -159,11 +161,7 @@ public class SerializationUtil {
 			break;
 		}
 	    
-	    case HEARTBEAT_MESSAGE : {
-	    	System.out.println(tokens[0]);
-			System.out.println(tokens[1]);
-			System.out.println(tokens[2]);
-			System.out.println(tokens[3]);
+	    case HEARTBEAT_MESSAGE : {	    	
 	    	retrivedMessage = new HeartbeatMessage();
 			
 			if (tokens[1] != null) {
@@ -173,6 +171,25 @@ public class SerializationUtil {
 				((HeartbeatMessage) retrivedMessage)
 						.setCoordinatorServer(coordinator);
 			}
+	    	break;
+	    }
+	    
+	    case FAILURE_DETECTION : {
+	    	retrivedMessage = new FailureMessage();
+	    	if(tokens[1] != null){
+	    		ServerInfo failedServer = getServerInfo(tokens[1].trim());
+	    		failedServer.setFirstReplicaInfo(getServerInfo(tokens[2].trim()));
+	    		failedServer.setSecondReplicaInfo(getServerInfo(tokens[3].trim()));
+	    		
+	    		ServerInfo reporterServer = getServerInfo(tokens[4].trim());
+	    		reporterServer.setFirstReplicaInfo(getServerInfo(tokens[5].trim()));
+	    		reporterServer.setSecondReplicaInfo(getServerInfo(tokens[6].trim()));
+	    		
+				((FailureMessage) retrivedMessage)
+						.setFailedServer(failedServer);
+				((FailureMessage) retrivedMessage)
+				.setReporteeServer(reporterServer);
+	    	}
 	    	break;
 	    }
 	    default:
@@ -232,6 +249,8 @@ public class SerializationUtil {
 		return MessageType.REPLICA_MESSAGE;
 	else if (messageTypeStr.equals(HEARTBEAT_MESSAGE))
 		return MessageType.HEARTBEAT_MESSAGE;
+	else if (messageTypeStr.equals(FAILURE_DETECTION))
+		return MessageType.FAILURE_DETECTION;
 	else 
 	    throw new UnsupportedDataTypeException("Unsupported message type");
 
@@ -342,6 +361,8 @@ public class SerializationUtil {
 		System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
 		return tmp;
 	}
+    
+    
 
     private static ServerInfo getServerInfo(String serverInfoStr) {
 		ServerInfo serverInfo = new ServerInfo();
@@ -370,6 +391,47 @@ public class SerializationUtil {
 				+ message.getCoordinatorServer().getSecondReplicaInfo().getPort() + INNER_LINE_FEED
 				+ message.getCoordinatorServer().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
 				+ message.getCoordinatorServer().getSecondReplicaInfo().getToIndex();
+    	
+    	byte[] bytes = messageStr.getBytes();
+		byte[] ctrBytes = new byte[] { RETURN };
+		byte[] tmp = new byte[bytes.length + ctrBytes.length];
+		System.arraycopy(bytes, 0, tmp, 0, bytes.length);
+		System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
+		return tmp;
+    }
+    
+    public static byte[] toByteArray(FailureMessage message){
+    	String messageStr = (FAILURE_DETECTION + LINE_FEED				
+				+ message.getFailedServer().getAddress()
+				+ INNER_LINE_FEED
+				+ message.getFailedServer().getPort()
+				+ INNER_LINE_FEED
+				+ message.getFailedServer().getFromIndex()
+				+ INNER_LINE_FEED + message.getFailedServer()
+				.getToIndex())
+				+ LINE_FEED + message.getFailedServer().getFirstReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getFailedServer().getFirstReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getFailedServer().getFirstReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getFailedServer().getFirstReplicaInfo().getToIndex() + INNER_LINE_FEED
+				+ LINE_FEED + message.getFailedServer().getSecondReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getFailedServer().getSecondReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getFailedServer().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getFailedServer().getSecondReplicaInfo().getToIndex() + LINE_FEED
+				+ message.getReporteeServer().getAddress()
+				+ INNER_LINE_FEED
+				+ message.getReporteeServer().getPort()
+				+ INNER_LINE_FEED
+				+ message.getReporteeServer().getFromIndex()
+				+ INNER_LINE_FEED + message.getReporteeServer()
+				.getToIndex()
+				+ LINE_FEED + message.getReporteeServer().getFirstReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getReporteeServer().getFirstReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getReporteeServer().getFirstReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getReporteeServer().getFirstReplicaInfo().getToIndex() + INNER_LINE_FEED
+				+ LINE_FEED + message.getReporteeServer().getSecondReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getReporteeServer().getSecondReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getReporteeServer().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getReporteeServer().getSecondReplicaInfo().getToIndex();
     	
     	byte[] bytes = messageStr.getBytes();
 		byte[] ctrBytes = new byte[] { RETURN };

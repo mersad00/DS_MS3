@@ -3,6 +3,9 @@ package app_kvEcs;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.BindException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -15,72 +18,72 @@ import java.util.Scanner;
 
 import org.apache.log4j.Logger;
 
+import app_kvServer.ConnectionThread;
 import utilities.LoggingManager;
 import common.Hasher;
 import common.ServerInfo;
 
 public class ECSImpl implements ECS {
 
-	private List < ServerInfo > serverRepository;
+	private List<ServerInfo> serverRepository;
 	/**
 	 * The meta data
 	 */
-	private List < ServerInfo > activeServers;
-	private Map < ServerInfo , ServerConnection > activeConnections;
-	Logger logger = LoggingManager.getInstance ().createLogger (
-			this.getClass () );
+	private List<ServerInfo> activeServers;
+	private Map<ServerInfo, ServerConnection> activeConnections;
+	Logger logger = LoggingManager.getInstance().createLogger(this.getClass());
 	private Hasher md5Hasher;
 	//private ProcessInvoker processInvoker;
 	private SshInvoker processInvoker;
 	private String fileName;
 	private boolean localCall;
-
+	private boolean running;
+	private ServerSocket serverSocket;
+	private int port = 50018;
 	/**
 	 * @param fileName
 	 *            : the name of the configuration file
 	 * @throws FileNotFoundException
 	 */
-	public ECSImpl ( String fileName ) throws FileNotFoundException {
+	public ECSImpl(String fileName) throws FileNotFoundException {
 		this.fileName = fileName;
 		/* parse the server repository */
-		readServerInfo ( this.fileName );
-		init ( pickRandomValue ( serverRepository.size () , false ) );		
+		readServerInfo(this.fileName);
+		init(pickRandomValue(serverRepository.size(), false));
 	}
-	
-	ECSImpl(int numberOfNodes , String fileName) throws FileNotFoundException{
+
+	ECSImpl(int numberOfNodes, String fileName) throws FileNotFoundException {
 		this.fileName = fileName;
 		/* parse the server repository */
-		readServerInfo ( this.fileName );		
-		init ( numberOfNodes );	
+		readServerInfo(this.fileName);
+		init(numberOfNodes);
 	}
-	
-	ECSImpl(int numberOfNodes , String fileName, boolean local) throws FileNotFoundException{
+
+	ECSImpl(int numberOfNodes, String fileName, boolean local)
+			throws FileNotFoundException {
 		this.fileName = fileName;
 		localCall = local;
 		/* parse the server repository */
-		readServerInfo ( this.fileName );		
-		init ( numberOfNodes );	
+		readServerInfo(this.fileName);
+		init(numberOfNodes);
 	}
-	
-	public void init (int numberOfNodes ){
-		this.md5Hasher = new Hasher ();
-		/*this.processInvoker = new ProcessInvoker ();*/
+
+	public void init(int numberOfNodes) {
+		this.md5Hasher = new Hasher();
+		/* this.processInvoker = new ProcessInvoker (); */
 		this.processInvoker = new SshCaller();
-		initService ( numberOfNodes );	
+		initService(numberOfNodes);
 	}
-	
 
-	private void readServerInfo ( String fileName )
-			throws FileNotFoundException {
-		Scanner fileReader = new Scanner ( new File ( fileName ) );
-		fileReader.useDelimiter ( "\n" );
-		serverRepository = new ArrayList < ServerInfo > ();
+	private void readServerInfo(String fileName) throws FileNotFoundException {
+		Scanner fileReader = new Scanner(new File(fileName));
+		fileReader.useDelimiter("\n");
+		serverRepository = new ArrayList<ServerInfo>();
 
-		while ( fileReader.hasNext () ) {
-			serverRepository
-					.add ( new ServerInfo ( fileReader.next ().trim () ) );
+		while (fileReader.hasNext()) {
+			serverRepository.add(new ServerInfo(fileReader.next().trim()));
 		}
-		fileReader.close ();
+		fileReader.close();
 
 	}
 
@@ -92,46 +95,49 @@ public class ECSImpl implements ECS {
 	 *            : the range upper bound
 	 * @return
 	 */
-	private int pickRandomValue ( int size , boolean allowZero ) {
-		Random randomGenerator = new Random ();
-		int randomNumber = randomGenerator.nextInt ( size );
-		if ( ! allowZero ) {
+	private int pickRandomValue(int size, boolean allowZero) {
+		Random randomGenerator = new Random();
+		int randomNumber = randomGenerator.nextInt(size);
+		if (!allowZero) {
 			randomNumber += 1;
 		}
 
-		logger.info ( "Picked " + randomNumber + " as a random number." );
+		logger.info("Picked " + randomNumber + " as a random number.");
 		return randomNumber;
 	}
 
 	@Override
-	public void initService ( int numberOfNodes ) {
+	public void initService(int numberOfNodes) {
+		running = true;
 		Random rand = new Random();
 		int count = 0;
 		ServerInfo temp;
-		List < ServerInfo > serversToStart = new ArrayList<ServerInfo>();
-		this.activeConnections = new HashMap < ServerInfo , ServerConnection > ();
-		if(this.activeServers == null)
+		List<ServerInfo> serversToStart = new ArrayList<ServerInfo>();
+		this.activeConnections = new HashMap<ServerInfo, ServerConnection>();
+		if (this.activeServers == null)
 			this.activeServers = new ArrayList<ServerInfo>();
-		//choosing servers randomly
-		while(count < numberOfNodes ){
-			int i = rand.nextInt(serverRepository.size()); 
+		// choosing servers randomly
+		while (count < numberOfNodes) {
+			int i = rand.nextInt(serverRepository.size());
 			temp = serverRepository.get(i);
-			if((!serversToStart.contains(temp) ) && !this.activeServers.contains(temp)){	
+			if ((!serversToStart.contains(temp))
+					&& !this.activeServers.contains(temp)) {
 				serversToStart.add(temp);
 				count++;
 			}
 		}
-		logger.info ( "ECS will launch " + numberOfNodes + " servers " );
-		launchNodes ( serversToStart );
-		
-		//some nodes were not started successfully! 
-		if(serversToStart.size() < numberOfNodes){
+		logger.info("ECS will launch " + numberOfNodes + " servers ");
+		launchNodes(serversToStart);
+
+		// some nodes were not started successfully!
+		if (serversToStart.size() < numberOfNodes) {
 			int n = numberOfNodes - serversToStart.size();
-			count = 0; 
-			int i = 0,r;
-			while(count < n && i < (serverRepository.size() -1 )){
+			count = 0;
+			int i = 0, r;
+			while (count < n && i < (serverRepository.size() - 1)) {
 				temp = serverRepository.get(i);
-				if((!serversToStart.contains(temp) ) && !this.activeServers.contains(temp)){	
+				if ((!serversToStart.contains(temp))
+						&& !this.activeServers.contains(temp)) {
 					r = launchNode(temp);
 					if(r == 0){
 						// server started successfully
@@ -148,7 +154,33 @@ public class ECSImpl implements ECS {
 						" servers! insetead started " + 
 						this.activeServers.size() + " servers");
 		}
-		
+		final ECSImpl that = this;
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				initializeServer();
+				if (serverSocket != null) {
+					while (running) {
+						try {
+							logger.debug("FAILURE: waiting for failure reports");
+							Socket client = serverSocket.accept();
+							ECSConnectionThread connection = new ECSConnectionThread(
+									client, that);
+							new Thread(connection).start();
+
+							logger.info("FAILURE: new Connection: Connected to "
+									+ client.getInetAddress().getHostName()
+									+ " on port " + client.getPort());
+						} catch (IOException e) {
+							logger.error("FAILURE: Error! "
+									+ "Unable to establish connection. \n", e);
+						}
+					}
+				}
+				logger.info("Server stopped.");
+			}
+		}).start();
+
 		// calculate the metaData
 		serversToStart = calculateMetaData ( activeServers );
 		
@@ -178,8 +210,26 @@ public class ECSImpl implements ECS {
 		replicationOperation();
 		logger.info(" Replication operation is done");
 
-		logger.info("ECS started " +  serversToStart.toString() );
-		
+		logger.info("ECS started " + serversToStart.toString());
+
+	}
+	
+	private  boolean initializeServer() {
+		logger.info("Initialize server ...");
+		try {
+			serverSocket = new ServerSocket(port);
+			logger.info("Server listening on port: "
+					+ serverSocket.getLocalPort());
+
+			return true;
+
+		} catch (IOException e) {
+			logger.error("Error! Cannot open server socket:");
+			if (e instanceof BindException) {
+				logger.error("Port " + port + " is already bound!");
+			}
+			return false;
+		}
 	}
 		
 	/**
@@ -1216,6 +1266,21 @@ public class ECSImpl implements ECS {
 		channel.disconnect();
 	}
 
-	
-	
+	public void reportFailure(ServerInfo failedServer, ServerInfo reportee) {
+		logger.debug("Failure detected Failed:" + failedServer + " reporter:"
+				+ reportee);
+
+		for (ServerInfo serverInfo : activeServers) {
+			if (serverInfo.equals(failedServer)) {
+				serverInfo.reportFailure(reportee);
+			}
+
+			if (serverInfo.getNumberofFailReports() > 1) {
+				// /TODO: @Arash add your recovery codes
+				logger.debug("Failure detected more than one server reported");
+			}
+		}
+
+	}
+
 }
