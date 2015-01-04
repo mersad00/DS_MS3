@@ -9,6 +9,8 @@
 
 package common;
 
+import java.util.List;
+
 
 public class ServerInfo {
 
@@ -20,7 +22,8 @@ public class ServerInfo {
 	private String toIndex;
 	private ServerInfo firstReplicaInfo;
 	private ServerInfo secondReplicaInfo;
-
+	private ServerInfo firstCoordinatorInfo;
+	private ServerInfo secondCoordinatorInfo;
 	public ServerInfo () {
 	}
 
@@ -117,7 +120,18 @@ public class ServerInfo {
 	public ServerInfo getSecondReplicaInfo(){
 		return this.secondReplicaInfo;
 	}
-	
+	public ServerInfo getFirstCoordinatorInfo(){
+		return this.firstCoordinatorInfo;
+	}
+	public ServerInfo getSecondCoordinatorInfo(){
+		return this.secondCoordinatorInfo;
+	}
+	public void setFirstCoordinatorInfo(ServerInfo serverInfo){
+		this.firstCoordinatorInfo = serverInfo;
+	}
+	public void setSecondCoordinatorInfo(ServerInfo serverInfo){
+		this.secondCoordinatorInfo = serverInfo;
+	}
 	public void setFirstReplicaInfo(ServerInfo serverInfo){
 		this.firstReplicaInfo = serverInfo;
 	}
@@ -159,6 +173,20 @@ public class ServerInfo {
 	public String toString () {
 		return "Server address : " + this.getAddress () + " on port : "
 				+ this.getPort ();
+	}
+
+	public void setCoordinators(ServerInfo thisServer, List<ServerInfo> metadata) {
+		int i=0;
+		for (ServerInfo server : metadata) {
+			
+			if (server.getPort() == thisServer.port) {
+				break;
+			}
+			i++;
+		}
+		this.setFirstCoordinatorInfo(metadata.get(((i-1)+metadata.size()) % metadata.size()));
+		this.setSecondCoordinatorInfo(metadata.get(((i-2)+metadata.size()) % metadata.size()));
+		
 	}
 
 }

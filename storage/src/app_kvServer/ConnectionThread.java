@@ -29,16 +29,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Date;
 
 import org.apache.log4j.Logger;
 
 import utilities.LoggingManager;
-
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
-
 import client.SerializationUtil;
-
 import common.Hasher;
 import common.ServerInfo;
 import common.messages.AbstractMessage;
@@ -317,6 +315,23 @@ public class ConnectionThread implements Runnable {
 			handleECSRequest((ECSMessage) msg);
 		} else if (msg.getMessageType().equals(MessageType.REPLICA_MESSAGE)) {
 			handleReplicationRequest((ReplicaMessage) msg);
+		} else if (msg.getMessageType().equals(MessageType.HEARTBEAT_MESSAGE)) {
+			handleHeartbeatRequest((HeartbeatMessage) msg);
+		}
+	}
+
+	private void handleHeartbeatRequest(HeartbeatMessage msg) {
+		logger.debug("Handle HeartBeat("
+				+ parent.getThisServerInfo().getPort() + ") =>["
+				+ msg.getCoordinatorServer().getPort() + "] C1{"
+				+ parent.getThisServerInfo().getFirstCoordinatorInfo().getPort()+"}C2{"
+				+ parent.getThisServerInfo().getSecondCoordinatorInfo().getPort()+"}");
+		
+		if(msg.getCoordinatorServer().equals(parent.getThisServerInfo().getFirstCoordinatorInfo())){
+			parent.setFirstCoordinatorLastSeen(new Date());
+		}
+		else if(msg.getCoordinatorServer().equals(parent.getThisServerInfo().getSecondCoordinatorInfo())){
+			parent.setSecondCoordinatorLastSeen(new Date());
 		}
 	}
 
@@ -329,7 +344,6 @@ public class ConnectionThread implements Runnable {
 	 */
 	private void handleClientRequest(ClientMessage msg) throws IOException {
 		KVMessage responseMessage = null;
-		Hasher hasher = new Hasher();
 		if (parent.getServerStatus()
 				.equals(ServerStatuses.UNDER_INITIALIZATION)
 				|| parent.getServerStatus().equals(ServerStatuses.STOPPED)) {
@@ -375,21 +389,20 @@ public class ConnectionThread implements Runnable {
 			if (isInMyRange(msg.getKey())) {
 				// responseMessage = DatabaseManager.get ( msg.getKey () );
 				responseMessage = dbManager.get(msg.getKey());
-			}
-			else {
+			} else {
 				// /check if replica(s) storages have the key
 				KVMessage replicaServeGet = serveIfInMyReplicaRange(msg
 						.getKey());
 				if (replicaServeGet != null) {
 					responseMessage = replicaServeGet;
-				}
-				else
-				{
-					/// this is a get request which neither server nor replicas storages 
-					/// have the data, therefore reply not responsible 
+				} else {
+					// / this is a get request which neither server nor replicas
+					// storages
+					// / have the data, therefore reply not responsible
 					msg.setStatus(StatusType.SERVER_NOT_RESPONSIBLE);
 					responseMessage = new ClientMessage(msg);
-					((ClientMessage) responseMessage).setMetadata(parent.getMetadata());
+					((ClientMessage) responseMessage).setMetadata(parent
+							.getMetadata());
 				}
 			}
 
