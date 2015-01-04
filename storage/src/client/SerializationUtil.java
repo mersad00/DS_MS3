@@ -114,7 +114,8 @@ public class SerializationUtil {
 				    ((ECSMessage)retrivedMessage).getActionType()==(ECSCommand.SEND_METADATA)){
 				List<ServerInfo> metaData = getMetaData(tokens[2].trim());
 				((ECSMessage)retrivedMessage).setMetaData(metaData);
-			    }else  if(((ECSMessage)retrivedMessage).getActionType() == (ECSCommand.MOVE_DATA)){ 
+			    }else  if(((ECSMessage)retrivedMessage).getActionType() == (ECSCommand.MOVE_DATA) || 
+			    		((ECSMessage)retrivedMessage).getActionType() ==(ECSCommand.REMOVE_DATA)){ 
 				((ECSMessage)retrivedMessage).setMoveFromIndex(tokens[2].trim());
 			    }
 			    
@@ -298,6 +299,10 @@ public class SerializationUtil {
 					+ message.getMoveToIndex() + LINE_FEED
 					+ server.getAddress() + LINE_FEED + server.getPort();
 
+		}else if (message.getActionType() == ECSCommand.REMOVE_DATA) {
+			// add the from and to
+			messageStr += LINE_FEED + message.getMoveFromIndex() + LINE_FEED
+					+ message.getMoveToIndex() + LINE_FEED;
 		}
 		
 		byte[] bytes = messageStr.getBytes();

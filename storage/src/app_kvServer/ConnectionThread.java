@@ -422,7 +422,7 @@ public class ConnectionThread implements Runnable {
 		return hasher.isInRange(parent.getThisServerInfo().getFromIndex(),
 				parent.getThisServerInfo().getToIndex(), hasher.getHash(key));
 	}
-
+	
 	private KVMessage serveIfInMyReplicaRange(String key) {
 
 		ServerInfo responsibleServer = null;
@@ -537,7 +537,32 @@ public class ConnectionThread implements Runnable {
 			this.sendECSMessage(acknowledgeMessage);
 			logger.info("send acknowledgment back to  ECS");
 
-		} else if (msg.getActionType().equals(ECSCommand.SEND_METADATA)) {
+		} else if (msg.getActionType().equals(ECSCommand.REMOVE_DATA)) {
+			logger.info("preparing data to be removed ... ");
+			String fromIndex = msg.getMoveFromIndex();
+			String toIndex = msg.getMoveToIndex();
+			if(isIndexInRange(fromIndex,toIndex,parent.getThisServerInfo())){
+				logger.info("removing data form main storage from "+
+					fromIndex + " to: "+ toIndex);
+				dbManager.removeDataInRange(fromIndex, toIndex);				
+			}else if(isIndexInRange(fromIndex,toIndex,parent.getThisServerInfo()
+					.getFirstReplicaInfo())){
+				logger.info("removing data form first replica storag from "+
+					fromIndex + " to: "+ toIndex);
+				rep1.removeDataInRange(fromIndex, toIndex);				
+			}else if(isIndexInRange(fromIndex,toIndex,parent.getThisServerInfo()
+					.getSecondReplicaInfo())){
+				logger.info("removing data form second replica storage from "+
+					fromIndex + " to: "+ toIndex);
+				rep2.removeDataInRange(fromIndex, toIndex);				
+			}
+			// sending ack even if the operation was not successful
+			//TODO send Nack when is unsuccessful
+			ECSMessage acknowledgeMessage = new ECSMessage();
+			acknowledgeMessage.setActionType(ECSCommand.ACK);
+			this.sendECSMessage(acknowledgeMessage);
+			logger.info("send RemoveData acknowledgment back to  ECS");
+		}else if (msg.getActionType().equals(ECSCommand.SEND_METADATA)) {
 			logger.info("updating metadata ...");
 			parent.setMetadata(msg.getMetaData());
 		}
@@ -558,6 +583,39 @@ public class ConnectionThread implements Runnable {
 			}
 		}
 		logger.info("replication message processed ");
+	}
+	
+	
+	private boolean isIndexInRange(String fromIndex, String toIndex, ServerInfo server) {
+		// the last node in the ring
+		logger.debug(fromIndex);
+		logger.debug(toIndex);
+		logger.debug("SERVER");
+		logger.debug(server.getFromIndex());
+		logger.debug(server.getToIndex());
+		
+		if(server.getFromIndex().compareTo( 
+				server.getToIndex()) > 0){
+				boolean b =  ((fromIndex.compareTo(server.getFromIndex()) >= 0 ||
+						fromIndex.compareTo(server.getToIndex()) <= 0 )
+						&& (toIndex.compareTo(server.getFromIndex()) >= 0 || 
+						toIndex.compareTo(server.getToIndex()) <= 0 
+						));
+				logger.debug("answer is  " + b + " for " + server);
+				return b;
+		}
+		//for the other nodes
+		else{
+			boolean b = (fromIndex.compareTo(server.getFromIndex()) >= 0 &&
+					fromIndex.compareTo(server.getToIndex()) <= 0) && 
+					(toIndex.compareTo(server.getFromIndex()) >= 0 &&
+					toIndex.compareTo(server.getToIndex()) <= 0);
+;
+
+			logger.debug("answer is " + b +" for " + server);
+			return b;
+		}
+			
 	}
 
 }
