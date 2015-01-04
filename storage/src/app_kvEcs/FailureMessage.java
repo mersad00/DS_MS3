@@ -7,6 +7,7 @@ import common.messages.AbstractMessage;
 public class FailureMessage implements AbstractMessage {
 
 	ServerInfo failedServer;
+	ServerInfo reporteeServer;
 	@Override
 	public MessageType getMessageType() {
 		return MessageType.FAILURE_DETECTION;
@@ -17,6 +18,13 @@ public class FailureMessage implements AbstractMessage {
 	}
 	public void setFailedServer(ServerInfo value){
 		this.failedServer = value;
+	}
+	
+	public ServerInfo getReporteeServer(){
+		return this.reporteeServer;
+	}
+	public void setReporteeServer(ServerInfo value){
+		this.reporteeServer = value;
 	}
 
 

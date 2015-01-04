@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 
+import app_kvEcs.FailureMessage;
 import utilities.LoggingManager;
 
 public class HeartbeatThread extends Thread {
@@ -94,7 +95,11 @@ public class HeartbeatThread extends Thread {
 										.getFirstCoordinatorInfo().getPort()
 								+ "]");
 						
-						//TODO: report to ECS
+						///send fail message to ECS
+						FailureMessage failmsg = new FailureMessage();
+						failmsg.setFailedServer(parent.getThisServerInfo()
+										.getFirstCoordinatorInfo());
+						parent.sendFailureMessage(failmsg);
 					}
 				}
 				if (parent.getSecondCoordinatorLastSeen() != null) {
@@ -107,7 +112,11 @@ public class HeartbeatThread extends Thread {
 								+ parent.getThisServerInfo()
 										.getSecondCoordinatorInfo().getPort()
 								+ "]");
-						//TODO: report to ECS
+						///send fail message to ECS
+						FailureMessage failmsg = new FailureMessage();
+						failmsg.setFailedServer(parent.getThisServerInfo()
+										.getSecondCoordinatorInfo());
+						parent.sendFailureMessage(failmsg);
 					}
 				}
 			} catch (InterruptedException e) {

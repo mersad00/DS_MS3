@@ -30,6 +30,7 @@ public class ECSConnectionThread implements Runnable {
 		this.clientSocket = client;
 		this.parent = ecs;
 		logger = LoggingManager.getInstance().createLogger(this.getClass());
+		isOpen =true;
 	}
 	@Override
 	public void run() {
@@ -40,11 +41,10 @@ public class ECSConnectionThread implements Runnable {
 			while (isOpen) {
 				try {
 					AbstractMessage msg = receiveMessage();
-					SocketAddress reporter = clientSocket.getRemoteSocketAddress();
-					ServerInfo reporter1 = new ServerInfo(reporter.toString(), clientSocket.getPort());
-					logger.debug("FAILURE REPORTER"+ reporter +" "+ reporter1);
 					
-					handleRequest(msg,reporter1); // to determine the connection type
+					logger.debug("FAILURE REPORTER");
+					
+					handleRequest(msg); // to determine the connection type
 					/*
 					 * connection either terminated by the client or lost due to
 					 * network problems
@@ -136,9 +136,10 @@ public class ECSConnectionThread implements Runnable {
 		return msg;
 	}
 
-	private void handleRequest(AbstractMessage msg, ServerInfo reporter) throws IOException {
+	private void handleRequest(AbstractMessage msg) throws IOException {
 		if (msg.getMessageType().equals(MessageType.FAILURE_DETECTION)) {
-			parent.reportFailure(((FailureMessage)msg).failedServer,reporter);
+			FailureMessage fmsg = (FailureMessage)msg;
+			parent.reportFailure(fmsg.getFailedServer(),fmsg.getReporteeServer());
 		} 
 	}
 
