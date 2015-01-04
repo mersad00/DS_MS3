@@ -318,10 +318,16 @@ public class ECSImpl implements ECS {
 			}
 			server.setFromIndex ( predecessor.getToIndex () );
 		}
-		//TODO change set replica
+		/*
 		for(int i=0; i<serversToStart.size();i++){
 			serversToStart.get(i).setFirstReplicaInfo(serversToStart.get((i+1) % serversToStart.size()));
 			serversToStart.get(i).setSecondReplicaInfo(serversToStart.get((i+2) % serversToStart.size()));
+		}*/
+		for(ServerInfo s:serversToStart){
+			s.setFirstCoordinatorInfo(getMasters(s).get(0));
+			s.setSecondCoordinatorInfo(getMasters(s).get(1));
+			s.setFirstReplicaInfo(getReplicas(s).get(0));
+			s.setSecondReplicaInfo(getReplicas(s).get(1));
 		}
 		//this.activeServers = serversToStart;
 		//logger.debug ( "Calculated metadata " + serversToStart );
