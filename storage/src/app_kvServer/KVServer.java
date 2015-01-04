@@ -82,9 +82,9 @@ public class KVServer extends Thread {
 	public KVServer(int port, int cacheSize, String cacheStrategy) {
 		this.port = port;
 		/* creating persistent storage */
-		db = new DatabaseManager(this.port, cacheSize, cacheStrategy, ".ser");
+		db = new DatabaseManager(this.port, cacheSize, cacheStrategy, "ser");
 		firstReplicaManager = new DatabaseManager(this.port, cacheSize,
-				cacheStrategy, ".rep1");
+				cacheStrategy, "rep1");
 		secondReplicaManager = new DatabaseManager(this.port, cacheSize,
 				cacheStrategy, "rep2");
 		logger = LoggingManager.getInstance().createLogger(this.getClass());

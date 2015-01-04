@@ -438,15 +438,17 @@ public class ConnectionThread implements Runnable {
 			}
 		}
 		if (responsibleServer != null) {
-			if (parent.getThisServerInfo().getFirstReplicaInfo()
+			//if (parent.getThisServerInfo().getFirstReplicaInfo()
+			if (parent.getThisServerInfo().getFirstCoordinatorInfo()			
 					.equals(responsibleServer)) {
 				logger.debug("Requested key is in the replica database of server:"
 						+ parent.getThisServerInfo()
 						+ " replication of:"
 						+ responsibleServer);
 				return rep1.get(key);
-			} else if (parent.getThisServerInfo().getSecondReplicaInfo()
-					.equals(responsibleServer)) {
+			//} else if (parent.getThisServerInfo().getSecondReplicaInfo()
+			} else if (parent.getThisServerInfo().getSecondCoordinatorInfo()
+							.equals(responsibleServer)) {
 				logger.debug("Requested key is in the replica database of server:"
 						+ parent.getThisServerInfo()
 						+ " replication of:"
@@ -459,7 +461,7 @@ public class ConnectionThread implements Runnable {
 
 	/**
 	 * in case of the received message is a server request this method is only
-	 * for moving data to this server
+	 * for moving data to this server (also getting replicated data from other servers)
 	 * 
 	 * @param msg
 	 *            of type <code>ServerMessage</code>
@@ -467,12 +469,29 @@ public class ConnectionThread implements Runnable {
 	 */
 	private void handleServerRequest(ServerMessage msg) throws IOException {
 		if (msg.getData().size() > 0) {
+			String fromIndex = msg.getSaveFromIndex();
+			String toIndex = msg.getSaveToIndex();
 			// DatabaseManager.putAll ( msg.getData () );
-			dbManager.putAll(msg.getData());
+			if(isIndexInRange(fromIndex, toIndex, parent.getThisServerInfo())){
+				dbManager.putAll(msg.getData());
+				logger.info("updated database with : \t" + msg.getData().size()
+						+ " keys ");
+				return;
+			}else if(isIndexInRange(fromIndex, toIndex, parent.getThisServerInfo().getFirstCoordinatorInfo())){
+				rep1.putAll(msg.getData());
+				logger.info("updated Replica1 with : \t" + msg.getData().size()
+						+ " keys ");
+				return;
+			}else if(isIndexInRange(fromIndex, toIndex, parent.getThisServerInfo().getSecondCoordinatorInfo())){
+				rep2.putAll(msg.getData());
+				logger.info("updated Replica2  with : \t" + msg.getData().size()
+						+ " keys ");
+				return;
+			}
 
-			logger.info("updated database with : \t" + msg.getData().size()
-					+ " keys ");
+			logger.debug("SERVER MESSAGE WAS VAGUE!");
 		}
+		logger.debug("SERVER MESSAGE WAS EMPTY");
 	}
 
 	/**
@@ -526,10 +545,21 @@ public class ConnectionThread implements Runnable {
 			 * message.setData ( DatabaseManager.getDataInRange (
 			 * msg.getMoveFromIndex () , msg.getMoveToIndex () ) );
 			 */
+			
+			// Moving whole storage for replication! (not deleting the data afterwards)
+			if(msg.getMoveFromIndex().equals(parent.getThisServerInfo().getFromIndex()) &&
+					msg.getMoveToIndex().equals(parent.getThisServerInfo().getToIndex())){
+				this.dataToBeRemoved = null;
+				logger.debug("sending own storage for replication to " + msg.getMoveToServer());
+			}
+			else
+				this.dataToBeRemoved = msg;
+				
 			message.setData(dbManager.getDataInRange(msg.getMoveFromIndex(),
 					msg.getMoveToIndex()));
+			message.setSaveFromIndex(msg.getMoveFromIndex());
+			message.setSaveToIndex(msg.getMoveToIndex());
 
-			this.dataToBeRemoved = msg;
 			this.sendServerMessage(message, msg.getMoveToServer());
 			logger.info("data moved to : " + msg.getMoveToServer().toString());
 			ECSMessage acknowledgeMessage = new ECSMessage();
@@ -538,30 +568,19 @@ public class ConnectionThread implements Runnable {
 			logger.info("send acknowledgment back to  ECS");
 
 		} else if (msg.getActionType().equals(ECSCommand.REMOVE_DATA)) {
+			// sent by ECS to remove replicated data which was from the old master
+			// the old master's replicated data is on rep2
 			logger.info("preparing data to be removed ... ");
 			String fromIndex = msg.getMoveFromIndex();
 			String toIndex = msg.getMoveToIndex();
-			if(isIndexInRange(fromIndex,toIndex,parent.getThisServerInfo())){
-				logger.info("removing data form main storage from "+
-					fromIndex + " to: "+ toIndex);
-				dbManager.removeDataInRange(fromIndex, toIndex);				
-			}else if(isIndexInRange(fromIndex,toIndex,parent.getThisServerInfo()
-					.getFirstReplicaInfo())){
-				logger.info("removing data form first replica storag from "+
-					fromIndex + " to: "+ toIndex);
-				rep1.removeDataInRange(fromIndex, toIndex);				
-			}else if(isIndexInRange(fromIndex,toIndex,parent.getThisServerInfo()
-					.getSecondReplicaInfo())){
-				logger.info("removing data form second replica storage from "+
+			logger.info("removing data form second replica storage from "+
 					fromIndex + " to: "+ toIndex);
 				rep2.removeDataInRange(fromIndex, toIndex);				
-			}
-			// sending ack even if the operation was not successful
-			//TODO send Nack when is unsuccessful
 			ECSMessage acknowledgeMessage = new ECSMessage();
 			acknowledgeMessage.setActionType(ECSCommand.ACK);
 			this.sendECSMessage(acknowledgeMessage);
 			logger.info("send RemoveData acknowledgment back to  ECS");
+			
 		}else if (msg.getActionType().equals(ECSCommand.SEND_METADATA)) {
 			logger.info("updating metadata ...");
 			parent.setMetadata(msg.getMetaData());
@@ -573,13 +592,15 @@ public class ConnectionThread implements Runnable {
 				+ msg.getStatus());
 		if (msg.getStatus().equals(KVMessage.StatusType.PUT)) {
 			if (msg.getCoordinatorServerInfo().equals(
-					parent.getThisServerInfo().getFirstReplicaInfo())) {
-				rep1.put(msg.getKey(), msg.getValue());
+					//parent.getThisServerInfo().getFirstReplicaInfo())) {
+					parent.getThisServerInfo().getFirstCoordinatorInfo())) {
+					rep1.put(msg.getKey(), msg.getValue());
 				logger.debug("replication in replica 1");
 			} else if (msg.getCoordinatorServerInfo().equals(
-					parent.getThisServerInfo().getSecondReplicaInfo())) {
-				rep2.put(msg.getKey(), msg.getValue());
-				logger.debug("replication in replica 2");
+					//parent.getThisServerInfo().getSecondReplicaInfo())) {
+					parent.getThisServerInfo().getSecondCoordinatorInfo())) {
+					rep2.put(msg.getKey(), msg.getValue());
+					logger.debug("replication in replica 2");
 			}
 		}
 		logger.info("replication message processed ");
