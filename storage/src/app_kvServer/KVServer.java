@@ -81,7 +81,6 @@ public class KVServer extends Thread{
 	 * @throws IOException
 	 */
 	public void startServer () throws IOException{
-		new LogSetup ( "logs/server/server.log" , Level.ALL );
 		this.serverStatus = ServerStatuses.UNDER_INITIALIZATION;
 		running = initializeServer ();
 		if ( serverSocket != null ) {
@@ -148,12 +147,13 @@ public class KVServer extends Thread{
 
 	public static void main ( String args[] ) {
 		try {
-			new LogSetup ( "logs/server/server.log" , Level.ALL );
 			KVServer server;
 			if(args.length >=3)
 				server = new KVServer ( Integer.parseInt ( args [ 0 ] ),  Integer.parseInt ( args [ 1 ] ) , args[ 2] );
 			else
 				server = new KVServer ( Integer.parseInt ( args [ 0 ] ),  10 , "FIFO" );
+			
+			new LogSetup ( server.getPath() + "logs/server/server" + args[ 0 ] + ".log" , Level.ALL );
 			
 			
 			//server.startServer ();
@@ -256,6 +256,33 @@ public class KVServer extends Thread{
 			logger.info ( "server shutdown with errors !" );
 			System.exit ( 1 );
 		}
+	}
+	
+	
+	/**
+	 * 
+	 * @return the uri of the server jar file in the Operating System
+	 */
+	private String getPath(){
+
+		/* path added in order to handle invocation by a remote process through ssh
+		in order to avoid Filenotfound exception when creating Log. 
+		Because when this program
+		is called from a remote process, the user directory will link to 
+		"/home/<user>"
+		 it is sufficient to delete path variable from this code when there is no
+		 remote process calling this object
+		*/
+		String path = this.getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+		
+		/* for local invoking of the KVserver programs(no ssh call), we remove /bin to refer the path to
+		project's root path*/ 
+		path = path.replace("/bin", "");
+		
+		/* if the name of the jar file changed! this line of code must be updated
+		for handling calls within ssh */
+		path = path.replace("ms3-server.jar", "");
+		return path;
 	}
 
 }
