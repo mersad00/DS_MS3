@@ -150,7 +150,9 @@ public class AdditionalTest extends TestCase {
 		data.put ( "k4" , "v4" );
 		data.put ( "k5" , "v5" );
 		message.setData ( data );
-
+		message.setSaveFromIndex("fromIndex");
+		message.setSaveToIndex("toIndex");
+		
 		assertNotNull ( "Message is null" , message );
 
 		byte [] byteStream = SerializationUtil.toByteArray ( message );
@@ -165,6 +167,8 @@ public class AdditionalTest extends TestCase {
 					deserializedMessage );
 			assertTrue ( message.getData ().equals (
 					deserializedMessage.getData () ) );
+			assertTrue(message.getSaveFromIndex().equals(deserializedMessage.getSaveFromIndex()));
+			assertTrue(message.getSaveToIndex().equals(deserializedMessage.getSaveToIndex()));
 		} catch ( UnsupportedDataTypeException e ) {
 			System.out.println ( e.getMessage () );
 

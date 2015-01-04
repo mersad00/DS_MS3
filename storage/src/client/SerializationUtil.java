@@ -98,6 +98,8 @@ public class SerializationUtil {
 			  Map<String, String> data = getData(tokens[2].trim());
 			  ((ServerMessage)retrivedMessage).setData(data);
 			  }
+			((ServerMessage)retrivedMessage).setSaveFromIndex(tokens[3]);
+			((ServerMessage)retrivedMessage).setSaveToIndex(tokens[4]);
 			
 		break;
 	    case ECS_MESSAGE:
@@ -269,6 +271,8 @@ public class SerializationUtil {
 		messageStr+=INNER_LINE_FEED2;
 	    }
 
+	messageStr += LINE_FEED + message.getSaveFromIndex() + LINE_FEED + message.getSaveToIndex();
+	
 	byte[] bytes = messageStr.getBytes();
 	byte[] ctrBytes = new byte[] { RETURN };
 	byte[] tmp = new byte[bytes.length + ctrBytes.length];
