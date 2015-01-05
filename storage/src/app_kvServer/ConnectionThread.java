@@ -31,6 +31,8 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Date;
 
+import javax.activation.UnsupportedDataTypeException;
+
 import org.apache.log4j.Logger;
 
 import utilities.LoggingManager;
@@ -100,8 +102,10 @@ public class ConnectionThread implements Runnable {
 					 * network problems
 					 */
 				} catch (IOException ioe) {
-					logger.error("Error! Connection lost!"
-							+ ioe.getStackTrace());
+					/*
+					 * logger.error("Error! Connection lost!" +
+					 * ioe.getStackTrace());
+					 */
 					isOpen = false;
 				}
 			}
@@ -187,7 +191,7 @@ public class ConnectionThread implements Runnable {
 
 		/* build final Message */
 		AbstractMessage msg = SerializationUtil.toObject(msgBytes);
-		logger.info("Receive message:\t '" + msg.getMessageType() + "'");
+		// logger.info("Receive message:\t '" + msg.getMessageType() + "'");
 		return msg;
 	}
 
@@ -228,6 +232,9 @@ public class ConnectionThread implements Runnable {
 		Socket connectionToOtherServer = null;
 		OutputStream output = null;
 		try {
+			logger.debug("message " + msg.getSaveFromIndex() + ":"
+					+ msg.getSaveToIndex() + " size: " + msg.getData().size()
+					+ " is send to server" + server.getPort());
 			connectionToOtherServer = new Socket(server.getAddress(),
 					server.getPort());
 			output = connectionToOtherServer.getOutputStream();
@@ -321,16 +328,19 @@ public class ConnectionThread implements Runnable {
 	}
 
 	private void handleHeartbeatRequest(HeartbeatMessage msg) {
-		logger.debug("Handle HeartBeat("
-				+ parent.getThisServerInfo().getPort() + ") =>["
-				+ msg.getCoordinatorServer().getPort() + "] C1{"
-				+ parent.getThisServerInfo().getFirstCoordinatorInfo().getPort()+"}C2{"
-				+ parent.getThisServerInfo().getSecondCoordinatorInfo().getPort()+"}");
-		
-		if(msg.getCoordinatorServer().equals(parent.getThisServerInfo().getFirstCoordinatorInfo())){
+		/*
+		 * logger.debug("Handle HeartBeat(" +
+		 * parent.getThisServerInfo().getPort() + ") =>[" +
+		 * msg.getCoordinatorServer().getPort() + "] C1{" +
+		 * parent.getThisServerInfo().getFirstCoordinatorInfo().getPort()+"}C2{"
+		 * +
+		 * parent.getThisServerInfo().getSecondCoordinatorInfo().getPort()+"}");
+		 */
+		if (msg.getCoordinatorServer().equals(
+				parent.getThisServerInfo().getFirstCoordinatorInfo())) {
 			parent.setFirstCoordinatorLastSeen(new Date());
-		}
-		else if(msg.getCoordinatorServer().equals(parent.getThisServerInfo().getSecondCoordinatorInfo())){
+		} else if (msg.getCoordinatorServer().equals(
+				parent.getThisServerInfo().getSecondCoordinatorInfo())) {
 			parent.setSecondCoordinatorLastSeen(new Date());
 		}
 	}
@@ -419,10 +429,17 @@ public class ConnectionThread implements Runnable {
 
 	private boolean isInMyRange(String key) {
 		Hasher hasher = new Hasher();
-		return hasher.isInRange(parent.getThisServerInfo().getFromIndex(),
+		
+		boolean b =  hasher.isInRange(parent.getThisServerInfo().getFromIndex(),
 				parent.getThisServerInfo().getToIndex(), hasher.getHash(key));
+		
+		logger.debug(hasher.getHash(key));
+		logger.debug( b + " RANGE : " + parent.getThisServerInfo().getFromIndex() +
+				parent.getThisServerInfo().getToIndex());
+		
+		return b;
 	}
-	
+
 	private KVMessage serveIfInMyReplicaRange(String key) {
 
 		ServerInfo responsibleServer = null;
@@ -438,17 +455,17 @@ public class ConnectionThread implements Runnable {
 			}
 		}
 		if (responsibleServer != null) {
-			//if (parent.getThisServerInfo().getFirstReplicaInfo()
-			if (parent.getThisServerInfo().getFirstCoordinatorInfo()			
+			// if (parent.getThisServerInfo().getFirstReplicaInfo()
+			if (parent.getThisServerInfo().getFirstCoordinatorInfo()
 					.equals(responsibleServer)) {
 				logger.debug("Requested key is in the replica database of server:"
 						+ parent.getThisServerInfo()
 						+ " replication of:"
 						+ responsibleServer);
 				return rep1.get(key);
-			//} else if (parent.getThisServerInfo().getSecondReplicaInfo()
+				// } else if (parent.getThisServerInfo().getSecondReplicaInfo()
 			} else if (parent.getThisServerInfo().getSecondCoordinatorInfo()
-							.equals(responsibleServer)) {
+					.equals(responsibleServer)) {
 				logger.debug("Requested key is in the replica database of server:"
 						+ parent.getThisServerInfo()
 						+ " replication of:"
@@ -461,31 +478,46 @@ public class ConnectionThread implements Runnable {
 
 	/**
 	 * in case of the received message is a server request this method is only
-	 * for moving data to this server (also getting replicated data from other servers)
+	 * for moving data to this server (also getting replicated data from other
+	 * servers)
 	 * 
 	 * @param msg
 	 *            of type <code>ServerMessage</code>
 	 * @throws IOException
 	 */
 	private void handleServerRequest(ServerMessage msg) throws IOException {
+		logger.debug("*******************SERVER MESSAGE RECIEVED*********************");
 		if (msg.getData().size() > 0) {
 			String fromIndex = msg.getSaveFromIndex();
 			String toIndex = msg.getSaveToIndex();
+			logger.debug("RECIEVED DATA FROM OTHER SERVERS");
+			for (String s : msg.getData().keySet())
+				logger.debug("RECIEVED DATA: " + s);
 			// DatabaseManager.putAll ( msg.getData () );
-			if(isIndexInRange(fromIndex, toIndex, parent.getThisServerInfo())){
+			if (isIndexInRange(fromIndex, toIndex, parent.getThisServerInfo())) {
 				dbManager.putAll(msg.getData());
 				logger.info("updated database with : \t" + msg.getData().size()
 						+ " keys ");
+				logger.debug("$$$$$ PRINTING DATABASE $$$$$");
+				dbManager.printDatabase();
 				return;
-			}else if(isIndexInRange(fromIndex, toIndex, parent.getThisServerInfo().getFirstCoordinatorInfo())){
+			} else if (isIndexInRange(fromIndex, toIndex, parent
+					.getThisServerInfo().getFirstCoordinatorInfo())) {
 				rep1.putAll(msg.getData());
 				logger.info("updated Replica1 with : \t" + msg.getData().size()
 						+ " keys ");
+				logger.debug("$$$$$ PRINTING REPLICA1 $$$$$");
+				rep1.printDatabase();
+
 				return;
-			}else if(isIndexInRange(fromIndex, toIndex, parent.getThisServerInfo().getSecondCoordinatorInfo())){
+			} else if (isIndexInRange(fromIndex, toIndex, parent
+					.getThisServerInfo().getSecondCoordinatorInfo())) {
 				rep2.putAll(msg.getData());
-				logger.info("updated Replica2  with : \t" + msg.getData().size()
-						+ " keys ");
+				logger.info("updated Replica2  with : \t"
+						+ msg.getData().size() + " keys ");
+				logger.debug("$$$$$ PRINTING REPLICA2 $$$$$");
+				rep2.printDatabase();
+
 				return;
 			}
 
@@ -545,43 +577,84 @@ public class ConnectionThread implements Runnable {
 			 * message.setData ( DatabaseManager.getDataInRange (
 			 * msg.getMoveFromIndex () , msg.getMoveToIndex () ) );
 			 */
-			
-			// Moving whole storage for replication! (not deleting the data afterwards)
-			if(msg.getMoveFromIndex().equals(parent.getThisServerInfo().getFromIndex()) &&
-					msg.getMoveToIndex().equals(parent.getThisServerInfo().getToIndex())){
-				this.dataToBeRemoved = null;
-				logger.debug("sending own storage for replication to " + msg.getMoveToServer());
-			}
-			else
-				this.dataToBeRemoved = msg;
-				
+
+			// Moving whole storage for replication! (not deleting the data
+			// afterwards)
+			logger.debug("MOVE DATA MSG RECIEVED range: "  + msg.getMoveFromIndex() +
+					" " +msg.getMoveToIndex());
+			logger.debug("this server's range: " + parent.getThisServerInfo().getFromIndex() +
+					" " + parent.getThisServerInfo().getToIndex());
 			message.setData(dbManager.getDataInRange(msg.getMoveFromIndex(),
 					msg.getMoveToIndex()));
 			message.setSaveFromIndex(msg.getMoveFromIndex());
 			message.setSaveToIndex(msg.getMoveToIndex());
 
+			if (msg.getMoveFromIndex().equals(
+					parent.getThisServerInfo().getFromIndex())
+					&& msg.getMoveToIndex().equals(
+							parent.getThisServerInfo().getToIndex())) {
+				logger.debug("*************************\n "         
+						+ "sending own storage for replication to "
+						+ msg.getMoveToServer());
+			} else {
+				this.dataToBeRemoved = msg;
+				logger.debug("**************************\n"
+						+ "moving own storage to " + msg.getMoveToServer());
+				dbManager.removeDataInRange(
+						this.dataToBeRemoved.getMoveToIndex(),
+						this.dataToBeRemoved.getMoveFromIndex());
+				logger.debug("data set to move has been removed from dataBase...");
+				this.dataToBeRemoved = null;
+
+			}
+
 			this.sendServerMessage(message, msg.getMoveToServer());
-			logger.info("data moved to : " + msg.getMoveToServer().toString());
+
+			/*
+			 * if (message.getData().keySet().size() > 0) {
+			 * this.sendServerMessage(message, msg.getMoveToServer());
+			 * logger.info("data moved to : " +
+			 * msg.getMoveToServer().toString());
+			 * 
+			 * } else logger.info(
+			 * "No data stored yet ! Database is empty. moving data aborted" +
+			 * msg.getMoveToServer().toString());
+			 */
 			ECSMessage acknowledgeMessage = new ECSMessage();
 			acknowledgeMessage.setActionType(ECSCommand.ACK);
 			this.sendECSMessage(acknowledgeMessage);
 			logger.info("send acknowledgment back to  ECS");
 
 		} else if (msg.getActionType().equals(ECSCommand.REMOVE_DATA)) {
-			// sent by ECS to remove replicated data which was from the old master
-			// the old master's replicated data is on rep2
+			/*
+			 * sent by ECS to remove replicated data which was from the old
+			 * master the old master's replicated data is on rep1 remove the
+			 * data belonged to old master(0) from rep1 swap the data belong to
+			 * old master(1) from rep2 to rep1. Because now old master(1) is new
+			 * master(0)
+			 */
 			logger.info("preparing data to be removed ... ");
 			String fromIndex = msg.getMoveFromIndex();
 			String toIndex = msg.getMoveToIndex();
-			logger.info("removing data form second replica storage from "+
-					fromIndex + " to: "+ toIndex);
-				rep2.removeDataInRange(fromIndex, toIndex);				
+			logger.info("removing data form first replica storage from "
+					+ fromIndex + " to: " + toIndex);
+			rep1.removeDataInRange(fromIndex, toIndex);
+
+			logger.debug("swaping data from rep2 (old master(1) which is now (new master(0)) to rep1 ");
+			// meta data is updated so using first coordinator may was the
+			// second coordinator
+			rep1.putAll(rep2
+					.getDataInRange(parent.getThisServerInfo()
+							.getFirstCoordinatorInfo().getFromIndex(), parent
+							.getThisServerInfo().getFirstCoordinatorInfo()
+							.getToIndex()));
+
 			ECSMessage acknowledgeMessage = new ECSMessage();
 			acknowledgeMessage.setActionType(ECSCommand.ACK);
 			this.sendECSMessage(acknowledgeMessage);
 			logger.info("send RemoveData acknowledgment back to  ECS");
-			
-		}else if (msg.getActionType().equals(ECSCommand.SEND_METADATA)) {
+
+		} else if (msg.getActionType().equals(ECSCommand.SEND_METADATA)) {
 			logger.info("updating metadata ...");
 			parent.setMetadata(msg.getMetaData());
 		}
@@ -592,51 +665,49 @@ public class ConnectionThread implements Runnable {
 				+ msg.getStatus());
 		if (msg.getStatus().equals(KVMessage.StatusType.PUT)) {
 			if (msg.getCoordinatorServerInfo().equals(
-					//parent.getThisServerInfo().getFirstReplicaInfo())) {
+			// parent.getThisServerInfo().getFirstReplicaInfo())) {
 					parent.getThisServerInfo().getFirstCoordinatorInfo())) {
-					rep1.put(msg.getKey(), msg.getValue());
+				rep1.put(msg.getKey(), msg.getValue());
 				logger.debug("replication in replica 1");
 			} else if (msg.getCoordinatorServerInfo().equals(
-					//parent.getThisServerInfo().getSecondReplicaInfo())) {
+			// parent.getThisServerInfo().getSecondReplicaInfo())) {
 					parent.getThisServerInfo().getSecondCoordinatorInfo())) {
-					rep2.put(msg.getKey(), msg.getValue());
-					logger.debug("replication in replica 2");
+				rep2.put(msg.getKey(), msg.getValue());
+				logger.debug("replication in replica 2");
 			}
 		}
 		logger.info("replication message processed ");
 	}
-	
-	
-	private boolean isIndexInRange(String fromIndex, String toIndex, ServerInfo server) {
+
+	private boolean isIndexInRange(String fromIndex, String toIndex,
+			ServerInfo server) {
 		// the last node in the ring
 		logger.debug(fromIndex);
 		logger.debug(toIndex);
 		logger.debug("SERVER");
 		logger.debug(server.getFromIndex());
 		logger.debug(server.getToIndex());
-		
-		if(server.getFromIndex().compareTo( 
-				server.getToIndex()) > 0){
-				boolean b =  ((fromIndex.compareTo(server.getFromIndex()) >= 0 ||
-						fromIndex.compareTo(server.getToIndex()) <= 0 )
-						&& (toIndex.compareTo(server.getFromIndex()) >= 0 || 
-						toIndex.compareTo(server.getToIndex()) <= 0 
-						));
-				logger.debug("answer is  " + b + " for " + server);
-				return b;
-		}
-		//for the other nodes
-		else{
-			boolean b = (fromIndex.compareTo(server.getFromIndex()) >= 0 &&
-					fromIndex.compareTo(server.getToIndex()) <= 0) && 
-					(toIndex.compareTo(server.getFromIndex()) >= 0 &&
-					toIndex.compareTo(server.getToIndex()) <= 0);
-;
 
-			logger.debug("answer is " + b +" for " + server);
+		if (server.getFromIndex().compareTo(server.getToIndex()) > 0) {
+			boolean b = ((fromIndex.compareTo(server.getFromIndex()) >= 0 || fromIndex
+					.compareTo(server.getToIndex()) <= 0) && (toIndex
+					.compareTo(server.getFromIndex()) >= 0 || toIndex
+					.compareTo(server.getToIndex()) <= 0));
+			logger.debug("answer is  " + b + " for " + server);
 			return b;
 		}
-			
+		// for the other nodes
+		else {
+			boolean b = (fromIndex.compareTo(server.getFromIndex()) >= 0 && fromIndex
+					.compareTo(server.getToIndex()) <= 0)
+					&& (toIndex.compareTo(server.getFromIndex()) >= 0 && toIndex
+							.compareTo(server.getToIndex()) <= 0);
+			;
+
+			logger.debug("answer is " + b + " for " + server);
+			return b;
+		}
+
 	}
 
 }
