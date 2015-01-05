@@ -38,6 +38,7 @@ import org.apache.log4j.Logger;
 import utilities.LoggingManager;
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
+import app_kvEcs.RecoverMessage;
 import client.SerializationUtil;
 import common.Hasher;
 import common.ServerInfo;
@@ -324,6 +325,8 @@ public class ConnectionThread implements Runnable {
 			handleReplicationRequest((ReplicaMessage) msg);
 		} else if (msg.getMessageType().equals(MessageType.HEARTBEAT_MESSAGE)) {
 			handleHeartbeatRequest((HeartbeatMessage) msg);
+		} else if (msg.getMessageType().equals(MessageType.RECOVERY_MESSAGE)) {
+			handleRecoverDataRequest((RecoverMessage)msg);
 		}
 	}
 
@@ -708,6 +711,25 @@ public class ConnectionThread implements Runnable {
 			return b;
 		}
 
+	}
+	
+	private void handleRecoverDataRequest(RecoverMessage message){
+		if(message.getActionType().equals(ECSCommand.RECOVER_DATA)){
+			if(message.getFailedServer().equals(parent.getThisServerInfo().getFirstCoordinatorInfo())){
+				try {
+					dbManager.putAll(rep1.getAll());
+				} catch (ClassNotFoundException | IOException e) {
+					logger.error("Error in retrieving the recovery data from the first replication database");
+				}
+			} else if (message.getFailedServer().equals(parent.getThisServerInfo().getSecondCoordinatorInfo())) {
+				try {
+					dbManager.putAll(rep2.getAll());
+				} catch (ClassNotFoundException | IOException e) {
+					logger.error("Error in retrieving the recovery data from the second replication database");
+				}
+			}
+			logger.info("data recovered into main database ");
+		}
 	}
 
 }

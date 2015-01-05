@@ -12,6 +12,7 @@ import org.junit.Test;
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
 import app_kvEcs.FailureMessage;
+import app_kvEcs.RecoverMessage;
 import app_kvServer.HeartbeatMessage;
 import app_kvServer.ReplicaMessage;
 import app_kvServer.ServerMessage;
@@ -676,5 +677,31 @@ public class AdditionalTest extends TestCase {
 		
 	}
 	
-	
+	@Test
+	public void testRecoverMessage() throws UnsupportedDataTypeException{
+		ServerInfo s1 = new ServerInfo ( "1222" , 900 , "1" , "10" );
+		ServerInfo s2 = new ServerInfo ( "1333" , 880 , "11" , "20" );
+		ServerInfo s3 = new ServerInfo ( "3333" , 333 , "33" , "43" );
+		
+		s1.setFirstReplicaInfo(s2);
+		s1.setSecondReplicaInfo(s3);
+		
+		s2.setFirstReplicaInfo(s3);
+		s2.setSecondReplicaInfo(s1);
+		
+		s3.setFirstReplicaInfo(s1);
+		s3.setSecondReplicaInfo(s2);
+		
+		RecoverMessage recoverMessage = new RecoverMessage();
+		recoverMessage.setActionType(ECSCommand.MOVE_DATA);
+		recoverMessage.setFailedServer(s1);
+		
+		byte[] byteMessage = SerializationUtil.toByteArray(recoverMessage);
+		RecoverMessage deserializedMessage = (RecoverMessage) SerializationUtil.toObject(byteMessage);
+		
+		assertTrue(recoverMessage.getFailedServer().equals(deserializedMessage.getFailedServer()));
+		assertTrue(recoverMessage.getFailedServer().getFirstReplicaInfo().equals(deserializedMessage.getFailedServer().getFirstReplicaInfo()));
+		assertTrue(recoverMessage.getFailedServer().getSecondReplicaInfo().equals(deserializedMessage.getFailedServer().getSecondReplicaInfo()));
+		assertTrue(recoverMessage.getActionType().equals(deserializedMessage.getActionType()));
+	}
 }
