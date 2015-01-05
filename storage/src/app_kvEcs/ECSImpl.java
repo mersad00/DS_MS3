@@ -209,7 +209,6 @@ public class ECSImpl implements ECS {
 		logger.debug("Staring Replication Operation...");
 		replicationOperation();
 		logger.info(" Replication operation is done");
-
 		logger.info("ECS started " + serversToStart.toString());
 
 	}
@@ -472,7 +471,7 @@ public class ECSImpl implements ECS {
 		
 		logger.debug("$$$$$$ SYSTEM BEFORE ADDING A NODE $$$$$$");
 		for(ServerInfo s: activeServers)
-			logger.debug(s.getPort());
+			logger.debug(s.getPort() + s.getToIndex());
 		logger.debug("$$$$$$");
 		
 		
@@ -536,7 +535,7 @@ public class ECSImpl implements ECS {
 		
 		logger.debug("$$$$$$");
 		for(ServerInfo s: activeServers)
-			logger.debug(s.getPort());
+			logger.debug(s.getPort() + s.getToIndex());
 		logger.debug("$$$$$$");
 		
 		/*3. tell the sucessor to send data to the newNode
@@ -998,15 +997,15 @@ public class ECSImpl implements ECS {
 		if(activeServers.size() == 1 )
 			logger.error("System failed! All nodes are dead! All data is lost!");
 		else if(activeServers.size() == 2 ){
-			calculateMetaData(activeServers);
-			sendMetaData();
 			//TODO on server side
 			// send a command to store replicated data as the main data on the remaining server
-		}else if(activeServers.size() == 3){
 			calculateMetaData(activeServers);
 			sendMetaData();
+		}else if(activeServers.size() == 3){
 			//TODO on the server side
 			// send a message to the successor to store replicated data of the failed node as its own data 
+			calculateMetaData(activeServers);
+			sendMetaData();
 			activeServers.remove(failedNode);
 			activeConnections.remove(failedNode);
 			sendData(activeServers.get(0), activeServers.get(1), activeServers.get(0).getFromIndex(), activeServers.get(0).getToIndex());
