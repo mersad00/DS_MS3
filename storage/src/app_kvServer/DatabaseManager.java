@@ -457,4 +457,13 @@ public class DatabaseManager {
 				
 	}
 
+	public Map <String, String> getAll() throws IOException, ClassNotFoundException{
+		Map<String, String> temp = new HashMap<String, String>();
+		FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
+	    ObjectInputStream in = new ObjectInputStream(fileIn);
+	    temp = (Map<String, String>) in.readObject();
+		in.close();
+	    fileIn.close();
+	    return temp;
+	}
 }
