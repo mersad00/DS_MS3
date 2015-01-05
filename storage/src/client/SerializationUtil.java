@@ -12,6 +12,7 @@ import javax.activation.UnsupportedDataTypeException;
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
 import app_kvEcs.FailureMessage;
+import app_kvEcs.RecoverMessage;
 import app_kvServer.HeartbeatMessage;
 import app_kvServer.ReplicaMessage;
 import app_kvServer.ServerMessage;
@@ -33,6 +34,7 @@ public class SerializationUtil {
     private static final String REPLICA_MESSAGE = "3";
     private static final String HEARTBEAT_MESSAGE = "4"; 
     private static final String FAILURE_DETECTION = "5";
+    private static final String RECOVERY_MESSAGE = "6";
     
     private static final char RETURN = 0x0D;
 
@@ -194,6 +196,23 @@ public class SerializationUtil {
 	    	}
 	    	break;
 	    }
+	    
+	    case RECOVERY_MESSAGE :{
+	    	retrivedMessage = new RecoverMessage();
+	    	if(tokens[1] != null){
+	    		 int actionOrdinal = Integer.parseInt(tokens[1]);			    
+	    		((RecoverMessage)retrivedMessage).setActionType(ECSCommand.values()[actionOrdinal]);
+	    		
+	    		ServerInfo failedServer = getServerInfo(tokens[2].trim());
+	    		failedServer.setFirstReplicaInfo(getServerInfo(tokens[3].trim()));
+	    		failedServer.setSecondReplicaInfo(getServerInfo(tokens[4].trim()));
+	    			    		
+				((RecoverMessage) retrivedMessage)
+						.setFailedServer(failedServer);
+				
+	    	}
+	    	break;
+	    }
 	    default:
 		    break;
 
@@ -240,7 +259,7 @@ public class SerializationUtil {
 	}
 
     private static MessageType toMessageType(String messageTypeStr) throws UnsupportedDataTypeException {
-
+    	
 	if (messageTypeStr.equals(CLIENT_MESSAGE))
 	    return MessageType.CLIENT_MESSAGE;
 	else if (messageTypeStr.equals(SERVER_MESSAGE))
@@ -253,6 +272,8 @@ public class SerializationUtil {
 		return MessageType.HEARTBEAT_MESSAGE;
 	else if (messageTypeStr.equals(FAILURE_DETECTION))
 		return MessageType.FAILURE_DETECTION;
+	else if (messageTypeStr.equals(RECOVERY_MESSAGE))
+		return MessageType.RECOVERY_MESSAGE;
 	else 
 	    throw new UnsupportedDataTypeException("Unsupported message type");
 
@@ -436,6 +457,34 @@ public class SerializationUtil {
 				+ message.getReporteeServer().getSecondReplicaInfo().getPort() + INNER_LINE_FEED
 				+ message.getReporteeServer().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
 				+ message.getReporteeServer().getSecondReplicaInfo().getToIndex();
+    	
+    	byte[] bytes = messageStr.getBytes();
+		byte[] ctrBytes = new byte[] { RETURN };
+		byte[] tmp = new byte[bytes.length + ctrBytes.length];
+		System.arraycopy(bytes, 0, tmp, 0, bytes.length);
+		System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
+		return tmp;
+    }
+    
+    public static byte[] toByteArray(RecoverMessage message){
+    	String messageStr = (RECOVERY_MESSAGE + LINE_FEED )
+    			
+    			+ message.getActionType().ordinal() + LINE_FEED
+    			
+    			+ message.getFailedServer().getAddress() + INNER_LINE_FEED
+    			+ message.getFailedServer().getPort() + INNER_LINE_FEED
+    			+ message.getFailedServer().getFromIndex() + INNER_LINE_FEED
+    			+ message.getFailedServer().getToIndex() + LINE_FEED
+    			
+    			+ message.getFailedServer().getFirstReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getFailedServer().getFirstReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getFailedServer().getFirstReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getFailedServer().getFirstReplicaInfo().getToIndex() + LINE_FEED 
+				
+				+ message.getFailedServer().getSecondReplicaInfo().getAddress() + INNER_LINE_FEED
+				+ message.getFailedServer().getSecondReplicaInfo().getPort() + INNER_LINE_FEED
+				+ message.getFailedServer().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
+				+ message.getFailedServer().getSecondReplicaInfo().getToIndex() + LINE_FEED ;
     	
     	byte[] bytes = messageStr.getBytes();
 		byte[] ctrBytes = new byte[] { RETURN };
