@@ -793,6 +793,10 @@ public class ECSImpl implements ECS {
 				m1 += l;
 			if (m2 < 0)
 				m2 += l;
+			//specail case when the size of active servers is one! 
+			if(m2 < 0)
+				m2 += 1;
+			
 			ArrayList<ServerInfo> masters = new ArrayList<ServerInfo>();
 			// first add the master which is far from the node
 			masters.add(activeServers.get(m2));
@@ -900,6 +904,8 @@ public class ECSImpl implements ECS {
 				logger.error("Getting back the system to the previous state ");
 				try {
 					this.activeServers.add(nodeToDelete);
+					this.activeConnections.put(nodeToDelete,
+							new ServerConnection(nodeToDelete));
 					ECSMessage releaseLock = new ECSMessage();
 					releaseLock.setActionType(ECSCommand.RELEASE_LOCK);
 					sendECSCommand(nodeToDeleteChannel, releaseLock);
@@ -918,12 +924,20 @@ public class ECSImpl implements ECS {
 		}
 		/* in normal cases when we have more than 2 nodes left after removal */
 		else {
-			// 1.s Send meta-data update to the successor node
+			// 1.s Send meta-data update to the successor node and the
+			// replica(1) for nodeTODelete
+			// we dont send metaData update to replica(0) because replica(0)
+			// is same as successor!
+			// we also have to send metadataupdate to replica(1) of the successor
 			ECSMessage metaDataUpdate = new ECSMessage();
 			metaDataUpdate.setActionType(ECSCommand.SEND_METADATA);
 			metaDataUpdate.setMetaData(activeServers);
+			ServerConnection replicaChannel = new ServerConnection(
+					replicas.get(1));
 			try {
 				sendECSCommand(successorChannel, metaDataUpdate);
+				sendECSCommand(replicaChannel, metaDataUpdate);
+				sendECSCommand(new ServerConnection(successor.getSecondReplicaInfo()), metaDataUpdate);
 			} catch (IOException e) {
 				logger.error("Meta-data update couldn't be sent."
 						+ e.getMessage());
@@ -932,38 +946,48 @@ public class ECSImpl implements ECS {
 			logger.debug("<<<< invoking transfers of data >>>>");
 
 			// 2. Invoke the transfer of the affected data items
-			// 3.invoke the two masters to send their data as replicas to the
-			// two replicas
-
-			// Sending metaData updates to two new replicas
-			try {
-				// we dont send metaData update to replica(0) because replica(0)
-				// is same as successor!
-				ServerConnection replicaChannel = new ServerConnection(
-						replicas.get(1));
-				sendECSCommand(replicaChannel, metaDataUpdate);
-			} catch (IOException e) {
-				logger.error("Meta-data update couldn't be sent."
-						+ e.getMessage());
-			}
 
 			if (sendData(nodeToDelete, successor, nodeToDelete.getFromIndex(),
-					nodeToDelete.getToIndex()) == 0
-					&& sendData(masters.get(0), replicas.get(0), masters.get(0)
-							.getFromIndex(), masters.get(0).getToIndex()) == 0
-					&& sendData(masters.get(1), replicas.get(1), masters.get(1)
-							.getFromIndex(), masters.get(1).getToIndex()) == 0) {
-				locked.add(activeConnections.get(masters.get(0)));
-				locked.add(activeConnections.get(masters.get(1)));
-
+					nodeToDelete.getToIndex()) == 0) {
 				logger.debug("Data sent from " + nodeToDelete.getPort()
 						+ " to " + successor.getPort());
-				logger.debug("Data for replication sent from "
-						+ masters.get(0).getPort() + " to "
-						+ replicas.get(0).getPort());
-				logger.debug("Data sent for replication from "
-						+ masters.get(1).getPort() + " to "
-						+ replicas.get(1).getPort());
+
+				/*
+				 * 3. Tell the two masters to send their data as replicas to
+				 * thire two new replicas invoking the transfer of nodetoDlete's
+				 * data to the successors replicas
+				 */
+				if (sendData(masters.get(0), replicas.get(0), masters.get(0)
+						.getFromIndex(), masters.get(0).getToIndex()) == 0 ){
+					locked.add(activeConnections.get(masters.get(0)));
+					logger.debug("Data for replication sent from "
+							+ masters.get(0).getPort() + " to "
+							+ replicas.get(0).getPort());
+				}
+				if( sendData(masters.get(1), replicas.get(1), masters
+								.get(1).getFromIndex(), masters.get(1)
+								.getToIndex()) == 0){
+					locked.add(activeConnections.get(masters.get(1)));
+					logger.debug("Data sent for replication from "
+							+ masters.get(1).getPort() + " to "
+							+ replicas.get(1).getPort());
+					
+				}
+				// invoking replication! :
+				// we used from and to index from the successor
+				// so successor will treat it as replication not 
+				// move data to another server
+						if (sendData(successor,
+								successor.getFirstReplicaInfo(),
+								successor.getFromIndex(),
+								successor.getToIndex()) 
+								+
+								sendData(successor,
+								successor.getSecondReplicaInfo(),
+								successor.getFromIndex(),
+								successor.getToIndex()) 
+								<= 1)
+							locked.add(activeConnections.get(successor));
 
 				/*
 				 * 4.tell to the next two nodes (newNodes replicas) to delete
