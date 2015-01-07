@@ -203,11 +203,17 @@ public class ServerInfo {
 			}
 			i++;
 		}
-		this.setFirstCoordinatorInfo(metadata.get(((i - 1) + metadata.size())
+		
+		/*this.setFirstCoordinatorInfo(metadata.get(((i - 1) + metadata.size())
 				% metadata.size()));
 		this.setSecondCoordinatorInfo(metadata.get(((i - 2) + metadata.size())
 				% metadata.size()));
-
+	*/
+		
+		this.setFirstCoordinatorInfo(metadata.get(((i - 2) + metadata.size())
+				% metadata.size()));
+		this.setSecondCoordinatorInfo(metadata.get(((i - 1) + metadata.size())
+				% metadata.size()));
 	}
 
 	List<ServerInfo> failureReportees;
