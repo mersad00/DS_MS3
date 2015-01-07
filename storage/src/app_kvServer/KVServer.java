@@ -50,6 +50,7 @@ public class KVServer extends Thread {
 	private List<ServerInfo> metadata;
 	private String serverHashCode;
 	private ServerInfo thisServerInfo;
+	private ServerInfo exCoordinator1,exCoordinator2;
 
 	/* added in order to handle Persistent storage */
 	private DatabaseManager db;
@@ -418,5 +419,25 @@ public class KVServer extends Thread {
 		path = path.replace("ms3-server.jar", "");
 		return path;
 	}
-
+	
+	public synchronized void setExCoordinator(int i, ServerInfo s){
+		switch (i){
+			case 0:
+				this.exCoordinator1 = s;
+				break;
+			case 1:
+				this.exCoordinator2 = s;
+				break;
+		}		
+	}
+	
+	public synchronized ServerInfo getExCoordinator(int i){
+		switch (i){
+		case 0:
+			return this.exCoordinator1;
+		case 1:
+			return this.exCoordinator2;
+		}
+		return null;
+	}
 }

@@ -326,7 +326,7 @@ public class ConnectionThread implements Runnable {
 		} else if (msg.getMessageType().equals(MessageType.HEARTBEAT_MESSAGE)) {
 			handleHeartbeatRequest((HeartbeatMessage) msg);
 		} else if (msg.getMessageType().equals(MessageType.RECOVERY_MESSAGE)) {
-			handleRecoverDataRequest((RecoverMessage)msg);
+			handleRecoverDataRequest((RecoverMessage) msg);
 		}
 	}
 
@@ -432,14 +432,17 @@ public class ConnectionThread implements Runnable {
 
 	private boolean isInMyRange(String key) {
 		Hasher hasher = new Hasher();
-		
-		boolean b =  hasher.isInRange(parent.getThisServerInfo().getFromIndex(),
-				parent.getThisServerInfo().getToIndex(), hasher.getHash(key));
-		
-		logger.debug(hasher.getHash(key));
-		logger.debug( b + " RANGE : " + parent.getThisServerInfo().getFromIndex() +
-				parent.getThisServerInfo().getToIndex());
-		
+		String startRange = parent.getThisServerInfo().getFromIndex();
+		String endRange = parent.getThisServerInfo().getToIndex();
+		String keyHash = hasher.getHash(key);
+
+		boolean b = hasher.isInRange(startRange, endRange, key);
+		if (b)
+			logger.debug(keyHash + " is in Range: " + startRange + " : "
+					+ endRange);
+		else
+			logger.debug(keyHash + " is NOT in Range: " + startRange + " : "
+					+ endRange);
 		return b;
 	}
 
@@ -448,17 +451,17 @@ public class ConnectionThread implements Runnable {
 		ServerInfo responsibleServer = null;
 		Hasher hasher = new Hasher();
 		if (parent.getMetadata().size() != 0) {
+
 			for (ServerInfo server : parent.getMetadata()) {
 				if (hasher.isInRange(server.getFromIndex(),
-						server.getToIndex(), hasher.getHash(key))) {
-					logger.debug("Requested key is in the resposibility of the server:"
-							+ server);
+						server.getToIndex(), key)) {
+					logger.debug("Requested key : " + hasher.getHash(key)
+							+ "is in the resposibility of the server:" + server);
 					responsibleServer = server;
 				}
 			}
 		}
 		if (responsibleServer != null) {
-			// if (parent.getThisServerInfo().getFirstReplicaInfo()
 			if (parent.getThisServerInfo().getFirstCoordinatorInfo()
 					.equals(responsibleServer)) {
 				logger.debug("Requested key is in the replica database of server:"
@@ -466,7 +469,6 @@ public class ConnectionThread implements Runnable {
 						+ " replication of:"
 						+ responsibleServer);
 				return rep1.get(key);
-				// } else if (parent.getThisServerInfo().getSecondReplicaInfo()
 			} else if (parent.getThisServerInfo().getSecondCoordinatorInfo()
 					.equals(responsibleServer)) {
 				logger.debug("Requested key is in the replica database of server:"
@@ -561,12 +563,6 @@ public class ConnectionThread implements Runnable {
 			logger.info("releasing writing lock ...");
 			logger.info("remove data from server ");
 			if (this.dataToBeRemoved != null) {
-				/*
-				 * DatabaseManager.removeDataInRange (
-				 * this.dataToBeRemoved.getMoveFromIndex () ,
-				 * this.dataToBeRemoved.getMoveToIndex () );
-				 */
-
 				dbManager.removeDataInRange(
 						this.dataToBeRemoved.getMoveFromIndex(),
 						this.dataToBeRemoved.getMoveToIndex());
@@ -576,17 +572,16 @@ public class ConnectionThread implements Runnable {
 		} else if (msg.getActionType().equals(ECSCommand.MOVE_DATA)) {
 			logger.info("preparing data to be moved ... ");
 			ServerMessage message = new ServerMessage();
-			/*
-			 * message.setData ( DatabaseManager.getDataInRange (
-			 * msg.getMoveFromIndex () , msg.getMoveToIndex () ) );
-			 */
 
 			// Moving whole storage for replication! (not deleting the data
 			// afterwards)
-			logger.debug("MOVE DATA MSG RECIEVED range: "  + msg.getMoveFromIndex() +
-					" " +msg.getMoveToIndex());
-			logger.debug("this server's range: " + parent.getThisServerInfo().getFromIndex() +
-					" " + parent.getThisServerInfo().getToIndex());
+			logger.debug("MOVE DATA MSG RECIEVED range: "
+					+ msg.getMoveFromIndex() + " " + msg.getMoveToIndex());
+
+			logger.debug("this server's range: "
+					+ parent.getThisServerInfo().getFromIndex() + " "
+					+ parent.getThisServerInfo().getToIndex());
+
 			message.setData(dbManager.getDataInRange(msg.getMoveFromIndex(),
 					msg.getMoveToIndex()));
 			message.setSaveFromIndex(msg.getMoveFromIndex());
@@ -596,7 +591,7 @@ public class ConnectionThread implements Runnable {
 					parent.getThisServerInfo().getFromIndex())
 					&& msg.getMoveToIndex().equals(
 							parent.getThisServerInfo().getToIndex())) {
-				logger.debug("*************************\n "         
+				logger.debug("*************************\n "
 						+ "sending own storage for replication to "
 						+ msg.getMoveToServer());
 			} else {
@@ -604,8 +599,8 @@ public class ConnectionThread implements Runnable {
 				logger.debug("**************************\n"
 						+ "moving own storage to " + msg.getMoveToServer());
 				dbManager.removeDataInRange(
-						this.dataToBeRemoved.getMoveToIndex(),
-						this.dataToBeRemoved.getMoveFromIndex());
+						this.dataToBeRemoved.getMoveFromIndex(),
+						this.dataToBeRemoved.getMoveToIndex());
 				logger.debug("data set to move has been removed from dataBase...");
 				this.dataToBeRemoved = null;
 
@@ -643,14 +638,40 @@ public class ConnectionThread implements Runnable {
 					+ fromIndex + " to: " + toIndex);
 			rep1.removeDataInRange(fromIndex, toIndex);
 
-			logger.debug("swaping data from rep2 (old master(1) which is now (new master(0)) to rep1 ");
-			// meta data is updated so using first coordinator may was the
-			// second coordinator
-			rep1.putAll(rep2
-					.getDataInRange(parent.getThisServerInfo()
-							.getFirstCoordinatorInfo().getFromIndex(), parent
-							.getThisServerInfo().getFirstCoordinatorInfo()
-							.getToIndex()));
+			// skip swapping if the ex coordinator(1) is the new coordinator(1)
+			// nothing changed just
+			// the new coordinator(0) is new!
+			if (!parent.getThisServerInfo().getSecondCoordinatorInfo()
+					.equals(parent.getExCoordinator(1))) {
+				logger.debug("swaping data from rep2 (old master(1) which is now (new master(0)) to rep1 ");
+				// when the excoordinator(1) is the newcoordinator(0)
+				// meta data is updated so swapping first coordinator from rep2,
+				// which was the
+				// second coordinator
+				rep1.putAll(rep2.getDataInRange(parent.getThisServerInfo()
+						.getFirstCoordinatorInfo().getFromIndex(), parent
+						.getThisServerInfo().getFirstCoordinatorInfo()
+						.getToIndex()));
+
+				rep2.removeDataInRange(parent.getThisServerInfo()
+						.getFirstCoordinatorInfo().getFromIndex(), parent
+						.getThisServerInfo().getFirstCoordinatorInfo()
+						.getToIndex());
+			} else if (parent.getThisServerInfo().getFirstCoordinatorInfo()
+					.equals(parent.getExCoordinator(0))) {
+				// in a case this node is the third node after adding the new
+				// node
+				// so just deleting from rep1 is enough
+				// do nothing!
+			} else {
+				// when the excoordinator(1) is the newcoordinator(1)
+				// removing the data which belongs to newcoordinator(0),
+				// which previously was belonged to coordinator(1) from rep2
+				rep2.removeDataInRange(parent.getThisServerInfo()
+						.getFirstCoordinatorInfo().getFromIndex(), parent
+						.getThisServerInfo().getFirstCoordinatorInfo()
+						.getToIndex());
+			}
 
 			ECSMessage acknowledgeMessage = new ECSMessage();
 			acknowledgeMessage.setActionType(ECSCommand.ACK);
@@ -659,6 +680,10 @@ public class ConnectionThread implements Runnable {
 
 		} else if (msg.getActionType().equals(ECSCommand.SEND_METADATA)) {
 			logger.info("updating metadata ...");
+			parent.setExCoordinator(0, parent.getThisServerInfo()
+					.getFirstCoordinatorInfo());
+			parent.setExCoordinator(1, parent.getThisServerInfo()
+					.getSecondCoordinatorInfo());
 			parent.setMetadata(msg.getMetaData());
 		}
 	}
@@ -712,16 +737,18 @@ public class ConnectionThread implements Runnable {
 		}
 
 	}
-	
-	private void handleRecoverDataRequest(RecoverMessage message){
-		if(message.getActionType().equals(ECSCommand.RECOVER_DATA)){
-			if(message.getFailedServer().equals(parent.getThisServerInfo().getFirstCoordinatorInfo())){
+
+	private void handleRecoverDataRequest(RecoverMessage message) {
+		if (message.getActionType().equals(ECSCommand.RECOVER_DATA)) {
+			if (message.getFailedServer().equals(
+					parent.getThisServerInfo().getFirstCoordinatorInfo())) {
 				try {
 					dbManager.putAll(rep1.getAll());
 				} catch (ClassNotFoundException | IOException e) {
 					logger.error("Error in retrieving the recovery data from the first replication database");
 				}
-			} else if (message.getFailedServer().equals(parent.getThisServerInfo().getSecondCoordinatorInfo())) {
+			} else if (message.getFailedServer().equals(
+					parent.getThisServerInfo().getSecondCoordinatorInfo())) {
 				try {
 					dbManager.putAll(rep2.getAll());
 				} catch (ClassNotFoundException | IOException e) {

@@ -31,7 +31,7 @@ import common.messages.ClientMessage;
 
 public class KVStore implements KVCommInterface {
 
-	private Logger logger = Logger.getRootLogger ();
+	private Logger logger = Logger.getRootLogger();
 	private ServerInfo currentDestinationServer;
 
 	private Socket clientSocket;
@@ -41,7 +41,7 @@ public class KVStore implements KVCommInterface {
 	private static final int BUFFER_SIZE = 1024;
 	private static final int DROP_SIZE = 1024 * BUFFER_SIZE;
 
-	private List < ServerInfo > metadata;
+	private List<ServerInfo> metadata;
 	private KVMessage lastSentMessage;
 
 	/**
@@ -52,13 +52,13 @@ public class KVStore implements KVCommInterface {
 	 * @param port
 	 *            the port of the KVServer
 	 */
-	public KVStore ( String address , int port ) {
-		this ( new ServerInfo ( address , port ) );
+	public KVStore(String address, int port) {
+		this(new ServerInfo(address, port));
 	}
 
-	public KVStore ( ServerInfo serverInfo ) {
+	public KVStore(ServerInfo serverInfo) {
 		this.currentDestinationServer = serverInfo;
-		this.metadata = new ArrayList < ServerInfo > ();
+		this.metadata = new ArrayList<ServerInfo>();
 	}
 
 	/**
@@ -66,16 +66,16 @@ public class KVStore implements KVCommInterface {
 	 * streams from the connection to be used in communication
 	 */
 	@Override
-	public void connect () throws IOException {
+	public void connect() throws IOException {
 		try {
-			clientSocket = new Socket ( currentDestinationServer.getAddress () ,
-					currentDestinationServer.getPort () );
-			output = clientSocket.getOutputStream ();
-			input = clientSocket.getInputStream ();
-			logger.info ( "Connection established with "
-					+ currentDestinationServer.toString () );
-		} catch ( IOException ioe ) {
-			logger.error ( "Connection could not be established!" );
+			clientSocket = new Socket(currentDestinationServer.getAddress(),
+					currentDestinationServer.getPort());
+			output = clientSocket.getOutputStream();
+			input = clientSocket.getInputStream();
+			logger.info("Connection established with "
+					+ currentDestinationServer.toString());
+		} catch (IOException ioe) {
+			logger.error("Connection could not be established!");
 			throw ioe;
 		}
 	}
@@ -84,200 +84,218 @@ public class KVStore implements KVCommInterface {
 	 * switch connection to another server in case of the current connected
 	 * server is not the correct server.
 	 * 
-	 * @param newDestinationServerInfo the new server details to switch connection to
+	 * @param newDestinationServerInfo
+	 *            the new server details to switch connection to
 	 * @throws IOException
 	 */
-	public void switchConnection ( ServerInfo newDestinationServerInfo )
+	public void switchConnection(ServerInfo newDestinationServerInfo)
 			throws IOException {
-		this.tearDownConnection ();
+		this.tearDownConnection();
 		this.currentDestinationServer = newDestinationServerInfo;
-		logger.info ( "switch connection to "
-				+ currentDestinationServer.toString () );
-		this.connect ();
+		logger.info("switch connection to "
+				+ currentDestinationServer.toString());
+		this.connect();
 	}
 
-	
 	/**
 	 * this method is used to disconnect the current connected server
 	 */
 	@Override
-	public void disconnect () {
+	public void disconnect() {
 		try {
-			tearDownConnection ();
-		} catch ( IOException ioe ) {
-			logger.error ( "Unable to close connection!" );
+			tearDownConnection();
+		} catch (IOException ioe) {
+			logger.error("Unable to close connection!");
 		}
 	}
 
-	private void tearDownConnection () throws IOException {
-		logger.info ( "tearing down the connection ..." );
-		if ( clientSocket != null ) {
-			input.close ();
-			output.close ();
-			clientSocket.close ();
+	private void tearDownConnection() throws IOException {
+		logger.info("tearing down the connection ...");
+		if (clientSocket != null) {
+			input.close();
+			output.close();
+			clientSocket.close();
 			clientSocket = null;
 
-			logger.info ( "connection closed!" );
+			logger.info("connection closed!");
 		}
 	}
 
 	/**
-	 * sends request to the correct server to insert the key and the value, update
-	 * or delete it.
-	 * @param key the key to be inserted
-	 * @param value the value to be inserted
+	 * sends request to the correct server to insert the key and the value,
+	 * update or delete it.
+	 * 
+	 * @param key
+	 *            the key to be inserted
+	 * @param value
+	 *            the value to be inserted
 	 * 
 	 * @return KVMessage represents the result of this operation
 	 */
 	@Override
-	public KVMessage put ( String key , String value ) throws IOException {
-		ClientMessage msg = new ClientMessage ();
+	public KVMessage put(String key, String value) throws IOException {
+		ClientMessage msg = new ClientMessage();
 		KVMessage receivedMsg = null;
-		msg.setKey ( key );
-		msg.setValue ( value );
-		msg.setStatus ( KVMessage.StatusType.PUT );
-		//ServerInfo tempInfo = this.getDestinationServerInfo ( key );
+		msg.setKey(key);
+		msg.setValue(value);
+		msg.setStatus(KVMessage.StatusType.PUT);
+		// ServerInfo tempInfo = this.getDestinationServerInfo ( key );
 		try {
-			/*if ( ! this.currentDestinationServer.equals ( tempInfo ) ) {
-				this.switchConnection ( tempInfo );
-			}*/
-			this.sendMessage ( msg );
-			receivedMsg = this.receiveMessage ();
+			/*
+			 * if ( ! this.currentDestinationServer.equals ( tempInfo ) ) {
+			 * this.switchConnection ( tempInfo ); }
+			 */
+			this.sendMessage(msg);
+			receivedMsg = this.receiveMessage();
 
-		} catch ( IOException e ) {
-			logger.error ( "error in sending or receiving message" );
+		} catch (IOException e) {
+			logger.error("error in sending or receiving message");
 			throw e;
 		}
 		return receivedMsg;
 	}
 
-	
 	/**
 	 * sends request to the correct server to get the key and the value
-	 * @param key the key to be selected
+	 * 
+	 * @param key
+	 *            the key to be selected
 	 * 
 	 * @return KVMessage represents the result of this operation
 	 */
 	@Override
-	public KVMessage get ( String key ) throws IOException {
-		ClientMessage msg = new ClientMessage ();
+	public KVMessage get(String key) throws IOException {
+		ClientMessage msg = new ClientMessage();
 		KVMessage receivedMsg = null;
-		msg.setKey ( key );
-		msg.setStatus ( KVMessage.StatusType.GET );
-		//ServerInfo tempInfo = this.getDestinationServerInfo ( key );
+		msg.setKey(key);
+		msg.setStatus(KVMessage.StatusType.GET);
+		// ServerInfo tempInfo = this.getDestinationServerInfo ( key );
 		try {
-			/*if ( ! this.currentDestinationServer.equals ( tempInfo ) ) {
-				this.switchConnection ( tempInfo );
-			}*/
-			this.sendMessage ( msg );
-			receivedMsg = this.receiveMessage ();
+			/*
+			 * if ( ! this.currentDestinationServer.equals ( tempInfo ) ) {
+			 * this.switchConnection ( tempInfo ); }
+			 */
+			this.sendMessage(msg);
+			receivedMsg = this.receiveMessage();
 
-		} catch ( IOException e ) {
-			logger.error ( "error in sending or receiving message" );
-		} 
+		} catch (IOException e) {
+			logger.error("error in sending or receiving message");
+		}
 		return receivedMsg;
 	}
 
-	private KVMessage receiveMessage () throws IOException {
+	private KVMessage receiveMessage() throws IOException {
 		int index = 0;
-		byte [] msgBytes = null , tmp = null;
-		byte [] bufferBytes = new byte [ BUFFER_SIZE ];
+		byte[] msgBytes = null, tmp = null;
+		byte[] bufferBytes = new byte[BUFFER_SIZE];
 
 		/* read first char from stream */
-		byte read = ( byte ) input.read ();
+		byte read = (byte) input.read();
 		boolean reading = true;
 
-		while ( read != 13 && reading ) {/* carriage return */
+		while (read != 13 && reading) {/* carriage return */
 			/* if buffer filled, copy to msg array */
-			if ( index == BUFFER_SIZE ) {
-				if ( msgBytes == null ) {
-					tmp = new byte [ BUFFER_SIZE ];
-					System.arraycopy ( bufferBytes , 0 , tmp , 0 , BUFFER_SIZE );
+			if (index == BUFFER_SIZE) {
+				if (msgBytes == null) {
+					tmp = new byte[BUFFER_SIZE];
+					System.arraycopy(bufferBytes, 0, tmp, 0, BUFFER_SIZE);
 				} else {
-					tmp = new byte [ msgBytes.length + BUFFER_SIZE ];
-					System.arraycopy ( msgBytes , 0 , tmp , 0 , msgBytes.length );
-					System.arraycopy ( bufferBytes , 0 , tmp , msgBytes.length ,
-							BUFFER_SIZE );
+					tmp = new byte[msgBytes.length + BUFFER_SIZE];
+					System.arraycopy(msgBytes, 0, tmp, 0, msgBytes.length);
+					System.arraycopy(bufferBytes, 0, tmp, msgBytes.length,
+							BUFFER_SIZE);
 				}
 
 				msgBytes = tmp;
-				bufferBytes = new byte [ BUFFER_SIZE ];
+				bufferBytes = new byte[BUFFER_SIZE];
 				index = 0;
 			}
 
 			/* only read valid characters, i.e. letters and numbers */
-			if ( ( read > 31 && read < 127 ) ) {
-				bufferBytes [ index ] = read;
-				index++ ;
+			if ((read > 31 && read < 127)) {
+				bufferBytes[index] = read;
+				index++;
 			}
 
 			/* stop reading is DROP_SIZE is reached */
-			if ( msgBytes != null && msgBytes.length + index >= DROP_SIZE ) {
+			if (msgBytes != null && msgBytes.length + index >= DROP_SIZE) {
 				reading = false;
 			}
 
 			/* read next char from stream */
-			read = ( byte ) input.read ();
+			read = (byte) input.read();
 		}
 
-		if ( msgBytes == null ) {
-			tmp = new byte [ index ];
-			System.arraycopy ( bufferBytes , 0 , tmp , 0 , index );
+		if (msgBytes == null) {
+			tmp = new byte[index];
+			System.arraycopy(bufferBytes, 0, tmp, 0, index);
 		} else {
-			tmp = new byte [ msgBytes.length + index ];
-			System.arraycopy ( msgBytes , 0 , tmp , 0 , msgBytes.length );
-			System.arraycopy ( bufferBytes , 0 , tmp , msgBytes.length , index );
+			tmp = new byte[msgBytes.length + index];
+			System.arraycopy(msgBytes, 0, tmp, 0, msgBytes.length);
+			System.arraycopy(bufferBytes, 0, tmp, msgBytes.length, index);
 		}
 
 		msgBytes = tmp;
 
 		/* build final String */
-		KVMessage msg = ( KVMessage ) SerializationUtil.toObject ( msgBytes );
-		logger.info ( "Receive message:\t '" + msg.toString() + "'" );
+		KVMessage msg = (KVMessage) SerializationUtil.toObject(msgBytes);
+		logger.info("Receive message:\t '" + msg.toString() + "'");
 		return msg;
 	}
 
-	private void sendMessage ( ClientMessage msg ) throws IOException {
+	private void sendMessage(ClientMessage msg) throws IOException {
 		this.lastSentMessage = msg;
-		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
-		output.write ( msgBytes , 0 , msgBytes.length );
-		output.flush ();
-		logger.info ( "Send message :\t '" + msg.toString() + "'" );
+		byte[] msgBytes = SerializationUtil.toByteArray(msg);
+		output.write(msgBytes, 0, msgBytes.length);
+		output.flush();
+		logger.info("Send message :\t '" + msg.toString() + "'");
 	}
 
 	/**
 	 * updates the metadata with a new copy
-	 * @param metadata the new metadata to be settled
+	 * 
+	 * @param metadata
+	 *            the new metadata to be settled
 	 */
-	public void updateMetadata ( List < ServerInfo > metadata ) {
+	public void updateMetadata(List<ServerInfo> metadata) {
 		this.metadata = metadata;
-		logger.info ( "update metadata with " + metadata.size () + " keys" );
+		logger.info("update metadata with " + metadata.size() + " keys");
+		logger.debug("meta data received ");
+		for (ServerInfo s : metadata)
+			logger.debug(s.getFromIndex() + " " + s.getToIndex());
 	}
 
-	public KVMessage getLastSentMessage () {
+	public KVMessage getLastSentMessage() {
 		return this.lastSentMessage;
 	}
 
-	public ServerInfo getDestinationServerInfo ( String key ) {
+	public ServerInfo getDestinationServerInfo(String key) {
 		ServerInfo destinationServer = null;
-		Hasher hasher = new Hasher ();
-		if ( metadata.size () != 0 ) {
-			for ( ServerInfo server : metadata ) {
-				if ( hasher.isInRange ( server.getFromIndex () ,
-						server.getToIndex () , hasher.getHash ( key ) ) ) {
-					return server;
-				}
+		Hasher hasher = new Hasher();
+		if (metadata.size() != 0) {
 
+			for (ServerInfo server : metadata) {
+				if (hasher.isInRange(server.getFromIndex(),
+						server.getToIndex(), key)) {
+
+					logger.debug("responsible server for "
+							+ hasher.getHash(key) + " is "
+							+ server.getFromIndex() + "  "
+							+ server.getToIndex());
+
+					destinationServer = server;
+				}
 			}
+
 		} else {
 			destinationServer = this.currentDestinationServer;
-			logger.info ( "metadata is empty !!" );
+			logger.info("metadata is empty !!");
 		}
 
 		return destinationServer;
 	}
-	
-	public ServerInfo getCurrentConnection(){
+
+	public ServerInfo getCurrentConnection() {
 		return this.currentDestinationServer;
 	}
 

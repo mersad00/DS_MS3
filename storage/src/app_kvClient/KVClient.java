@@ -179,7 +179,14 @@ public class KVClient {
 						(result.getKey()))){
 						resultText = "SERVER IS NOT RESPONSIBLE RECIEVED"
 								+ " FROM THE RESPONSIBLE SERVER! PLEASE CHANGE CONNECTION AND TRY AGAIN!";
-								return resultText;
+						logger.debug(" Current connection " + connection.getCurrentConnection().getFromIndex() +
+								 " " + connection.getCurrentConnection().getToIndex() + 
+								" respinsible form latest metaData " +connection.getDestinationServerInfo
+								(result.getKey()).getFromIndex()  + " " +
+								connection.getDestinationServerInfo
+								(result.getKey()).getToIndex());		
+						return resultText;
+								
 				}
 
 				logger.info("SERVER NOT RESPONSIBLE.\n Changing Connection...");
