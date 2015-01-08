@@ -687,12 +687,16 @@ public class ConnectionThread implements Runnable {
 			parent.setMetadata(msg.getMetaData());
 			
 			//swaping replicas!
-			if(parent.getExCoordinator(0).equals(parent.getThisServerInfo().getSecondCoordinatorInfo()))
+			if(parent.getExCoordinator(0).equals(parent.getThisServerInfo().getSecondCoordinatorInfo())){
 				rep2.putAll(rep1.getDataInRange(parent.getExCoordinator(0).getFromIndex(), parent.getExCoordinator(0).getToIndex()));
-			
-			if(parent.getExCoordinator(1).equals(parent.getThisServerInfo().getFirstCoordinatorInfo()))
+				rep1.removeDataInRange(parent.getExCoordinator(0).getFromIndex(), parent.getExCoordinator(0).getToIndex());
+			}
+			if(parent.getExCoordinator(1).equals(parent.getThisServerInfo().getFirstCoordinatorInfo())){
 				rep1.putAll(rep2.getDataInRange(parent.getExCoordinator(1).getFromIndex(), parent.getExCoordinator(1).getToIndex()));
-			//cleaning replicas
+				rep2.removeDataInRange(parent.getExCoordinator(1).getFromIndex(), parent.getExCoordinator(1).getToIndex());			
+				
+			}
+				//cleaning replicas
 			// dangerous for recovering data from failed node
 			/*if(! parent.getExCoordinator(0).equals(parent.getThisServerInfo().getFirstCoordinatorInfo()))
 				rep1.removeDataInRange(parent.getExCoordinator(0).getFromIndex(), parent.getExCoordinator(0).getToIndex());
