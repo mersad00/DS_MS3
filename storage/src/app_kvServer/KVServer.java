@@ -25,8 +25,6 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Date;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import logger.LogSetup;
 
@@ -239,6 +237,9 @@ public class KVServer extends Thread {
 				+ "}");
 		/*FailureMessage fmsg = new FailureMessage();
 		fmsg.setFailedServer(this.getThisServerInfo().getFirstCoordinatorInfo());
+		fmsg.setReporteeServer(this.getThisServerInfo());
+		logger.debug(fmsg);
+		
 		this.sendFailureMessage(fmsg);
 		logger.debug("FAILURE: 1st test send fail message");
 		

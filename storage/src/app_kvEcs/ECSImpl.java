@@ -18,7 +18,6 @@ import java.util.Scanner;
 
 import org.apache.log4j.Logger;
 
-import app_kvServer.ConnectionThread;
 import utilities.LoggingManager;
 import common.Hasher;
 import common.ServerInfo;

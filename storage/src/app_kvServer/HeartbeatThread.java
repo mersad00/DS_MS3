@@ -99,6 +99,7 @@ public class HeartbeatThread extends Thread {
 						FailureMessage failmsg = new FailureMessage();
 						failmsg.setFailedServer(parent.getThisServerInfo()
 										.getFirstCoordinatorInfo());
+						failmsg.setReporteeServer(parent.getThisServerInfo());
 						parent.sendFailureMessage(failmsg);
 					}
 				}
@@ -116,6 +117,7 @@ public class HeartbeatThread extends Thread {
 						FailureMessage failmsg = new FailureMessage();
 						failmsg.setFailedServer(parent.getThisServerInfo()
 										.getSecondCoordinatorInfo());
+						failmsg.setReporteeServer(parent.getThisServerInfo());
 						parent.sendFailureMessage(failmsg);
 					}
 				}
