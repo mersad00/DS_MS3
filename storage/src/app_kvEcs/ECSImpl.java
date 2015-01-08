@@ -257,6 +257,14 @@ public class ECSImpl implements ECS {
 				sendECSCommand(sChannel, releaseLock);
 			}
 			logger.debug("All locks are released.");
+			
+			ECSMessage underInit = new ECSMessage();
+			underInit.setActionType(ECSCommand.INIT);
+			underInit.setMetaData(activeServers);
+			for (ServerConnection sChannel : locked) {
+				sendECSCommand(sChannel, underInit);
+			}
+			logger.debug("all servers have been put under init");
 		} catch (IOException e) {
 			logger.error("ReLease Lock message couldn't be sent.");
 		}
