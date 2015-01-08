@@ -216,7 +216,7 @@ public class ServerInfo {
 				% metadata.size()));
 	}
 
-	List<ServerInfo> failureReportees;
+	public List<ServerInfo> failureReportees;
 
 	public void reportFailure(ServerInfo reportee) {
 		if (failureReportees == null) {

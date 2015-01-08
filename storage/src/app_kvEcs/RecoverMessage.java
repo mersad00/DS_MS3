@@ -12,7 +12,7 @@ public class RecoverMessage implements AbstractMessage {
     
     @Override
     public MessageType getMessageType() {
-	return MessageType.ECS_MESSAGE;
+	return MessageType.RECOVERY_MESSAGE;
     }
 
     public ECSCommand getActionType() {

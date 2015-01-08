@@ -50,8 +50,11 @@ public class ECSConnectionThread implements Runnable {
 					 * network problems
 					 */
 				} catch (IOException ioe) {
-					logger.error("Error! Connection lost!"
-							+ ioe.getStackTrace());
+					//logger.error("Error! Connection lost!"
+					//		+ ioe.getStackTrace());
+					logger.debug("Error! Connection lost!"
+							+ ioe.getMessage());
+					
 					isOpen = false;
 				}
 			}

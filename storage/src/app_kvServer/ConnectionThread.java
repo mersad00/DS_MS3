@@ -326,8 +326,11 @@ public class ConnectionThread implements Runnable {
 		} else if (msg.getMessageType().equals(MessageType.HEARTBEAT_MESSAGE)) {
 			handleHeartbeatRequest((HeartbeatMessage) msg);
 		} else if (msg.getMessageType().equals(MessageType.RECOVERY_MESSAGE)) {
+			logger.debug("GOT A RECOVERY MESSAGE");
 			handleRecoverDataRequest((RecoverMessage) msg);
 		}
+		else
+			logger.debug("VAGUE MSG RECEIVED");
 	}
 
 	private void handleHeartbeatRequest(HeartbeatMessage msg) {
@@ -757,18 +760,27 @@ public class ConnectionThread implements Runnable {
 	}
 
 	private void handleRecoverDataRequest(RecoverMessage message) {
+		logger.debug("INSIDE RECOVER DATA");
+		
 		if (message.getActionType().equals(ECSCommand.RECOVER_DATA)) {
+			logger.debug("INSIDE RECOVER DATA");
 			if (message.getFailedServer().equals(
 					parent.getThisServerInfo().getFirstCoordinatorInfo())) {
 				try {
+					logger.debug("recovering ....");
+					logger.debug(rep1.getAll());
 					dbManager.putAll(rep1.getAll());
+					rep1.removeDataInRange(parent.getThisServerInfo().getFirstCoordinatorInfo().getFromIndex(), parent.getThisServerInfo().getFirstCoordinatorInfo().getToIndex());
 				} catch (ClassNotFoundException | IOException e) {
 					logger.error("Error in retrieving the recovery data from the first replication database");
 				}
 			} else if (message.getFailedServer().equals(
 					parent.getThisServerInfo().getSecondCoordinatorInfo())) {
 				try {
+					logger.debug("recovering ....");
+					logger.debug(rep2.getAll());
 					dbManager.putAll(rep2.getAll());
+					rep2.removeDataInRange(parent.getThisServerInfo().getFirstCoordinatorInfo().getFromIndex(), parent.getThisServerInfo().getFirstCoordinatorInfo().getToIndex());
 				} catch (ClassNotFoundException | IOException e) {
 					logger.error("Error in retrieving the recovery data from the second replication database");
 				}

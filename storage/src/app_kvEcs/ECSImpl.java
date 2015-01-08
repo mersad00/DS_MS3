@@ -18,9 +18,14 @@ import java.util.Scanner;
 
 import org.apache.log4j.Logger;
 
+import client.SerializationUtil;
+
+import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader.Array;
+
 import utilities.LoggingManager;
 import common.Hasher;
 import common.ServerInfo;
+import common.messages.AbstractMessage;
 
 public class ECSImpl implements ECS {
 
@@ -256,7 +261,7 @@ public class ECSImpl implements ECS {
 				sendECSCommand(sChannel, releaseLock);
 			}
 			logger.debug("All locks are released.");
-			
+
 			ECSMessage underInit = new ECSMessage();
 			underInit.setActionType(ECSCommand.INIT);
 			underInit.setMetaData(activeServers);
@@ -800,10 +805,10 @@ public class ECSImpl implements ECS {
 				m1 += l;
 			if (m2 < 0)
 				m2 += l;
-			//specail case when the size of active servers is one! 
-			if(m2 < 0)
+			// specail case when the size of active servers is one!
+			if (m2 < 0)
 				m2 += 1;
-			
+
 			ArrayList<ServerInfo> masters = new ArrayList<ServerInfo>();
 			// first add the master which is far from the node
 			masters.add(activeServers.get(m2));
@@ -935,7 +940,8 @@ public class ECSImpl implements ECS {
 			// replica(1) for nodeTODelete
 			// we dont send metaData update to replica(0) because replica(0)
 			// is same as successor!
-			// we also have to send metadataupdate to replica(1) of the successor
+			// we also have to send metadataupdate to replica(1) of the
+			// successor
 			ECSMessage metaDataUpdate = new ECSMessage();
 			metaDataUpdate.setActionType(ECSCommand.SEND_METADATA);
 			metaDataUpdate.setMetaData(activeServers);
@@ -944,7 +950,9 @@ public class ECSImpl implements ECS {
 			try {
 				sendECSCommand(successorChannel, metaDataUpdate);
 				sendECSCommand(replicaChannel, metaDataUpdate);
-				sendECSCommand(new ServerConnection(successor.getSecondReplicaInfo()), metaDataUpdate);
+				sendECSCommand(
+						new ServerConnection(successor.getSecondReplicaInfo()),
+						metaDataUpdate);
 			} catch (IOException e) {
 				logger.error("Meta-data update couldn't be sent."
 						+ e.getMessage());
@@ -965,36 +973,30 @@ public class ECSImpl implements ECS {
 				 * data to the successors replicas
 				 */
 				if (sendData(masters.get(0), replicas.get(0), masters.get(0)
-						.getFromIndex(), masters.get(0).getToIndex()) == 0 ){
+						.getFromIndex(), masters.get(0).getToIndex()) == 0) {
 					locked.add(activeConnections.get(masters.get(0)));
 					logger.debug("Data for replication sent from "
 							+ masters.get(0).getPort() + " to "
 							+ replicas.get(0).getPort());
 				}
-				if( sendData(masters.get(1), replicas.get(1), masters
-								.get(1).getFromIndex(), masters.get(1)
-								.getToIndex()) == 0){
+				if (sendData(masters.get(1), replicas.get(1), masters.get(1)
+						.getFromIndex(), masters.get(1).getToIndex()) == 0) {
 					locked.add(activeConnections.get(masters.get(1)));
 					logger.debug("Data sent for replication from "
 							+ masters.get(1).getPort() + " to "
 							+ replicas.get(1).getPort());
-					
+
 				}
 				// invoking replication! :
 				// we used from and to index from the successor
-				// so successor will treat it as replication not 
+				// so successor will treat it as replication not
 				// move data to another server
-						if (sendData(successor,
-								successor.getFirstReplicaInfo(),
+				if (sendData(successor, successor.getFirstReplicaInfo(),
+						successor.getFromIndex(), successor.getToIndex())
+						+ sendData(successor, successor.getSecondReplicaInfo(),
 								successor.getFromIndex(),
-								successor.getToIndex()) 
-								+
-								sendData(successor,
-								successor.getSecondReplicaInfo(),
-								successor.getFromIndex(),
-								successor.getToIndex()) 
-								<= 1)
-							locked.add(activeConnections.get(successor));
+								successor.getToIndex()) <= 1)
+					locked.add(activeConnections.get(successor));
 
 				/*
 				 * 4.tell to the next two nodes (newNodes replicas) to delete
@@ -1089,49 +1091,76 @@ public class ECSImpl implements ECS {
 	private void recovery(ServerInfo failedNode) {
 		List<ServerConnection> locked = new ArrayList<ServerConnection>();
 		// we have not removed the failedNode yet
-		if (activeServers.size() == 1)
+		logger.debug("INSIDE RECOVERY!!!");
+		if (activeServers.size() == 1){
 			logger.error("System failed! All nodes are dead! All data is lost!");
+			return;
+		}
 		else if (activeServers.size() == 2) {
-			calculateMetaData(activeServers);
-			sendMetaData();
+			logger.debug("inside REcovery ! Special case, just one node left in System");
 			// send a command to store replicated data as the main data on the
 			// remaining server
 			RecoverMessage recoverData = new RecoverMessage();
 			recoverData.setActionType(ECSCommand.RECOVER_DATA);
 			recoverData.setFailedServer(failedNode);
 			try {
-				ServerConnection serverChannel = activeConnections.get(0);
+				ServerConnection serverChannel = activeConnections
+						.get(getSuccessor(failedNode));
 				serverChannel.connect();
 				serverChannel.sendMessage(recoverData);
 				serverChannel.disconnect();
+
 			} catch (IOException e) {
-				logger.error("shut down message couldn't be sent." + e.getMessage());
+				logger.error("recover Data message couldn't be sent."
+						+ e.getMessage());
 			}
-			
-		} else if (activeServers.size() == 2) {
+			activeServers.remove(failedNode);
+			activeConnections.remove(failedNode);
 			calculateMetaData(activeServers);
 			sendMetaData();
+			addNode();
+			logger.debug("$$$$$$ New SYSTEM STATE $$$$$$");
+			for (ServerInfo s : activeServers)
+				logger.debug(s.getPort());
+			logger.debug("$$$$$$");
+			return;
+		} else if (activeServers.size() == 3) {
+			logger.debug("ONE NODE FAILED! 2 NODES STILL RUNNING");
+			ServerConnection serverChannel = activeConnections
+					.get(getSuccessor(failedNode));
 			// send a message to the successor to store replicated data of the
 			// failed node as its own data
 			RecoverMessage recoverData = new RecoverMessage();
 			recoverData.setActionType(ECSCommand.RECOVER_DATA);
 			recoverData.setFailedServer(failedNode);
 			try {
-				ServerConnection serverChannel = activeConnections.get(getSuccessor(failedNode));
+				// ServerConnection serverChannel =
+				// activeConnections.get(getSuccessor(failedNode));
 				serverChannel.connect();
+				logger.debug("sending recover data to "
+						+ serverChannel.getServer().getPort());
 				serverChannel.sendMessage(recoverData);
+				RecoverMessage temp = (RecoverMessage) SerializationUtil
+						.toObject(SerializationUtil.toByteArray(recoverData));
+				logger.debug(temp.getFailedServer().getPort());
+				logger.debug(temp.getMessageType());
+
 				serverChannel.disconnect();
 			} catch (IOException e) {
-				logger.error("shut down message couldn't be sent." + e.getMessage());
+				logger.error("recover data message couldn't be sent."
+						+ e.getMessage());
 			}
 			activeServers.remove(failedNode);
 			activeConnections.remove(failedNode);
-			
+			calculateMetaData(activeServers);
+			sendMetaData();
+
+			// sending their data as replication to each other
 			sendData(activeServers.get(0), activeServers.get(1), activeServers
 					.get(0).getFromIndex(), activeServers.get(0).getToIndex());
 			sendData(activeServers.get(1), activeServers.get(0), activeServers
 					.get(1).getFromIndex(), activeServers.get(1).getToIndex());
-			
+
 			locked.add(activeConnections.get(activeServers.get(0)));
 			locked.add(activeConnections.get(activeServers.get(1)));
 
@@ -1146,31 +1175,51 @@ public class ECSImpl implements ECS {
 			List<ServerInfo> masters = getMasters(failedNode);
 			List<ServerInfo> replicas = getReplicas(failedNode);
 
+			// send a message to the successor to store replicated data of the
+			// failed node as its own data
+			ServerConnection serverChannel = activeConnections
+					.get(getSuccessor(failedNode));
+			RecoverMessage recoverData = new RecoverMessage();
+			recoverData.setActionType(ECSCommand.RECOVER_DATA);
+			recoverData.setFailedServer(failedNode);
+			try {
+				// ServerConnection serverChannel =
+				// activeConnections.get(getSuccessor(failedNode));
+				serverChannel.connect();
+				logger.debug("sending recover data to "
+						+ serverChannel.getServer().getPort());
+				serverChannel.sendMessage(recoverData);
+				serverChannel.disconnect();
+				logger.info("Data recovered from replica "
+						+ replicas.get(0).getPort() + " sent to "
+						+ successor.getPort());
+			} catch (IOException e) {
+				logger.error("recover data message couldn't be sent."
+						+ e.getMessage());
+				// recovering lost data from the other replica
+				if (sendData(replicas.get(1), successor,
+						failedNode.getFromIndex(), failedNode.getToIndex()) == 0) {
+					logger.info("Data recovered from replica "
+							+ replicas.get(1).getPort() + " sent to "
+							+ successor.getPort());
+					logger.info("Data recovered from replica "
+							+ replicas.get(0).getPort() + " sent to "
+							+ successor.getPort());
+
+				} else
+					logger.warn(" Data owned by " + failedNode.getPort()
+							+ " could not be recovered");
+
+			}
+
 			activeServers.remove(failedNode);
 			activeConnections.remove(failedNode);
 			calculateMetaData(activeServers);
 			// 1. sending new metaData
 			sendMetaData();
-
-			// 2. recovering lost data from the replicas
-			if (sendData(replicas.get(0), successor, failedNode.getFromIndex(),
-					failedNode.getToIndex()) != 0) {
-				if (sendData(replicas.get(1), successor,
-						failedNode.getFromIndex(), failedNode.getToIndex()) == 0)
-					logger.info("Data recovered from replica "
-							+ replicas.get(1).getPort() + " sent to "
-							+ successor.getPort());
-				else
-					logger.warn(" Data owned by " + failedNode.getPort()
-							+ " could not be recovered");
-
-			}
-			logger.info("Data recovered from replica "
-					+ replicas.get(0).getPort() + " sent to "
-					+ successor.getPort());
-
 			// 3. storing data as replica : sent from failed node's masters to
 			// failed node's replicas
+			// sent from successor to its replicas
 			if (sendData(masters.get(0), replicas.get(0), masters.get(0)
 					.getFromIndex(), masters.get(0).getToIndex()) == 0)
 				logger.debug("Data for replication sent from "
@@ -1191,6 +1240,27 @@ public class ECSImpl implements ECS {
 						+ masters.get(1).getPort() + " to "
 						+ replicas.get(1).getPort() + " FAILED");
 
+			if (sendData(successor, successor.getFirstReplicaInfo(),
+					failedNode.getFromIndex(), successor.getToIndex()) == 0)
+				logger.debug("Data sent for replication from "
+						+ masters.get(1).getPort() + " to "
+						+ replicas.get(1).getPort());
+			else
+				logger.warn("Data transfer for replication  from "
+						+ masters.get(1).getPort() + " to "
+						+ replicas.get(1).getPort() + " FAILED");
+			
+			if (sendData(successor, successor.getSecondReplicaInfo(),
+					failedNode.getFromIndex(), successor.getToIndex()) == 0)
+				logger.debug("Data sent for replication from "
+						+ successor.getPort() + " to "
+						+ successor.getFirstReplicaInfo());
+			else
+				logger.warn("Data transfer for replication  from "
+						+ successor.getPort() + " to "
+						+ successor.getSecondReplicaInfo() + " FAILED");
+			
+			locked.add(activeConnections.get(successor));
 			locked.add(activeConnections.get(masters.get(0)));
 			locked.add(activeConnections.get(masters.get(1)));
 		}
@@ -1410,22 +1480,40 @@ public class ECSImpl implements ECS {
 		channel.disconnect();
 	}
 
-	public void reportFailure(ServerInfo failedServer, ServerInfo reportee) {
+	public synchronized void reportFailure(ServerInfo failedServer,
+			ServerInfo reportee) {
 		logger.debug("Failure detected Failed:" + failedServer + " reporter:"
 				+ reportee);
-
-		for (ServerInfo serverInfo : activeServers) {
-			if (serverInfo.equals(failedServer)) {
-				serverInfo.reportFailure(reportee);
+		try {
+			Iterator<ServerInfo> activeServerIt = activeServers.iterator();
+			/*
+			 * for (ServerInfo serverInfo : activeServers) { if
+			 * (serverInfo.equals(failedServer)) {
+			 * serverInfo.reportFailure(reportee); }
+			 */
+			while (activeServerIt.hasNext()) {
+				ServerInfo serverInfo = activeServerIt.next();
+				if (serverInfo.equals(failedServer)) {
+					serverInfo.reportFailure(reportee);
+				}
+				if(activeServers.size() == 2){
+					recovery(failedServer);
+					logger.debug("Failure detected more than one server reported");
+					serverInfo.failureReportees.clear();
+					notify();
+				}else if (serverInfo.getNumberofFailReports() > 1) {
+					// /TODO: @Arash add your recovery codes
+					recovery(failedServer);
+					logger.debug("Failure detected more than one server reported");
+					serverInfo.failureReportees.clear();
+					notify();
+				}
 			}
 
-			if (serverInfo.getNumberofFailReports() > 1) {
-				// /TODO: @Arash add your recovery codes
-				recovery(failedServer);
-				logger.debug("Failure detected more than one server reported");
-			}
+		} catch (Exception e) {
+			logger.debug(e.toString());
+			notify();
 		}
-
 	}
 
 }

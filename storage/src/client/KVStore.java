@@ -261,8 +261,9 @@ public class KVStore implements KVCommInterface {
 		this.metadata = metadata;
 		logger.info("update metadata with " + metadata.size() + " keys");
 		logger.debug("meta data received ");
-		for (ServerInfo s : metadata)
+		/*for (ServerInfo s : metadata)
 			logger.debug(s.getFromIndex() + " " + s.getToIndex());
+		*/
 	}
 
 	public KVMessage getLastSentMessage() {
@@ -278,11 +279,11 @@ public class KVStore implements KVCommInterface {
 				if (hasher.isInRange(server.getFromIndex(),
 						server.getToIndex(), key)) {
 
-					logger.debug("responsible server for "
+				/*	logger.debug("responsible server for "
 							+ hasher.getHash(key) + " is "
 							+ server.getFromIndex() + "  "
 							+ server.getToIndex());
-
+				 */
 					destinationServer = server;
 				}
 			}
