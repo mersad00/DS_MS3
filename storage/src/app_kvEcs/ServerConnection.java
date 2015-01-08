@@ -173,6 +173,13 @@ public class ServerConnection extends Thread{
 		output.flush ();
 		logger.info ( "Send message to "+ connection.getPort() + ":\t '" + msg.getActionType () + "' to : " + server.toString () );
 	}
+	
+	public void sendMessage ( RecoverMessage msg ) throws IOException {		
+		byte [] msgBytes = SerializationUtil.toByteArray ( msg );
+		output.write ( msgBytes , 0 , msgBytes.length );
+		output.flush ();
+		logger.info ( "Send message to "+ connection.getPort() + ":\t '" + msg.getActionType () + "' to : " + server.toString () );
+	}
 
 	public ServerInfo getServer() {
 	    return server;

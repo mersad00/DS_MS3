@@ -1080,30 +1080,51 @@ public class ECSImpl implements ECS {
 	 * @param failed
 	 */
 	private void recovery(ServerInfo failedNode) {
-
 		List<ServerConnection> locked = new ArrayList<ServerConnection>();
-		// The failed node has not been removed from activeServers yet --> the
-		// real activeServers.size() is one value less
+		// we have not removed the failedNode yet
 		if (activeServers.size() == 1)
 			logger.error("System failed! All nodes are dead! All data is lost!");
 		else if (activeServers.size() == 2) {
-			// TODO on server side
+			calculateMetaData(activeServers);
+			sendMetaData();
 			// send a command to store replicated data as the main data on the
 			// remaining server
+			RecoverMessage recoverData = new RecoverMessage();
+			recoverData.setActionType(ECSCommand.RECOVER_DATA);
+			recoverData.setFailedServer(failedNode);
+			try {
+				ServerConnection serverChannel = activeConnections.get(0);
+				serverChannel.connect();
+				serverChannel.sendMessage(recoverData);
+				serverChannel.disconnect();
+			} catch (IOException e) {
+				logger.error("shut down message couldn't be sent." + e.getMessage());
+			}
+			
+		} else if (activeServers.size() == 2) {
 			calculateMetaData(activeServers);
 			sendMetaData();
-		} else if (activeServers.size() == 3) {
-			// TODO on the server side
 			// send a message to the successor to store replicated data of the
 			// failed node as its own data
-			calculateMetaData(activeServers);
-			sendMetaData();
+			RecoverMessage recoverData = new RecoverMessage();
+			recoverData.setActionType(ECSCommand.RECOVER_DATA);
+			recoverData.setFailedServer(failedNode);
+			try {
+				ServerConnection serverChannel = activeConnections.get(getSuccessor(failedNode));
+				serverChannel.connect();
+				serverChannel.sendMessage(recoverData);
+				serverChannel.disconnect();
+			} catch (IOException e) {
+				logger.error("shut down message couldn't be sent." + e.getMessage());
+			}
 			activeServers.remove(failedNode);
 			activeConnections.remove(failedNode);
+			
 			sendData(activeServers.get(0), activeServers.get(1), activeServers
 					.get(0).getFromIndex(), activeServers.get(0).getToIndex());
 			sendData(activeServers.get(1), activeServers.get(0), activeServers
 					.get(1).getFromIndex(), activeServers.get(1).getToIndex());
+			
 			locked.add(activeConnections.get(activeServers.get(0)));
 			locked.add(activeConnections.get(activeServers.get(1)));
 
@@ -1180,8 +1201,6 @@ public class ECSImpl implements ECS {
 		} catch (IOException e) {
 			logger.error("ReLease Lock message couldn't be sent.");
 		}
-
-		cleanUpNode(failedNode);
 
 		// 5. adding a new node to the system
 		addNode();
@@ -1395,6 +1414,7 @@ public class ECSImpl implements ECS {
 
 			if (serverInfo.getNumberofFailReports() > 1) {
 				// /TODO: @Arash add your recovery codes
+				recovery(failedServer);
 				logger.debug("Failure detected more than one server reported");
 			}
 		}
