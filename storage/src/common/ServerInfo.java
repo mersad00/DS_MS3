@@ -224,7 +224,8 @@ public class ServerInfo {
 		}
 
 		for (ServerInfo serverInfo : failureReportees) {
-			if (serverInfo.equals(reportee)) {
+			///TODO: change get port to actual reportee because the IP address might be different
+			if (serverInfo.getPort()==reportee.getPort()) {
 				///this dude has reported the failure already, ignore him
 				return;
 			}
