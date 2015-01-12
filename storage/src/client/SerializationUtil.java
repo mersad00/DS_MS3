@@ -21,6 +21,7 @@ import common.messages.AbstractMessage;
 import common.messages.AbstractMessage.MessageType;
 import common.messages.KVMessage.StatusType;
 import common.messages.ClientMessage;
+import common.messages.NotificationMessage;
 import common.messages.SubscribeMessage;
 
 public class SerializationUtil {
@@ -37,6 +38,7 @@ public class SerializationUtil {
     private static final String FAILURE_DETECTION = "5";
     private static final String RECOVERY_MESSAGE = "6";
     private static final String SUBSCRIBE_MESSAGE = "7";
+    private static final String NOTIFICATION_MESSAGE = "8";
     
     private static final char RETURN = 0x0D;
 
@@ -237,6 +239,18 @@ public class SerializationUtil {
 			}
 	    	break;
 	    }
+	    
+	    case NOTIFICATION_MESSAGE : {
+	    	retrivedMessage = new NotificationMessage();
+	    	if (tokens[1] != null) {			    
+			    ((NotificationMessage)retrivedMessage).setKey(tokens[1]);
+			}
+			if (tokens[2] != null) {
+				((NotificationMessage)retrivedMessage).setValue(tokens[2]);
+
+			}
+	    	break;
+	    }
 	    default:
 		    break;
 
@@ -300,6 +314,8 @@ public class SerializationUtil {
 		return MessageType.RECOVERY_MESSAGE;
 	else if (messageTypeStr.equals(SUBSCRIBE_MESSAGE))
 		return MessageType.SUBSCRIBE_MESSAGE;
+	else if (messageTypeStr.equals(NOTIFICATION_MESSAGE))
+		return MessageType.NOTIFICATION_MESSAGE;
 	else 
 	    throw new UnsupportedDataTypeException("Unsupported message type");
 
@@ -525,6 +541,19 @@ public class SerializationUtil {
     			+ message.getValue() + LINE_FEED
     			+ message.getSubscriber().getAddress() + INNER_LINE_FEED
     			+ message.getSubscriber().getPort();
+    	
+    	byte[] bytes = messageStr.getBytes();
+		byte[] ctrBytes = new byte[] { RETURN };
+		byte[] tmp = new byte[bytes.length + ctrBytes.length];
+		System.arraycopy(bytes, 0, tmp, 0, bytes.length);
+		System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
+		return tmp;
+    }
+    
+    public static byte[] toByteArray(NotificationMessage message){
+    	String messageStr = (NOTIFICATION_MESSAGE + LINE_FEED )    			
+    			+ message.getKey() + LINE_FEED
+    			+ message.getValue();    			
     	
     	byte[] bytes = messageStr.getBytes();
 		byte[] ctrBytes = new byte[] { RETURN };

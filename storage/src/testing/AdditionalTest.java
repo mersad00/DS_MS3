@@ -22,6 +22,7 @@ import common.ServerInfo;
 import common.messages.KVMessage;
 import common.messages.KVMessage.StatusType;
 import common.messages.ClientMessage;
+import common.messages.NotificationMessage;
 import common.messages.SubscribeMessage;
 import junit.framework.TestCase;
 
@@ -737,5 +738,19 @@ public class AdditionalTest extends TestCase {
 		
 		assertTrue(message.getSubscriber().getAddress().equals(deserializedMessage.getSubscriber().getAddress()));
 		assertTrue(message.getSubscriber().getPort() == deserializedMessage.getSubscriber().getPort());
+	}
+	
+	@Test
+	public void testNotificationMessageSerialization () throws UnsupportedDataTypeException{
+		final String mockKey = "mockKey";
+		final String mockValue = "mockValue";
+		NotificationMessage message = new NotificationMessage();
+		message.setKey(mockKey);
+		message.setValue(mockValue);
+		
+		byte []byteArray = SerializationUtil.toByteArray(message);
+		NotificationMessage deserializedMessage = (NotificationMessage)SerializationUtil.toObject(byteArray);
+		
+		assertTrue(message.equals(deserializedMessage));
 	}
 }
