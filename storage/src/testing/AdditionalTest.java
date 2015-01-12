@@ -16,11 +16,13 @@ import app_kvEcs.RecoverMessage;
 import app_kvServer.HeartbeatMessage;
 import app_kvServer.ReplicaMessage;
 import app_kvServer.ServerMessage;
+import client.ClientInfo;
 import client.SerializationUtil;
 import common.ServerInfo;
 import common.messages.KVMessage;
 import common.messages.KVMessage.StatusType;
 import common.messages.ClientMessage;
+import common.messages.SubscribeMessage;
 import junit.framework.TestCase;
 
 public class AdditionalTest extends TestCase {
@@ -703,5 +705,37 @@ public class AdditionalTest extends TestCase {
 		assertTrue(recoverMessage.getFailedServer().getFirstReplicaInfo().equals(deserializedMessage.getFailedServer().getFirstReplicaInfo()));
 		assertTrue(recoverMessage.getFailedServer().getSecondReplicaInfo().equals(deserializedMessage.getFailedServer().getSecondReplicaInfo()));
 		assertTrue(recoverMessage.getActionType().equals(deserializedMessage.getActionType()));
+	}
+	
+	@Test
+	public void testSubscribeMessageSerialization() throws UnsupportedDataTypeException {
+		final String mockAddress = "mockAddress";
+		final int mockPort = 10;
+		final String mockKey = "mockKey";
+		final String mockValue = "mockValue";
+		final StatusType mockStatusType = StatusType.PUT;
+		
+		ClientInfo subscriber = new ClientInfo();
+		subscriber.setAddress(mockAddress);
+		subscriber.setPort(mockPort);
+		
+		SubscribeMessage message = new SubscribeMessage();
+		message.setKey(mockKey);
+		message.setValue(mockValue);
+		message.setStatusType(mockStatusType);
+		message.setSubscriber(subscriber);
+		
+		byte []byteArray = SerializationUtil.toByteArray(message);
+		SubscribeMessage deserializedMessage = (SubscribeMessage)SerializationUtil.toObject(byteArray);
+		
+		assertTrue(message.getKey().equals(deserializedMessage.getKey()));
+		
+		if(message.getStatusType().equals(StatusType.PUT))
+			assertTrue(message.getValue().equals(deserializedMessage.getValue()));
+		
+		assertTrue(message.getStatusType().equals(deserializedMessage.getStatusType()));
+		
+		assertTrue(message.getSubscriber().getAddress().equals(deserializedMessage.getSubscriber().getAddress()));
+		assertTrue(message.getSubscriber().getPort() == deserializedMessage.getSubscriber().getPort());
 	}
 }

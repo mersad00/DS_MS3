@@ -21,6 +21,7 @@ import common.messages.AbstractMessage;
 import common.messages.AbstractMessage.MessageType;
 import common.messages.KVMessage.StatusType;
 import common.messages.ClientMessage;
+import common.messages.SubscribeMessage;
 
 public class SerializationUtil {
 
@@ -35,6 +36,7 @@ public class SerializationUtil {
     private static final String HEARTBEAT_MESSAGE = "4"; 
     private static final String FAILURE_DETECTION = "5";
     private static final String RECOVERY_MESSAGE = "6";
+    private static final String SUBSCRIBE_MESSAGE = "7";
     
     private static final char RETURN = 0x0D;
 
@@ -213,6 +215,28 @@ public class SerializationUtil {
 	    	}
 	    	break;
 	    }
+	    
+	    case SUBSCRIBE_MESSAGE :{
+	    	retrivedMessage = new SubscribeMessage();
+	    	if (tokens[1] != null) {
+			    int statusOrdinal = Integer.parseInt(tokens[1]);
+			    ((SubscribeMessage)retrivedMessage).setStatusType(StatusType.values()[statusOrdinal]);
+			}
+			if (tokens[2] != null) {
+			    ((SubscribeMessage)retrivedMessage).setKey(tokens[2]);
+
+			}
+			if (tokens[3] != null) {
+			    ((SubscribeMessage)retrivedMessage).setValue(tokens[3].trim());
+			}if (tokens[4] != null){
+			    ClientInfo subscriber = new ClientInfo();
+			    String []clientInfoTokens = tokens[4].split(INNER_LINE_FEED);
+			    subscriber.setAddress(clientInfoTokens[0]);
+			    subscriber.setPort(Integer.parseInt(clientInfoTokens[1]));
+			    ((SubscribeMessage)retrivedMessage).setSubscriber(subscriber);
+			}
+	    	break;
+	    }
 	    default:
 		    break;
 
@@ -274,6 +298,8 @@ public class SerializationUtil {
 		return MessageType.FAILURE_DETECTION;
 	else if (messageTypeStr.equals(RECOVERY_MESSAGE))
 		return MessageType.RECOVERY_MESSAGE;
+	else if (messageTypeStr.equals(SUBSCRIBE_MESSAGE))
+		return MessageType.SUBSCRIBE_MESSAGE;
 	else 
 	    throw new UnsupportedDataTypeException("Unsupported message type");
 
@@ -386,8 +412,6 @@ public class SerializationUtil {
 		System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
 		return tmp;
 	}
-    
-    
 
     private static ServerInfo getServerInfo(String serverInfoStr) {
 		ServerInfo serverInfo = new ServerInfo();
@@ -485,6 +509,22 @@ public class SerializationUtil {
 				+ message.getFailedServer().getSecondReplicaInfo().getPort() + INNER_LINE_FEED
 				+ message.getFailedServer().getSecondReplicaInfo().getFromIndex() + INNER_LINE_FEED
 				+ message.getFailedServer().getSecondReplicaInfo().getToIndex() + LINE_FEED ;
+    	
+    	byte[] bytes = messageStr.getBytes();
+		byte[] ctrBytes = new byte[] { RETURN };
+		byte[] tmp = new byte[bytes.length + ctrBytes.length];
+		System.arraycopy(bytes, 0, tmp, 0, bytes.length);
+		System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
+		return tmp;
+    }
+    
+    public static byte[] toByteArray(SubscribeMessage message){
+    	String messageStr = (SUBSCRIBE_MESSAGE + LINE_FEED )
+    			+ message.getStatusType().ordinal() + LINE_FEED
+    			+ message.getKey() + LINE_FEED
+    			+ message.getValue() + LINE_FEED
+    			+ message.getSubscriber().getAddress() + INNER_LINE_FEED
+    			+ message.getSubscriber().getPort();
     	
     	byte[] bytes = messageStr.getBytes();
 		byte[] ctrBytes = new byte[] { RETURN };
