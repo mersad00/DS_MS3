@@ -57,6 +57,8 @@ public class KVServer extends Thread {
 
 	private Date firstCoordinatorLastSeen;
 	private Date secondCoordinatorLastSeen;
+	
+	private SubscriberStorageManager subscribeStorageManager;
 
 	public Date getFirstCoordinatorLastSeen() {
 		return firstCoordinatorLastSeen;
@@ -88,6 +90,7 @@ public class KVServer extends Thread {
 				cacheStrategy, "rep1");
 		secondReplicaManager = new DatabaseManager(this.port, cacheSize,
 				cacheStrategy, "rep2");
+		subscribeStorageManager = new SubscriberStorageManager();
 		logger = LoggingManager.getInstance().createLogger(this.getClass());
 	}
 
@@ -116,7 +119,7 @@ public class KVServer extends Thread {
 				try {
 					Socket client = serverSocket.accept();
 					ConnectionThread connection = new ConnectionThread(client,
-							this, db, firstReplicaManager, secondReplicaManager);
+							this, db, firstReplicaManager, secondReplicaManager, subscribeStorageManager);
 					new Thread(connection).start();
 
 					logger.info("new Connection: Connected to "
