@@ -47,6 +47,7 @@ import common.messages.KVMessage;
 import common.messages.ClientMessage;
 import common.messages.AbstractMessage.MessageType;
 import common.messages.KVMessage.StatusType;
+import common.messages.SubscribeMessage;
 
 public class ConnectionThread implements Runnable {
 
@@ -64,6 +65,7 @@ public class ConnectionThread implements Runnable {
 	private DatabaseManager dbManager;
 	private DatabaseManager rep1;
 	private DatabaseManager rep2;
+	private SubscriberStorageManager subscriberStorageManager;
 
 	/**
 	 * Constructs a new <code>ConnectionThread</code> object for a given TCP
@@ -75,13 +77,14 @@ public class ConnectionThread implements Runnable {
 	 *            the server object which is listening to new connections
 	 */
 	public ConnectionThread(Socket clientSocket, KVServer parent,
-			DatabaseManager db, DatabaseManager rep1, DatabaseManager rep2) {
+			DatabaseManager db, DatabaseManager rep1, DatabaseManager rep2,SubscriberStorageManager subscriberStorageManager) {
 		this.parent = parent;
 		this.clientSocket = clientSocket;
 		this.isOpen = true;
 		this.dbManager = db;
 		this.rep1 = rep1;
 		this.rep2 = rep2;
+		this.subscriberStorageManager = subscriberStorageManager;
 		logger = LoggingManager.getInstance().createLogger(this.getClass());
 	}
 
@@ -328,9 +331,88 @@ public class ConnectionThread implements Runnable {
 		} else if (msg.getMessageType().equals(MessageType.RECOVERY_MESSAGE)) {
 			logger.debug("GOT A RECOVERY MESSAGE");
 			handleRecoverDataRequest((RecoverMessage) msg);
+		} else if (msg.getMessageType().equals(MessageType.SUBSCRIBE_MESSAGE)) {
+			handleSubscribeMessage((SubscribeMessage)msg);
 		}
 		else
 			logger.debug("VAGUE MSG RECEIVED");
+	}
+	
+	private void handleSubscribeMessage(SubscribeMessage msg) throws IOException{		
+		KVMessage responseMessage = null;
+		if (parent.getServerStatus()
+				.equals(ServerStatuses.UNDER_INITIALIZATION)
+				|| parent.getServerStatus().equals(ServerStatuses.STOPPED)) {
+
+			/*
+			 * The server has just started and not ready yet to handle requests
+			 * from clients
+			 */
+			msg.setStatusType(StatusType.SERVER_STOPPED);
+			responseMessage = new ClientMessage(msg);
+
+		} else if (parent.getServerStatus().equals(ServerStatuses.WRITING_LOCK)) {
+
+			/* The server is locked for writing operations */
+			msg.setStatusType(StatusType.SERVER_WRITE_LOCK);
+			responseMessage = new ClientMessage(msg);
+
+		}
+
+		/* check if the received message is in this server range */
+
+		else if (isInMyRange(msg.getKey())
+				&& msg.getStatusType().equals(KVMessage.StatusType.PUT)) {
+			/*
+			 * responseMessage = DatabaseManager.put ( msg.getKey () ,
+			 * msg.getValue () );
+			 */
+			responseMessage = dbManager.put(msg.getKey(), msg.getValue());
+			this.subscriberStorageManager.addSubscriber(msg.getKey(), msg.getSubscriber());
+			ReplicaMessage replicationMessage = new ReplicaMessage();
+			replicationMessage.setCoordinatorServer(parent.getThisServerInfo());
+
+			replicationMessage.setKey(msg.getKey());
+			replicationMessage.setValue(msg.getValue());
+			replicationMessage.setStatusType(StatusType.PUT);
+			logger.debug("replication message prepared ");
+			sendReplicationMessage(replicationMessage, replicationMessage
+					.getCoordinatorServerInfo().getFirstReplicaInfo());
+			sendReplicationMessage(replicationMessage, replicationMessage
+					.getCoordinatorServerInfo().getSecondReplicaInfo());
+			
+
+		} else if (msg.getStatusType().equals(KVMessage.StatusType.GET)) {
+			if (isInMyRange(msg.getKey())) {
+				// responseMessage = DatabaseManager.get ( msg.getKey () );
+				responseMessage = dbManager.get(msg.getKey());
+				this.subscriberStorageManager.addSubscriber(msg.getKey(), msg.getSubscriber());
+			} else {
+				// /check if replica(s) storages have the key
+				KVMessage replicaServeGet = serveIfInMyReplicaRange(msg
+						.getKey());
+				if (replicaServeGet != null) {
+					responseMessage = replicaServeGet;
+				} else {
+					// / this is a get request which neither server nor replicas
+					// storages
+					// / have the data, therefore reply not responsible
+					msg.setStatusType(StatusType.SERVER_NOT_RESPONSIBLE);
+					responseMessage = new ClientMessage(msg);
+					((ClientMessage) responseMessage).setMetadata(parent
+							.getMetadata());
+				}
+			}
+
+		} else {
+			/* in case the received message is in the range of this server */
+			msg.setStatusType(StatusType.SERVER_NOT_RESPONSIBLE);
+			responseMessage = new ClientMessage(msg);
+			((ClientMessage) responseMessage).setMetadata(parent.getMetadata());
+		}
+
+		this.sendClientMessage(responseMessage);
+		logger.info("response message sent to client ");
 	}
 
 	private void handleHeartbeatRequest(HeartbeatMessage msg) {
