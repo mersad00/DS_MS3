@@ -45,6 +45,12 @@ public class ClientMessage implements KVMessage {
 		this.value = message.getValue ();
 		this.type = message.getStatus ();
 	}
+	
+	public ClientMessage (SubscribeMessage message ) {
+		this.key = message.getKey ();
+		this.value = message.getValue ();
+		this.type = message.getStatusType();
+	}
 
 	public void setKey ( String key ) {
 		this.key = key;
