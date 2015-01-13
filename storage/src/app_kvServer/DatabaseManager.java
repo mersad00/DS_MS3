@@ -16,7 +16,6 @@ package app_kvServer;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -39,10 +38,8 @@ public class DatabaseManager {
 	private static Logger logger = Logger.getRootLogger();
 	private int id;
 	private String dataBaseUri;
-
-	public DatabaseManager(int id, int cacheSize, String cacheStrategy,
-			String databaseType) {
-
+	private void initDatabaseManager(int id, int cacheSize,
+			String cacheStrategy, String databaseType) {
 		/*
 		 * path added in order to handle invocation by a remote process through
 		 * ssh in order to avoid Filenotfound exception when creating
@@ -89,6 +86,12 @@ public class DatabaseManager {
 		}
 	}
 
+	public DatabaseManager(int id, int cacheSize, String cacheStrategy,
+			String databaseType) {
+		initDatabaseManager(id, cacheSize, cacheStrategy, databaseType);
+
+	}
+
 	/**
 	 * put a new tuple in the database
 	 * 
@@ -96,6 +99,8 @@ public class DatabaseManager {
 	 * @param value
 	 * @return <code>KVMessage</code> return message representing the put status
 	 */
+
+
 	@SuppressWarnings("unchecked")
 	public synchronized KVMessage put(String key, String value) {
 		if (key == null) {
@@ -104,18 +109,17 @@ public class DatabaseManager {
 			msg.setValue("can not insert null key in the database");
 			msg.setStatus(common.messages.KVMessage.StatusType.PUT_ERROR);
 			logger.error("can not insert null key in the database");
-
 			return msg;
 
 			// } else if ( database.containsKey ( key ) ) {
 		} else if (contains(key)) {
-
+			KVMessage m = null;
 			if (value == null || value.equals("null")) {
-				return delete(key);
-
+				m = delete(key);
 			} else {
-				return update(key, value);
+				m = update(key, value);
 			}
+			return m;
 
 		} else {
 			ClientMessage msg = new ClientMessage();

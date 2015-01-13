@@ -32,9 +32,11 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import app_kvEcs.FailureMessage;
+import client.ClientInfo;
 import client.SerializationUtil;
 import utilities.LoggingManager;
 import common.ServerInfo;
+import common.messages.NotificationMessage;
 
 public class KVServer extends Thread {
 
@@ -48,7 +50,7 @@ public class KVServer extends Thread {
 	private List<ServerInfo> metadata;
 	private String serverHashCode;
 	private ServerInfo thisServerInfo;
-	private ServerInfo exCoordinator1,exCoordinator2;
+	private ServerInfo exCoordinator1, exCoordinator2;
 
 	/* added in order to handle Persistent storage */
 	private DatabaseManager db;
@@ -57,9 +59,8 @@ public class KVServer extends Thread {
 
 	private Date firstCoordinatorLastSeen;
 	private Date secondCoordinatorLastSeen;
-	
-	private SubscriberStorageManager subscribeStorageManager;
 
+	private SubscriberStorageManager subscribeStorageManager;
 	public Date getFirstCoordinatorLastSeen() {
 		return firstCoordinatorLastSeen;
 	}
@@ -119,7 +120,8 @@ public class KVServer extends Thread {
 				try {
 					Socket client = serverSocket.accept();
 					ConnectionThread connection = new ConnectionThread(client,
-							this, db, firstReplicaManager, secondReplicaManager, subscribeStorageManager);
+							this, db, firstReplicaManager,
+							secondReplicaManager, subscribeStorageManager);
 					new Thread(connection).start();
 
 					logger.info("new Connection: Connected to "
@@ -170,8 +172,8 @@ public class KVServer extends Thread {
 			output.write(msgBytes, 0, msgBytes.length);
 			output.flush();
 		} catch (UnknownHostException e) {
-			logger.error("FAILURE: Error in failure data : " + ecsFailure.toString()
-					+ "Can not find server ");
+			logger.error("FAILURE: Error in failure data : "
+					+ ecsFailure.toString() + "Can not find server ");
 		} catch (IOException e) {
 			logger.error("FAILURE: Error in failure data : "
 					+ ecsFailure.toString() + "Can not make connection ");
@@ -182,8 +184,8 @@ public class KVServer extends Thread {
 					connectionToOtherServer.close();
 				}
 			} catch (IOException e) {
-				logger.error("FAILURE: Error in heartbeat data : " + ecsFailure.toString()
-						+ "Can not close connection ");
+				logger.error("FAILURE: Error in heartbeat data : "
+						+ ecsFailure.toString() + "Can not close connection ");
 			}
 
 		}
@@ -238,18 +240,20 @@ public class KVServer extends Thread {
 				+ "} C2{"
 				+ this.getThisServerInfo().getSecondCoordinatorInfo().getPort()
 				+ "}");
-		/*FailureMessage fmsg = new FailureMessage();
-		fmsg.setFailedServer(this.getThisServerInfo().getFirstCoordinatorInfo());
-		fmsg.setReporteeServer(this.getThisServerInfo());
-		logger.debug(fmsg);
-		
-		this.sendFailureMessage(fmsg);
-		logger.debug("FAILURE: 1st test send fail message");
-		
-		fmsg.setFailedServer(this.getThisServerInfo().getSecondCoordinatorInfo());
-		this.sendFailureMessage(fmsg);
-		logger.debug("FAILURE: 2nd test send fail message");*/
-		
+		/*
+		 * FailureMessage fmsg = new FailureMessage();
+		 * fmsg.setFailedServer(this.
+		 * getThisServerInfo().getFirstCoordinatorInfo());
+		 * fmsg.setReporteeServer(this.getThisServerInfo()); logger.debug(fmsg);
+		 * 
+		 * this.sendFailureMessage(fmsg);
+		 * logger.debug("FAILURE: 1st test send fail message");
+		 * 
+		 * fmsg.setFailedServer(this.getThisServerInfo().getSecondCoordinatorInfo
+		 * ()); this.sendFailureMessage(fmsg);
+		 * logger.debug("FAILURE: 2nd test send fail message");
+		 */
+
 		if (this.heartbeatTimer != null) {
 			heartbeatTimer.stopTicking();
 		}
@@ -423,20 +427,20 @@ public class KVServer extends Thread {
 		path = path.replace("ms3-server.jar", "");
 		return path;
 	}
-	
-	public synchronized void setExCoordinator(int i, ServerInfo s){
-		switch (i){
-			case 0:
-				this.exCoordinator1 = s;
-				break;
-			case 1:
-				this.exCoordinator2 = s;
-				break;
-		}		
+
+	public synchronized void setExCoordinator(int i, ServerInfo s) {
+		switch (i) {
+		case 0:
+			this.exCoordinator1 = s;
+			break;
+		case 1:
+			this.exCoordinator2 = s;
+			break;
+		}
 	}
-	
-	public synchronized ServerInfo getExCoordinator(int i){
-		switch (i){
+
+	public synchronized ServerInfo getExCoordinator(int i) {
+		switch (i) {
 		case 0:
 			return this.exCoordinator1;
 		case 1:
@@ -444,4 +448,60 @@ public class KVServer extends Thread {
 		}
 		return null;
 	}
+	public void addSubscriber(String key, ClientInfo subscriber) {
+		logger.debug("NOTIFICATION subscriber added");
+		this.subscribeStorageManager.addSubscriber(key, subscriber);
+	}
+	public void NotifyIfHasSubscriber(String key, String value) {
+		logger.debug("NOTIFICATION notify subscribers if any");
+		List<ClientInfo> subscribers = subscribeStorageManager
+				.getKeySubscribers(key);
+		if (subscribers != null && subscribers.size() > 0) {
+			for (ClientInfo clientInfo : subscribers) {
+				logger.debug("NOTIFICATION notify " + clientInfo);
+				NotificationMessage nmsg = new NotificationMessage();
+				nmsg.setKey(key);
+				nmsg.setValue(value);
+				sendNotificationMessage(nmsg, clientInfo);
+			}
+		} else {
+			logger.debug("NOTIFICATION no subscriber found");
+		}
+	}
+
+	private synchronized void sendNotificationMessage(NotificationMessage msg,
+			ClientInfo clientInfo) {
+		logger.debug("NOTIFICATION inside send notification method");
+		byte[] msgBytes = SerializationUtil.toByteArray(msg);
+		Socket connectionToOtherServer = null;
+		OutputStream output = null;
+		try {
+			connectionToOtherServer = new Socket(clientInfo.getAddress(),
+					clientInfo.getPort());
+			output = connectionToOtherServer.getOutputStream();
+			output.write(msgBytes, 0, msgBytes.length);
+			output.flush();
+		} catch (UnknownHostException e) {
+			logger.error("NOTIFICATION Error in data : "
+					+ clientInfo.toString() + "Can not find server ");
+		} catch (IOException e) {
+			logger.error("NOTIFICATION Error in data : "
+					+ clientInfo.toString() + "Can not make connection ");
+		} finally {
+			try {
+				if (output != null && connectionToOtherServer != null) {
+					output.close();
+					connectionToOtherServer.close();
+				}
+			} catch (IOException e) {
+				logger.error("NOTIFICATION Error in data : "
+						+ clientInfo.toString() + "Can not close connection ");
+			}
+
+		}
+
+		logger.info("NOTIFICATION to '" + clientInfo.toString() + "'");
+	}
+
+	
 }

@@ -65,7 +65,7 @@ public class ConnectionThread implements Runnable {
 	private DatabaseManager dbManager;
 	private DatabaseManager rep1;
 	private DatabaseManager rep2;
-	private SubscriberStorageManager subscriberStorageManager;
+
 
 	/**
 	 * Constructs a new <code>ConnectionThread</code> object for a given TCP
@@ -84,7 +84,6 @@ public class ConnectionThread implements Runnable {
 		this.dbManager = db;
 		this.rep1 = rep1;
 		this.rep2 = rep2;
-		this.subscriberStorageManager = subscriberStorageManager;
 		logger = LoggingManager.getInstance().createLogger(this.getClass());
 	}
 
@@ -368,7 +367,9 @@ public class ConnectionThread implements Runnable {
 			 * msg.getValue () );
 			 */
 			responseMessage = dbManager.put(msg.getKey(), msg.getValue());
-			this.subscriberStorageManager.addSubscriber(msg.getKey(), msg.getSubscriber());
+			parent.NotifyIfHasSubscriber(msg.getKey(), msg.getValue());
+			
+			this.parent.addSubscriber(msg.getKey(), msg.getSubscriber());
 			ReplicaMessage replicationMessage = new ReplicaMessage();
 			replicationMessage.setCoordinatorServer(parent.getThisServerInfo());
 
@@ -386,7 +387,7 @@ public class ConnectionThread implements Runnable {
 			if (isInMyRange(msg.getKey())) {
 				// responseMessage = DatabaseManager.get ( msg.getKey () );
 				responseMessage = dbManager.get(msg.getKey());
-				this.subscriberStorageManager.addSubscriber(msg.getKey(), msg.getSubscriber());
+				this.parent.addSubscriber(msg.getKey(), msg.getSubscriber());
 			} else {
 				// /check if replica(s) storages have the key
 				KVMessage replicaServeGet = serveIfInMyReplicaRange(msg
@@ -470,7 +471,8 @@ public class ConnectionThread implements Runnable {
 			 * msg.getValue () );
 			 */
 			responseMessage = dbManager.put(msg.getKey(), msg.getValue());
-
+			parent.NotifyIfHasSubscriber(msg.getKey(), msg.getValue());
+			
 			ReplicaMessage replicationMessage = new ReplicaMessage();
 			replicationMessage.setCoordinatorServer(parent.getThisServerInfo());
 

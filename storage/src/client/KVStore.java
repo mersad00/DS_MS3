@@ -26,8 +26,12 @@ import org.apache.log4j.Logger;
 
 import common.Hasher;
 import common.ServerInfo;
+import common.messages.AbstractMessage;
+import common.messages.AbstractMessage.MessageType;
 import common.messages.KVMessage;
 import common.messages.ClientMessage;
+import common.messages.KVMessage.StatusType;
+import common.messages.SubscribeMessage;
 
 public class KVStore implements KVCommInterface {
 
@@ -42,7 +46,7 @@ public class KVStore implements KVCommInterface {
 	private static final int DROP_SIZE = 1024 * BUFFER_SIZE;
 
 	private List<ServerInfo> metadata;
-	private KVMessage lastSentMessage;
+	private AbstractMessage lastSentMessage;
 
 	/**
 	 * Initialize KVStore with address and port of KVServer
@@ -243,14 +247,21 @@ public class KVStore implements KVCommInterface {
 		return msg;
 	}
 
-	private void sendMessage(ClientMessage msg) throws IOException {
+	private void sendMessage(AbstractMessage msg) throws IOException {
 		this.lastSentMessage = msg;
-		byte[] msgBytes = SerializationUtil.toByteArray(msg);
-		output.write(msgBytes, 0, msgBytes.length);
-		output.flush();
-		logger.info("Send message :\t '" + msg.toString() + "'");
-	}
+		byte[] msgBytes = null;
+		if (msg.getMessageType() == MessageType.CLIENT_MESSAGE) {
+			msgBytes = SerializationUtil.toByteArray((ClientMessage) msg);
+		} else if (msg.getMessageType() == MessageType.SUBSCRIBE_MESSAGE) {
+			msgBytes = SerializationUtil.toByteArray((SubscribeMessage) msg);
+		}
 
+		if (msgBytes != null) {
+			output.write(msgBytes, 0, msgBytes.length);
+			output.flush();
+			logger.info("Send message :\t '" + msg.toString() + "'");
+		}
+	}
 	/**
 	 * updates the metadata with a new copy
 	 * 
@@ -261,12 +272,13 @@ public class KVStore implements KVCommInterface {
 		this.metadata = metadata;
 		logger.info("update metadata with " + metadata.size() + " keys");
 		logger.debug("meta data received ");
-		/*for (ServerInfo s : metadata)
-			logger.debug(s.getFromIndex() + " " + s.getToIndex());
-		*/
+		/*
+		 * for (ServerInfo s : metadata) logger.debug(s.getFromIndex() + " " +
+		 * s.getToIndex());
+		 */
 	}
 
-	public KVMessage getLastSentMessage() {
+	public AbstractMessage getLastSentMessage() {
 		return this.lastSentMessage;
 	}
 
@@ -279,11 +291,11 @@ public class KVStore implements KVCommInterface {
 				if (hasher.isInRange(server.getFromIndex(),
 						server.getToIndex(), key)) {
 
-				/*	logger.debug("responsible server for "
-							+ hasher.getHash(key) + " is "
-							+ server.getFromIndex() + "  "
-							+ server.getToIndex());
-				 */
+					/*
+					 * logger.debug("responsible server for " +
+					 * hasher.getHash(key) + " is " + server.getFromIndex() +
+					 * "  " + server.getToIndex());
+					 */
 					destinationServer = server;
 				}
 			}
@@ -298,6 +310,27 @@ public class KVStore implements KVCommInterface {
 
 	public ServerInfo getCurrentConnection() {
 		return this.currentDestinationServer;
+	}
+
+	public KVMessage gets(String key,ClientInfo clientInfo) {
+		SubscribeMessage msg = new SubscribeMessage();
+		KVMessage receivedMsg = null;
+		msg.setKey(key);
+		msg.setSubscriber(clientInfo);
+		msg.setStatusType(StatusType.GET);
+		// ServerInfo tempInfo = this.getDestinationServerInfo ( key );
+		try {
+			/*
+			 * if ( ! this.currentDestinationServer.equals ( tempInfo ) ) {
+			 * this.switchConnection ( tempInfo ); }
+			 */
+			this.sendMessage(msg);
+			receivedMsg = this.receiveMessage();
+
+		} catch (IOException e) {
+			logger.error("error in sending or receiving message");
+		}
+		return receivedMsg;
 	}
 
 }

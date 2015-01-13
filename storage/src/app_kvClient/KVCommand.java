@@ -7,7 +7,7 @@ package app_kvClient;
 
 public enum KVCommand {
 
-	CONNECT ( "connect" ) , DISCONNECT ( "disconnect" ) , PUT ( "put" ) , GET ("get"),LOG_LEVEL (
+	CONNECT ( "connect" ) , DISCONNECT ( "disconnect" ) , PUT ( "put" ) , GET ("get"),GETS("gets"),PUTS("puts"),LOG_LEVEL (
 			"logLevel" ) , HELP ( "help" ) , QUIT ( "quit" ) , UN_SUPPORTED (
 			"unSupported" );
 
