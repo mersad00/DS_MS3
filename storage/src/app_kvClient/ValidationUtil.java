@@ -143,6 +143,67 @@ public class ValidationUtil {
 	}
 
 	/**
+	 * Validates the unsubscribe command. only validates the number of
+	 * params
+	 * 
+	 * @param tokens
+	 *            the user input
+	 * @return true/false status
+	 * @throws IllegalArgumentException
+	 */
+	public boolean isValidUnsubscribe ( String [] tokens ) {
+		if ( tokens == null ) {
+			throw new IllegalArgumentException (
+					UserFacingMessages.GENERAL_ILLIGAL_ARGUMENT );
+		}
+
+		if ( tokens.length < 2 ) {
+			throw new IllegalArgumentException (
+					UserFacingMessages.ILLIGAL_PARAM_NUMBER );
+		}
+
+		String key = tokens [ 1 ];
+		if ( key == null || key.isEmpty () ) {
+			throw new IllegalArgumentException ( "key"
+					+ UserFacingMessages.ILLIGAL_PARAM );
+		}
+		return true;
+	}
+
+	/**
+	 * Validates the commands which just need two arguments. only validates the number of
+	 * params. used for puts, gets!
+	 * 
+	 * @param tokens
+	 *            the user input
+	 * @return true/false status
+	 * @throws IllegalArgumentException
+	 */
+	public boolean isValidTwoArguments ( String [] tokens ) {
+		if ( tokens == null ) {
+			throw new IllegalArgumentException (
+					UserFacingMessages.GENERAL_ILLIGAL_ARGUMENT );
+		}
+
+		if ( tokens.length < 2 ) {
+			throw new IllegalArgumentException (
+					UserFacingMessages.ILLIGAL_PARAM_NUMBER );
+		}
+
+		if (tokens.length > 2){
+			throw new IllegalArgumentException (
+					UserFacingMessages.ILLIGAL_PARAM_NUMBER );
+		}
+		
+		String key = tokens [ 1 ];
+		if ( key == null || key.isEmpty () ) {
+			throw new IllegalArgumentException ( "key"
+					+ UserFacingMessages.ILLIGAL_PARAM );
+		}
+		return true;
+	}
+	
+	/**
 	 * Validates the port number if in the range of ports
 	 * 
 	 * @param str

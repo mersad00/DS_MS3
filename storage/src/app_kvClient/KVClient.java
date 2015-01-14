@@ -86,31 +86,29 @@ public class KVClient {
 					break;
 
 				case GET:
-					if (tokens[1] != null && !tokens[1].isEmpty()) {
+					if (validationUtil.isValidTwoArguments(tokens)) {
 						KVMessage result = connection.get(tokens[1]);
 						String textResult = handleResponse(result, -1);
 						logger.info(textResult);
-					} else {
-						logger.warn("Key was not provided.");
-						System.out.println("Key was not provided.");
 					}
 					break;
 				// TODO: @Arash add proper puts and gets
 				case GETS:
 					// /start listening socket server for notifications
-					if (tokens[1] != null && !tokens[1].isEmpty()) {
-						KVMessage result = connection.gets(tokens[1],
+					if (validationUtil.isValidTwoArguments(tokens)) {
+						KVMessage result = connection.getS(tokens[1],
 								getThisClientInfo());
-						String textResult = handleResponse(result, -1);
+						String textResult = handleResponse(result, -2);
 						logger.info(textResult);
-					} else {
-						logger.warn("Key was not provided.");
-						System.out.println("Key was not provided.");
 					}
-
 					break;
 				case PUTS:
-
+					if (validationUtil.isValidTwoArguments(tokens)) {
+						KVMessage result = connection.putS(tokens[1],
+								tokens[2], getThisClientInfo());
+						String textResult = handleResponse(result, 2);
+						logger.info(textResult);
+					}
 					break;
 				case LOG_LEVEL:
 					if (validationUtil.isValidLogLevel(tokens)) {
@@ -124,6 +122,14 @@ public class KVClient {
 					logger.info("Help Text provided to user.");
 					break;
 
+				case UN_SUBSCRIBE:
+					if (validationUtil.isValidTwoArguments(tokens)) {
+						KVMessage result = connection.unsubscribe(tokens[1],
+								getThisClientInfo());
+						String textResult = handleResponse(result, 0);
+						logger.info(textResult);
+					}
+					break;
 				case UN_SUPPORTED:
 					System.out.println(UserFacingMessages.UN_SUPPORTED_COMMAND);
 					logger.warn("User entered unsupported command.");
@@ -189,6 +195,11 @@ public class KVClient {
 			resultText = UserFacingMessages.GET_ERROR_MESSAGE
 					+ result.getValue();
 			break;
+		case GETS_SUCCESS:
+			resultText = UserFacingMessages.GETS_SUCCESS_MESSAGE
+					+ result.getValue();
+			break;
+
 		case GET_SUCCESS:
 			resultText = UserFacingMessages.GET_SUCCESS_MESSAGE
 					+ result.getValue();
@@ -201,6 +212,11 @@ public class KVClient {
 
 		case PUT_SUCCESS:
 			resultText = UserFacingMessages.PUT_SUCCESS_MESSAGE;
+			break;
+
+		case PUTS_SUCCESS:
+			resultText = UserFacingMessages.PUTS_SUCCESS_MESSAGE
+					+ result.getValue();
 			break;
 
 		case PUT_UPDATE:
@@ -218,58 +234,60 @@ public class KVClient {
 			// resultText = UserFacingMessages.SERVER_NOT_RESPONSIBLE;
 			this.connection.updateMetadata(((ClientMessage) result)
 					.getMetadata());
-			// the previous command was put because mode is 1
-			if (mode == 1) {
-				// if clause added to avoid infinite loop when a server is
-				// faulty
-				if (connection.getCurrentConnection().equals(
-						connection.getDestinationServerInfo(result.getKey()))) {
-					resultText = "SERVER IS NOT RESPONSIBLE RECIEVED"
-							+ " FROM THE RESPONSIBLE SERVER! PLEASE CHANGE CONNECTION AND TRY AGAIN!";
-					logger.debug(" Current connection "
-							+ connection.getCurrentConnection().getFromIndex()
-							+ " "
-							+ connection.getCurrentConnection().getToIndex()
-							+ " respinsible form latest metaData "
-							+ connection.getDestinationServerInfo(
-									result.getKey()).getFromIndex()
-							+ " "
-							+ connection.getDestinationServerInfo(
-									result.getKey()).getToIndex());
-					return resultText;
 
-				}
-
-				logger.info("SERVER NOT RESPONSIBLE.\n Changing Connection...");
+			// if clause added to avoid infinite loop when a server is
+			// faulty
+			if (connection.getCurrentConnection().equals(
+					connection.getDestinationServerInfo(result.getKey()))) {
+				resultText = "SERVER IS NOT RESPONSIBLE RECIEVED"
+						+ " FROM THE RESPONSIBLE SERVER! PLEASE CHANGE CONNECTION AND TRY AGAIN!";
+				return resultText;
+			} else
 				// tell the connection to switch the connection to the
 				// responsible server
-				this.connection.switchConnection(connection
-						.getDestinationServerInfo(result.getKey()));
-				result = this.connection
-						.put(result.getKey(), result.getValue());
-				resultText = handleResponse(result, 1);
-			}
-
-			// the previous command was get because mode is -1
-			else if (mode == -1) {
-				// if clause added to avoid infinite loop when a server is
-				// faulty
-				if (connection.getCurrentConnection().equals(
-						connection.getDestinationServerInfo(result.getKey()))) {
-					resultText = "SERVER IS NOT RESPONSIBLE RECIEVED"
-							+ " FROM THE RESPONSIBLE SERVER! PLEASE CHANGE CONNECTION AND TRY AGAIN!";
-					return resultText;
-				}
 				logger.info("SERVER NOT RESPONSIBLE.\n Changing Connection...");
-				// tell the connection to switch the connection to the
-				// responsible server
-				this.connection.switchConnection(connection
-						.getDestinationServerInfo(result.getKey()));
-				result = this.connection.get(result.getKey());
-				resultText = handleResponse(result, -1);
-			}
-			break;
 
+			switch (mode) {
+				// the previous command was getS
+				case -2: {
+					this.connection.switchConnection(connection
+							.getDestinationServerInfo(result.getKey()));
+					result = this.connection.getS(result.getKey(), getThisClientInfo());
+					resultText = handleResponse(result, -2);
+				}
+				
+				// the previous command was get
+				case -1: {
+					this.connection.switchConnection(connection
+							.getDestinationServerInfo(result.getKey()));
+					result = this.connection.get(result.getKey());
+					resultText = handleResponse(result, -1);
+				}
+				// the previous command was unsubscribe
+				case 0: {
+					this.connection.switchConnection(connection
+							.getDestinationServerInfo(result.getKey()));
+					result = this.connection.unsubscribe(result.getKey(),
+							getThisClientInfo());
+					resultText = handleResponse(result, 0);
+				}
+				// the previous command was put
+				case 1: {
+					this.connection.switchConnection(connection
+							.getDestinationServerInfo(result.getKey()));
+					result = this.connection
+							.put(result.getKey(), result.getValue());
+					resultText = handleResponse(result, 1);
+				}
+				// the previous command was putS
+				case 2: {
+					this.connection.switchConnection(connection
+							.getDestinationServerInfo(result.getKey()));
+					result = this.connection.putS(result.getKey(), result.getValue(),getThisClientInfo());
+					resultText = handleResponse(result, 2);
+				}
+			}
+				break;
 		}
 
 		case SERVER_STOPPED: {
@@ -282,6 +300,11 @@ public class KVClient {
 			break;
 		}
 
+		case UNSUBSCRIBE_SUCCESS: {
+			resultText = UserFacingMessages.UNSUBSCRIBE_SUCCESS
+					+ result.getValue();
+			break;
+		}
 		default:
 			resultText = result.getStatus() + result.getKey()
 					+ result.getValue();

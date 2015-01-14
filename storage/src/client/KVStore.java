@@ -20,6 +20,7 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.log4j.Logger;
@@ -312,18 +313,16 @@ public class KVStore implements KVCommInterface {
 		return this.currentDestinationServer;
 	}
 
-	public KVMessage gets(String key,ClientInfo clientInfo) {
+	public KVMessage getS(String key,ClientInfo clientInfo) {
 		SubscribeMessage msg = new SubscribeMessage();
 		KVMessage receivedMsg = null;
 		msg.setKey(key);
 		msg.setSubscriber(clientInfo);
 		msg.setStatusType(StatusType.GET);
-		// ServerInfo tempInfo = this.getDestinationServerInfo ( key );
+		ServerInfo tempInfo = this.getDestinationServerInfo ( key );
 		try {
-			/*
-			 * if ( ! this.currentDestinationServer.equals ( tempInfo ) ) {
-			 * this.switchConnection ( tempInfo ); }
-			 */
+			 if ( ! this.currentDestinationServer.equals ( tempInfo ) )
+			 this.switchConnection ( tempInfo ); 
 			this.sendMessage(msg);
 			receivedMsg = this.receiveMessage();
 
@@ -333,4 +332,82 @@ public class KVStore implements KVCommInterface {
 		return receivedMsg;
 	}
 
+public KVMessage putS(String key, String value,ClientInfo clientInfo) {
+	SubscribeMessage msg = new SubscribeMessage();
+	KVMessage receivedMsg = null;
+	msg.setKey(key);
+	msg.setValue(value);
+	msg.setSubscriber(clientInfo);
+	msg.setStatusType(StatusType.PUT);
+	ServerInfo tempInfo = this.getDestinationServerInfo (key);
+	try {
+		 if ( ! this.currentDestinationServer.equals ( tempInfo ) )
+		 this.switchConnection ( tempInfo ); 
+		this.sendMessage(msg);
+		receivedMsg = this.receiveMessage();
+
+	} catch (IOException e) {
+		logger.error("error in sending or receiving message");
+	}
+	return receivedMsg;
+}
+
+public KVMessage unsubscribe(String key, ClientInfo clientInfo) {
+	KVMessage receivedMsg = null;
+	//TODO @Ibrahim requirements of unsubscribe msg type 
+	/*SubscribeMessage msg = new UnSubscribeMessage();
+	msg.setKeys(key);
+	msg.setStatusType(StatusType.UNSUBSCRIBE);
+	msg.setUnSubscriber(clientInfo);
+	ServerInfo tempInfo = this.getDestinationServerInfo (key);
+	try {
+		 if ( ! this.currentDestinationServer.equals ( tempInfo ) )
+		this.switchConnection ( tempInfo ); 
+		this.sendMessage(msg);
+		receivedMsg = this.receiveMessage();
+
+	} catch (IOException e) {
+		logger.error("error in sending or receiving message");
+	}*/
+	return receivedMsg;
+}
+
+
+/* unsibscribe keyList version! Not yet complete
+public ArrayList<String> unsubscribe(String[] keys, ClientInfo clientInfo) {
+	//SubscribeMessage msg = new UnSubscribeMessage();
+	KVMessage receivedMsg = null;
+	ArrayList<String> response = new ArrayList<String>();
+	HashMap<ServerInfo, ArrayList<String>> responsibleServers = new HashMap<ServerInfo, ArrayList<String>>();
+	// each responsible server will have a list of its responsible keys
+	for(String key:keys){
+		ServerInfo tempInfo = this.getDestinationServerInfo (key);
+		if(responsibleServers.containsKey(tempInfo)){
+			ArrayList<String> temp = responsibleServers.get(tempInfo);
+			temp.add(key);
+			responsibleServers.put(tempInfo, temp);
+		}else{
+			ArrayList<String>temp = new ArrayList<String>();
+			temp.add(key);
+			responsibleServers.put(tempInfo, temp);
+		}
+	}
+	for(ServerInfo s:responsibleServers.keySet()){
+		//TODO @Ibrahim requirements of unsubscribe msg type 
+		/*msg.setKeys(responsibleServers.get(s));
+		msg.setStatusType(StatusType.UNSUBSCRIBE);
+		msg.setUnSubscriber(clientInfo);
+		try { 
+			this.sendMessage(msg);
+			receivedMsg = this.receiveMessage();
+			if(receivedMsg.getStatus().equals(StatusType.UNSUBSCRIBE_SUCCESS))
+				for(String key: responsibleServers.get(s))
+					response.add(key);
+		} catch (IOException e) {
+			logger.error("error in sending or receiving message");
+		}
+	}
+	}
+	return response;
+}*/
 }

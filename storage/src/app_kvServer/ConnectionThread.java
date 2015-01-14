@@ -461,6 +461,7 @@ public class ConnectionThread implements Runnable {
 			responseMessage = new ClientMessage(msg);
 
 		}
+		//TODO handle PutS and GetS and Unsibscribe messages with proper reponse
 
 		/* check if the received message is in this server range */
 
