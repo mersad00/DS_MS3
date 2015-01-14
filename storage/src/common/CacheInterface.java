@@ -1,4 +1,4 @@
-package app_kvServer;
+package common;
 
 public interface CacheInterface {
 	
@@ -28,7 +28,7 @@ public interface CacheInterface {
 	 * sets the Strategy used for Caching
 	 * @param s
 	 */
-	public void setStrategy(Strategy s);
+	public void setStrategy(CacheStrategy s);
 
 	
 }

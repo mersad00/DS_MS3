@@ -1,4 +1,4 @@
-package app_kvServer;
+package common;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,20 +13,20 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import app_kvClient.KVClient;
-enum Strategy {FIFO ,LRU,LFU};
+
 public class Cache implements CacheInterface{
 	private HashMap<String, String> cache;
 	ArrayList<String> keys;
-	private Strategy strategy;
+	private CacheStrategy strategy;
 	private int size;
 	private Logger logger = Logger.getRootLogger();
 	Stack <String> qeueOfKeys;
 	
-	public Cache(int size, Strategy strategy){
+	public Cache(int size, CacheStrategy strategy){
 		this.size = size;
 		this.strategy = strategy;
 		cache = new HashMap<String,String>(size);
-		if(strategy == Strategy.LRU)
+		if(strategy == CacheStrategy.LRU)
 			keys = new ArrayList<String>(size);
 		else
 			qeueOfKeys = new Stack<String>();
@@ -44,7 +44,7 @@ public class Cache implements CacheInterface{
 		if(cache.containsKey(key)){
 			
 			/* when we have LRU strategy */
-			if(this.strategy == Strategy.LRU){
+			if(this.strategy == CacheStrategy.LRU){
 				int i = keys.indexOf(key);
 				
 				/* this condition should not happen ! was added just for safety */
@@ -97,7 +97,7 @@ public class Cache implements CacheInterface{
 		if(cache.containsKey(key)){
 			logger.info(key+ " already exists in the cache");
 			cache.put(key, value);
-			if(strategy == Strategy.LRU){
+			if(strategy == CacheStrategy.LRU){
 				reOrder(key);
 				return;
 			}
@@ -110,7 +110,7 @@ public class Cache implements CacheInterface{
 			if(cache.size()==size){
 				pop();
 				cache.put(key, value);
-				if(strategy == Strategy.LRU){
+				if(strategy == CacheStrategy.LRU){
 					keys.add(key);
 					reOrder(key);
 					return ;
@@ -120,7 +120,7 @@ public class Cache implements CacheInterface{
 			}
 			else{
 				cache.put(key, value);
-				if(strategy == Strategy.LRU){
+				if(strategy == CacheStrategy.LRU){
 					keys.add(key);
 					reOrder(key);
 					return;
@@ -133,7 +133,7 @@ public class Cache implements CacheInterface{
 
 	}
 	
-	public void setStrategy(Strategy s){
+	public void setStrategy(CacheStrategy s){
 		this.strategy = s;
 		Set<String> v = cache.keySet();
 		logger.info("reinitializing cache strategy");

@@ -26,7 +26,9 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import common.Cache;
 import common.Hasher;
+import common.CacheStrategy;
 import common.messages.KVMessage;
 import common.messages.ClientMessage;
 
@@ -51,7 +53,7 @@ public class DatabaseManager {
 		this.id = id;
 		String path = this.getClass().getProtectionDomain().getCodeSource()
 				.getLocation().getPath();
-		cache = new Cache(cacheSize, Strategy.valueOf(cacheStrategy));
+		cache = new Cache(cacheSize, CacheStrategy.valueOf(cacheStrategy));
 		/*
 		 * for local invoking of the KVserver programs(no ssh call), we remove
 		 * /bin to refer the path to project's root path
