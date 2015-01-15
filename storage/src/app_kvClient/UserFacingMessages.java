@@ -65,6 +65,7 @@ public class UserFacingMessages {
 	public static final String SERVER_WRITE_LOCK = "The server is busy with writing operation";
 	public static final String SERVER_STOPPED = "Server is stopped";
 	public static final String UNSUBSCRIBE_SUCCESS = "The unsubscribe command was successful";
+	public static final String UNSUBSCRIBE_NOT_EXIXST = "Key does not exists in the cache of subscribed keys ";
 	public static final byte END_OF_MESSAGE = 13;
 	
 }

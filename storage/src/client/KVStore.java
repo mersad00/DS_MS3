@@ -25,6 +25,8 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import common.Cache;
+import common.CacheStrategy;
 import common.Hasher;
 import common.ServerInfo;
 import common.messages.AbstractMessage;
@@ -38,16 +40,14 @@ public class KVStore implements KVCommInterface {
 
 	private Logger logger = Logger.getRootLogger();
 	private ServerInfo currentDestinationServer;
-
 	private Socket clientSocket;
 	private OutputStream output;
 	private InputStream input;
-
 	private static final int BUFFER_SIZE = 1024;
 	private static final int DROP_SIZE = 1024 * BUFFER_SIZE;
-
 	private List<ServerInfo> metadata;
 	private AbstractMessage lastSentMessage;
+	private Cache dataStoreCache;
 
 	/**
 	 * Initialize KVStore with address and port of KVServer
@@ -59,11 +59,13 @@ public class KVStore implements KVCommInterface {
 	 */
 	public KVStore(String address, int port) {
 		this(new ServerInfo(address, port));
+		dataStoreCache = new Cache(1000, CacheStrategy.LRU);
 	}
 
 	public KVStore(ServerInfo serverInfo) {
 		this.currentDestinationServer = serverInfo;
 		this.metadata = new ArrayList<ServerInfo>();
+		dataStoreCache = new Cache(1000, CacheStrategy.LRU);		
 	}
 
 	/**
@@ -174,6 +176,15 @@ public class KVStore implements KVCommInterface {
 		KVMessage receivedMsg = null;
 		msg.setKey(key);
 		msg.setStatus(KVMessage.StatusType.GET);
+		// first check the local cache
+		if(dataStoreCache.get(key) != null){
+			String value = dataStoreCache.get(key);
+			logger.info("data retrieved from local cache of subscribed keys!");
+			msg.setStatus(KVMessage.StatusType.GET_SUCCESS);
+			msg.setValue(value);
+			return msg;
+		}
+		
 		// ServerInfo tempInfo = this.getDestinationServerInfo ( key );
 		try {
 			/*
@@ -325,6 +336,7 @@ public class KVStore implements KVCommInterface {
 			 this.switchConnection ( tempInfo ); 
 			this.sendMessage(msg);
 			receivedMsg = this.receiveMessage();
+			dataStoreCache.push(key, receivedMsg.getValue());
 
 		} catch (IOException e) {
 			logger.error("error in sending or receiving message");
@@ -345,6 +357,7 @@ public KVMessage putS(String key, String value,ClientInfo clientInfo) {
 		 this.switchConnection ( tempInfo ); 
 		this.sendMessage(msg);
 		receivedMsg = this.receiveMessage();
+		dataStoreCache.push(key, receivedMsg.getValue());
 
 	} catch (IOException e) {
 		logger.error("error in sending or receiving message");
@@ -354,6 +367,9 @@ public KVMessage putS(String key, String value,ClientInfo clientInfo) {
 
 public KVMessage unsubscribe(String key, ClientInfo clientInfo) {
 	KVMessage receivedMsg = null;
+	if(dataStoreCache.get(key) == null)
+		return receivedMsg;
+	dataStoreCache.remove(key);
 	//TODO @Ibrahim requirements of unsubscribe msg type 
 	/*SubscribeMessage msg = new UnSubscribeMessage();
 	msg.setKeys(key);
@@ -372,6 +388,9 @@ public KVMessage unsubscribe(String key, ClientInfo clientInfo) {
 	return receivedMsg;
 }
 
+	public void updateCache(String key, String value){
+		dataStoreCache.push(key, value);
+	}
 
 /* unsibscribe keyList version! Not yet complete
 public ArrayList<String> unsubscribe(String[] keys, ClientInfo clientInfo) {

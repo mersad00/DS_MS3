@@ -21,10 +21,10 @@ import common.messages.ClientMessage;
 
 public class KVClient {
 
-	private KVStore connection; // reference to connection interface
+	private KVStore connection = null; // reference to connection interface
 	private Logger logger;
-	boolean running;
-	ServerSocket serverSocket;
+	private boolean gettingNotified;
+	private ServerSocket serverSocket;
 
 	public KVClient() {
 		logger = LoggingManager.getInstance().createLogger(this.getClass());
@@ -39,6 +39,9 @@ public class KVClient {
 		BufferedReader cons = new BufferedReader(new InputStreamReader(
 				System.in));
 		logger.debug("Input Stream Reader created");
+		
+		startListeningForNotifications();
+		
 		// the flag to stop shell interaction
 		boolean quit = false;
 		while (!quit) {
@@ -126,7 +129,11 @@ public class KVClient {
 					if (validationUtil.isValidTwoArguments(tokens)) {
 						KVMessage result = connection.unsubscribe(tokens[1],
 								getThisClientInfo());
-						String textResult = handleResponse(result, 0);
+						String textResult;
+						if(result == null)
+							textResult = UserFacingMessages.UNSUBSCRIBE_NOT_EXIXST;
+						else
+							textResult = handleResponse(result, 0);
 						logger.info(textResult);
 					}
 					break;
@@ -138,14 +145,17 @@ public class KVClient {
 				case QUIT:
 
 					// /if we are waiting for notification stop waiting
-					running = false;
-					if (this.listeningThread != null) {
-						this.listeningThread.stop();
-					}
+
+					setNotified(false);
+					Thread.sleep(500);
+					/*if (this.listeningThread != null) {
+						this.listeningThread.;
+					}*/
 					quit = true;
-					connection.disconnect();
-					System.out.println("Quit program based on user request.");
+					if (connection != null)
+						connection.disconnect();
 					logger.info("Quit program based on user request.");
+					System.exit(0);
 					break;
 
 				default:
@@ -154,7 +164,7 @@ public class KVClient {
 
 			} catch (Exception e) {
 				e.printStackTrace();
-				logger.error(e.getMessage());
+				logger.error(e);
 				System.out
 						.println("Server is not found any more, make sure the server is up");
 			}
@@ -167,7 +177,7 @@ public class KVClient {
 
 	private ClientInfo getThisClientInfo() {
 		if (this.ThisClientInfo == null) {
-			startListeningForNotifications();
+			//startListeningForNotifications();
 			int listeningPort = serverSocket.getLocalPort();
 			String listeningAddress = serverSocket.getInetAddress()
 					.getHostAddress();
@@ -319,16 +329,17 @@ public class KVClient {
 	// notifications from server
 	private void startListeningForNotifications() {
 		initializeServer();
-		running = true;
+		 setNotified(true);
 		final KVClient that = this;
 		listeningThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
-
+				try{
 				if (serverSocket != null) {
-					while (running) {
+					while (getNotified()) {
 						try {
 							logger.debug("NOTIFICATION: waiting for notifications");
+							
 							Socket client = serverSocket.accept();
 							ClientNotificationThread connection = new ClientNotificationThread(
 									client, that);
@@ -337,13 +348,32 @@ public class KVClient {
 							logger.info("NOTIFICATION: new Connection: Connected to "
 									+ client.getInetAddress().getHostName()
 									+ " on port " + client.getPort());
+							System.out.print(UserFacingMessages.ECHO_PROMPT);
+							
 						} catch (IOException e) {
 							logger.error("NOTIFICATION: Error! "
 									+ "Unable to establish connection. \n", e);
 						}
+						
+					}
+				}
+				}
+				finally{
+					try {
+						logger.debug("cleaning the thread");
+						if(serverSocket != null)
+							serverSocket.close();
+						logger.info("closing the serverSocket...");
+						System.out.print(UserFacingMessages.ECHO_PROMPT);
+						
+					} catch (IOException e) {
+						logger.error("Could not close the ServerSocket !" + e);
 					}
 				}
 				logger.info("NOTIFICATION Server stopped.");
+				System.out.print(UserFacingMessages.ECHO_PROMPT);
+				
+				
 			}
 		});
 		listeningThread.start();
@@ -356,6 +386,7 @@ public class KVClient {
 			serverSocket = new ServerSocket(0);
 			logger.info("Server listening on: " + serverSocket.getLocalPort()
 					+ serverSocket.getInetAddress());
+			System.out.print(UserFacingMessages.ECHO_PROMPT);
 
 			return true;
 
@@ -373,5 +404,14 @@ public class KVClient {
 		// TODO: update cache @Arash
 		logger.debug("NOTIFICATION recieved for key:" + key + ", value:"
 				+ value);
+		connection.updateCache(key, value);
+	}
+	
+	public synchronized void setNotified(boolean running){
+		this.gettingNotified = running;
+	}
+	
+	public synchronized boolean getNotified(){
+		return this.gettingNotified;
 	}
 }

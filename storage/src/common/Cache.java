@@ -177,5 +177,11 @@ public class Cache implements CacheInterface{
 			System.exit(1);
 		}
 	}
+
+	@Override
+	public void remove(String key) {
+		cache.remove(key);
+		
+	}
 	
 }

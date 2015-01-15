@@ -29,6 +29,8 @@ public interface CacheInterface {
 	 * @param s
 	 */
 	public void setStrategy(CacheStrategy s);
+	
+	public void remove(String key);
 
 	
 }
