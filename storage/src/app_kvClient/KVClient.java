@@ -68,11 +68,15 @@ public class KVClient {
 						connection = new KVStore(tokens[1],
 								Integer.parseInt(tokens[2]));
 						connection.setparentInfo(getThisClientInfo());
-						connection.connect();
-						System.out.println("Connected to KV server, "
-								+ tokens[1] + ":" + tokens[2]);
-						logger.info("Connected to KV server, " + tokens[1]
+						try{
+							connection.connect();
+							System.out.println("Connected to KV server, "
+									+ tokens[1] + ":" + tokens[2]);
+							logger.info("Connected to KV server, " + tokens[1]
 								+ ":" + tokens[2]);
+						}catch (IOException io){
+							logger.warn("Could not connect to server on: " + tokens[1] + tokens[2]);
+						}
 					}
 					break;
 				case DISCONNECT:
@@ -82,35 +86,47 @@ public class KVClient {
 					break;
 				case PUT:
 					if (validationUtil.isValidStoreParams(tokens)) {
-						KVMessage result = connection.put(tokens[1], tokens[2]);
-						String textResult = handleResponse(result, 1);
-						logger.info(textResult);
+						if(this.connection != null){
+							KVMessage result = connection.put(tokens[1], tokens[2]);
+							String textResult = handleResponse(result, 1);
+							logger.info(textResult);
+						}
+						else System.out.println(UserFacingMessages.NOT_CONNECTED_YET);
 					}
 					break;
 
 				case GET:
 					if (validationUtil.isValidTwoArguments(tokens)) {
+						if(this.connection != null){
 						KVMessage result = connection.get(tokens[1]);
 						String textResult = handleResponse(result, -1);
 						logger.info(textResult);
+						}
+						else System.out.println(UserFacingMessages.NOT_CONNECTED_YET);
 					}
 					break;
 				// TODO: @Arash add proper puts and gets
 				case GETS:
 					// /start listening socket server for notifications
 					if (validationUtil.isValidTwoArguments(tokens)) {
+						if(this.connection != null){
 						KVMessage result = connection.getS(tokens[1],
 								getThisClientInfo());
 						String textResult = handleResponse(result, -2);
 						logger.info(textResult);
+						}
+						else System.out.println(UserFacingMessages.NOT_CONNECTED_YET);
 					}
 					break;
 				case PUTS:
-					if (validationUtil.isValidTwoArguments(tokens)) {
+					if (validationUtil.isValidStoreParams(tokens)) {
+						if(this.connection != null){
 						KVMessage result = connection.putS(tokens[1],
 								tokens[2], getThisClientInfo());
 						String textResult = handleResponse(result, 2);
 						logger.info(textResult);
+						}
+						else System.out.println(UserFacingMessages.NOT_CONNECTED_YET);
 					}
 					break;
 				case LOG_LEVEL:
@@ -127,14 +143,17 @@ public class KVClient {
 
 				case UN_SUBSCRIBE:
 					if (validationUtil.isValidTwoArguments(tokens)) {
-						KVMessage result = connection.unsubscribe(tokens[1],
-								getThisClientInfo());
-						String textResult;
-						if(result == null)
-							textResult = UserFacingMessages.UNSUBSCRIBE_NOT_EXIXST;
-						else
-							textResult = handleResponse(result, 0);
-						logger.info(textResult);
+						if(connection != null){
+							KVMessage result = connection.unsubscribe(tokens[1],
+									getThisClientInfo());
+							String textResult;
+							if(result == null)
+								textResult = UserFacingMessages.UNSUBSCRIBE_NOT_EXIXST;
+							else
+								textResult = handleResponse(result, 0);
+							logger.info(textResult);
+						}
+						else System.out.print(UserFacingMessages.NOT_CONNECTED_YET);
 					}
 					break;
 				case UN_SUPPORTED:
@@ -264,14 +283,17 @@ public class KVClient {
 							.getDestinationServerInfo(result.getKey()));
 					result = this.connection.getS(result.getKey(), getThisClientInfo());
 					resultText = handleResponse(result, -2);
+
+					break;
 				}
-				
 				// the previous command was get
 				case -1: {
 					this.connection.switchConnection(connection
 							.getDestinationServerInfo(result.getKey()));
 					result = this.connection.get(result.getKey());
 					resultText = handleResponse(result, -1);
+
+					break;
 				}
 				// the previous command was unsubscribe
 				case 0: {
@@ -280,6 +302,8 @@ public class KVClient {
 					result = this.connection.unsubscribe(result.getKey(),
 							getThisClientInfo());
 					resultText = handleResponse(result, 0);
+
+					break;
 				}
 				// the previous command was put
 				case 1: {
@@ -288,6 +312,8 @@ public class KVClient {
 					result = this.connection
 							.put(result.getKey(), result.getValue());
 					resultText = handleResponse(result, 1);
+
+					break;
 				}
 				// the previous command was putS
 				case 2: {

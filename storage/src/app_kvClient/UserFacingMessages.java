@@ -55,6 +55,7 @@ public class UserFacingMessages {
 	
 	public static final String GET_SUCCESS_MESSAGE = "The get command was successful, The value received:";
 	public static final String GETS_SUCCESS_MESSAGE = "The get and subscirbe command was successful, The value received:";
+	public static final String NOT_CONNECTED_YET = "Client is not connected yet! Please first connect to a server and try again.";
 	public static final String PUT_ERROR_MESSAGE = "The put command was not successful:";
 	public static final String PUT_SUCCESS_MESSAGE = "The put command was successful.";
 	public static final String PUTS_SUCCESS_MESSAGE = "The put and subscirbe command was successful";

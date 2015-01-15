@@ -293,12 +293,12 @@ public class KVStore implements KVCommInterface {
 		List<String> keys;
 		Map<ServerInfo,List<String>> tobeSubscribed;
 		this.metadata = metadata;
-		suspectedServers = checkSubscribtionValidation(oldMetaData);
+		/*suspectedServers = checkSubscribtionValidation(oldMetaData);
 		keys = checkKeyResponsibilities(suspectedServers);
 		tobeSubscribed = sortKeysByServer(keys);
 		updateSubscription(tobeSubscribed);
 		dataStoreCache.cleanServerList(metadata);
-		logger.info("update metadata with " + metadata.size() + " keys");
+		logger.info("update metadata with " + metadata.size() + " keys");*/
 		
 	}
 	
