@@ -476,7 +476,8 @@ public KVMessage unsubscribe(String key, ClientInfo clientInfo) {
 	KVMessage receivedMsg = null;
 	if(dataStoreCache.get(key) == null)
 		return receivedMsg;
-	dataStoreCache.remove(key);
+	ServerInfo responsible = getDestinationServerInfo(key);
+	dataStoreCache.remove(key, responsible);
 	//TODO @Ibrahim requirements of unsubscribe msg type 
 	/*SubscribeMessage msg = new UnSubscribeMessage();
 	msg.setKeys(key);
