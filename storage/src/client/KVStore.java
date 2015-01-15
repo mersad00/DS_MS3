@@ -22,6 +22,7 @@ import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 
@@ -47,7 +48,8 @@ public class KVStore implements KVCommInterface {
 	private static final int DROP_SIZE = 1024 * BUFFER_SIZE;
 	private List<ServerInfo> metadata;
 	private AbstractMessage lastSentMessage;
-	private Cache dataStoreCache;
+	private SubscribtionCache dataStoreCache;
+	private static ClientInfo paretnInfo;
 
 	/**
 	 * Initialize KVStore with address and port of KVServer
@@ -59,13 +61,18 @@ public class KVStore implements KVCommInterface {
 	 */
 	public KVStore(String address, int port) {
 		this(new ServerInfo(address, port));
-		dataStoreCache = new Cache(1000, CacheStrategy.LRU);
+		//dataStoreCache = new Cache(1000, CacheStrategy.LRU);
+		dataStoreCache = new SubscribtionCache(1000, CacheStrategy.LRU);
 	}
 
 	public KVStore(ServerInfo serverInfo) {
 		this.currentDestinationServer = serverInfo;
 		this.metadata = new ArrayList<ServerInfo>();
-		dataStoreCache = new Cache(1000, CacheStrategy.LRU);		
+	}
+	
+	public void setparentInfo(ClientInfo parent){
+		paretnInfo = parent;
+		
 	}
 
 	/**
@@ -281,15 +288,115 @@ public class KVStore implements KVCommInterface {
 	 *            the new metadata to be settled
 	 */
 	public void updateMetadata(List<ServerInfo> metadata) {
+		List<ServerInfo> oldMetaData = this.metadata;
+		List<ServerInfo> suspectedServers;
+		List<String> keys;
+		Map<ServerInfo,List<String>> tobeSubscribed;
 		this.metadata = metadata;
+		suspectedServers = checkSubscribtionValidation(oldMetaData);
+		keys = checkKeyResponsibilities(suspectedServers);
+		tobeSubscribed = sortKeysByServer(keys);
+		updateSubscription(tobeSubscribed);
+		dataStoreCache.cleanServerList(metadata);
 		logger.info("update metadata with " + metadata.size() + " keys");
-		logger.debug("meta data received ");
-		/*
-		 * for (ServerInfo s : metadata) logger.debug(s.getFromIndex() + " " +
-		 * s.getToIndex());
-		 */
+		
+	}
+	
+	/**
+	 * checks if a servers responsiblity may have been changed or not (ownership of keys)
+	 * @param oldMetaData
+	 * @return the list of the servers which are suspected
+	 */
+	public List<ServerInfo> checkSubscribtionValidation(List<ServerInfo> oldMetaData){
+		List<ServerInfo> toBeChecked = new ArrayList<ServerInfo>();
+		for(ServerInfo s:oldMetaData){
+			if(this.metadata.contains(s)){
+				int newSIndex = this.metadata.indexOf(s);
+				ServerInfo newS = this.metadata.get(newSIndex);
+				/* check their closest master( coordinator(1))
+				* if it has changed, Server s may has lost some
+				* keys
+				*/
+				if(! s.getSecondCoordinatorInfo().equals(newS.getSecondCoordinatorInfo())){
+					toBeChecked.add(newS);
+				}
+			}else{
+				// s has been removed from the system, check the keys!
+				toBeChecked.add(s);
+			}
+		}
+		return toBeChecked;
+	}
+	
+	/**
+	 * checks from dataStoreCache subscribtion list, which server has to be checks.
+	 * Then check this server's keys and if the server has lost responsibility of that
+	 * key, key is added to toBeSubscribe list of keys
+	 * @param toBechecked
+	 * @return list of toBesubscribekeys
+	 */
+	public List<String> checkKeyResponsibilities(List<ServerInfo> toBechecked){
+		List<String> toBesubscribekeys = new ArrayList<String>();
+		List<ServerInfo> subscribedServers = dataStoreCache.getSubscribedServers();
+		for(ServerInfo subscribed:subscribedServers){
+			if (toBechecked.contains(subscribed)){
+				List<String> keys = dataStoreCache.getSubscribedKeys(subscribed);
+				for(String key: keys){
+					// if the server has lost the ownership of the key
+					if(! getDestinationServerInfo(key).equals(subscribed))
+						toBesubscribekeys.add(key);
+				}
+			}
+		}
+		return toBesubscribekeys;
+	}
+	
+	/**
+	 * sorts keys by each server.
+	 * @param keys
+	 * @return Map of serverInfo, keys each ServerInfo is mapped to list of its keys
+	 */
+	public Map<ServerInfo, List<String>> sortKeysByServer(List<String> keys){
+		Map<ServerInfo, List<String>> keysByServer = new HashMap<ServerInfo, List<String>>(); 
+		List<String> temp = new ArrayList<String>();
+		for(String key:keys){
+			ServerInfo responsible = getDestinationServerInfo(key);
+			if(keysByServer.containsKey(responsible)){
+				temp = keysByServer.get(responsible);
+				temp.add(key);
+				keysByServer.put(responsible, temp);
+			}else{
+				temp = new ArrayList<String>();
+				temp.add(key);
+				keysByServer.put(responsible, temp);
+			}
+		}
+		return keysByServer;
 	}
 
+	/**
+	 * tries to update subscriptions for the keys' which their mainserver has changed
+	 * @param tobeSubscribeAgain
+	 */
+	public void updateSubscription(Map<ServerInfo, List<String>> tobeSubscribeAgain){
+		// first send subscription messages to the current connection if possible
+		List<String> tempList;
+		if(tobeSubscribeAgain.containsKey(this.getCurrentConnection())){
+			tempList = tobeSubscribeAgain.get(currentDestinationServer);
+			for(String key:tempList){
+				this.getS(key,paretnInfo );
+			}
+			tobeSubscribeAgain.remove(this.getCurrentConnection());
+		}
+		// send subscription to the other servers!
+		for(ServerInfo s: tobeSubscribeAgain.keySet()){
+			tempList = tobeSubscribeAgain.get(s);
+			for(String key: tempList){
+				this.getS(key, paretnInfo);
+			}
+		}
+	}
+	
 	public AbstractMessage getLastSentMessage() {
 		return this.lastSentMessage;
 	}
@@ -336,8 +443,8 @@ public class KVStore implements KVCommInterface {
 			 this.switchConnection ( tempInfo ); 
 			this.sendMessage(msg);
 			receivedMsg = this.receiveMessage();
-			dataStoreCache.push(key, receivedMsg.getValue());
-
+			//dataStoreCache.push(key, receivedMsg.getValue());
+			dataStoreCache.subscribetoServer(tempInfo, key, receivedMsg.getValue());
 		} catch (IOException e) {
 			logger.error("error in sending or receiving message");
 		}
@@ -357,8 +464,8 @@ public KVMessage putS(String key, String value,ClientInfo clientInfo) {
 		 this.switchConnection ( tempInfo ); 
 		this.sendMessage(msg);
 		receivedMsg = this.receiveMessage();
-		dataStoreCache.push(key, receivedMsg.getValue());
-
+		//dataStoreCache.push(key, receivedMsg.getValue());
+		dataStoreCache.subscribetoServer(tempInfo, key, receivedMsg.getValue());
 	} catch (IOException e) {
 		logger.error("error in sending or receiving message");
 	}

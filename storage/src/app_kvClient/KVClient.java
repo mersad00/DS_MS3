@@ -67,7 +67,7 @@ public class KVClient {
 
 						connection = new KVStore(tokens[1],
 								Integer.parseInt(tokens[2]));
-
+						connection.setparentInfo(getThisClientInfo());
 						connection.connect();
 						System.out.println("Connected to KV server, "
 								+ tokens[1] + ":" + tokens[2]);

@@ -48,8 +48,13 @@ public class SubscribtionCache extends Cache{
 			if(! this.subscribtionList.containsKey(s))
 				this.subscribtionList.remove(s);
 		}
-	}
+//TODO add method remove for unsibscribing
+		/*
+	@Override
+	public synchronized remove(String key){
+		this.subscribtionList.keySet()
+	}*/
 	
-	
+	}	
 
 }
