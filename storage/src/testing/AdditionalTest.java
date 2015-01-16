@@ -24,6 +24,7 @@ import common.messages.KVMessage.StatusType;
 import common.messages.ClientMessage;
 import common.messages.NotificationMessage;
 import common.messages.SubscribeMessage;
+import common.messages.UnsubscribeMessage;
 import junit.framework.TestCase;
 
 public class AdditionalTest extends TestCase {
@@ -752,5 +753,28 @@ public class AdditionalTest extends TestCase {
 		NotificationMessage deserializedMessage = (NotificationMessage)SerializationUtil.toObject(byteArray);
 		
 		assertTrue(message.equals(deserializedMessage));
+	}
+	
+	@Test
+	public void testUnsubscribeMessageSerialization() throws UnsupportedDataTypeException {
+		final String mockAddress = "mockAddress";
+		final int mockPort = 10;
+		final String mockKey = "mockKey";
+		
+		ClientInfo subscriber = new ClientInfo();
+		subscriber.setAddress(mockAddress);
+		subscriber.setPort(mockPort);
+		
+		UnsubscribeMessage message = new UnsubscribeMessage();
+		message.setKey(mockKey);
+		message.setSubscriber(subscriber);
+		
+		byte []byteArray = SerializationUtil.toByteArray(message);
+		UnsubscribeMessage deserializedMessage = (UnsubscribeMessage)SerializationUtil.toObject(byteArray);
+		
+		assertTrue(message.getKey().equals(deserializedMessage.getKey()));
+		assertTrue(message.getMessageType().equals(deserializedMessage.getMessageType()));
+		assertTrue(message.getSubscriber().getAddress().equals(deserializedMessage.getSubscriber().getAddress()));
+		assertTrue(message.getSubscriber().getPort() == deserializedMessage.getSubscriber().getPort());
 	}
 }

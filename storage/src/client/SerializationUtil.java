@@ -23,6 +23,7 @@ import common.messages.KVMessage.StatusType;
 import common.messages.ClientMessage;
 import common.messages.NotificationMessage;
 import common.messages.SubscribeMessage;
+import common.messages.UnsubscribeMessage;
 
 public class SerializationUtil {
 
@@ -39,6 +40,7 @@ public class SerializationUtil {
     private static final String RECOVERY_MESSAGE = "6";
     private static final String SUBSCRIBE_MESSAGE = "7";
     private static final String NOTIFICATION_MESSAGE = "8";
+    private static final String UNSUBSCRIBE_MESSAGE = "9";
     
     private static final char RETURN = 0x0D;
 
@@ -240,6 +242,22 @@ public class SerializationUtil {
 	    	break;
 	    }
 	    
+	    case UNSUBSCRIBE_MESSAGE :{
+	    	retrivedMessage = new UnsubscribeMessage();	    	
+			if (tokens[1] != null) {
+			    ((UnsubscribeMessage)retrivedMessage).setKey(tokens[1]);
+
+			}
+			if (tokens[2] != null){
+			    ClientInfo subscriber = new ClientInfo();
+			    String []clientInfoTokens = tokens[2].split(INNER_LINE_FEED);
+			    subscriber.setAddress(clientInfoTokens[0]);
+			    subscriber.setPort(Integer.parseInt(clientInfoTokens[1]));
+			    ((UnsubscribeMessage)retrivedMessage).setSubscriber(subscriber);
+			}
+	    	break;
+	    }
+	    
 	    case NOTIFICATION_MESSAGE : {
 	    	retrivedMessage = new NotificationMessage();
 	    	if (tokens[1] != null) {			    
@@ -314,6 +332,8 @@ public class SerializationUtil {
 		return MessageType.RECOVERY_MESSAGE;
 	else if (messageTypeStr.equals(SUBSCRIBE_MESSAGE))
 		return MessageType.SUBSCRIBE_MESSAGE;
+	else if (messageTypeStr.equals(UNSUBSCRIBE_MESSAGE))
+			return MessageType.UNSUBSCRIBE_MESSAGE;
 	else if (messageTypeStr.equals(NOTIFICATION_MESSAGE))
 		return MessageType.NOTIFICATION_MESSAGE;
 	else 
@@ -539,6 +559,20 @@ public class SerializationUtil {
     			+ message.getStatusType().ordinal() + LINE_FEED
     			+ message.getKey() + LINE_FEED
     			+ message.getValue() + LINE_FEED
+    			+ message.getSubscriber().getAddress() + INNER_LINE_FEED
+    			+ message.getSubscriber().getPort();
+    	
+    	byte[] bytes = messageStr.getBytes();
+		byte[] ctrBytes = new byte[] { RETURN };
+		byte[] tmp = new byte[bytes.length + ctrBytes.length];
+		System.arraycopy(bytes, 0, tmp, 0, bytes.length);
+		System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
+		return tmp;
+    }
+    
+    public static byte[] toByteArray(UnsubscribeMessage message){
+    	String messageStr = (UNSUBSCRIBE_MESSAGE + LINE_FEED )    			
+    			+ message.getKey() + LINE_FEED    			
     			+ message.getSubscriber().getAddress() + INNER_LINE_FEED
     			+ message.getSubscriber().getPort();
     	
