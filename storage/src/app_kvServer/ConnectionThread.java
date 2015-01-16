@@ -48,6 +48,7 @@ import common.messages.ClientMessage;
 import common.messages.AbstractMessage.MessageType;
 import common.messages.KVMessage.StatusType;
 import common.messages.SubscribeMessage;
+import common.messages.UnsubscribeMessage;
 
 public class ConnectionThread implements Runnable {
 
@@ -332,10 +333,52 @@ public class ConnectionThread implements Runnable {
 			handleRecoverDataRequest((RecoverMessage) msg);
 		} else if (msg.getMessageType().equals(MessageType.SUBSCRIBE_MESSAGE)) {
 			handleSubscribeMessage((SubscribeMessage)msg);
+		} else if (msg.getMessageType().equals(MessageType.SUBSCRIBE_MESSAGE)) {
+			handleUnsubscribeMessage((UnsubscribeMessage)msg);
 		}
 		else
 			logger.debug("VAGUE MSG RECEIVED");
 	}
+	
+	private void handleUnsubscribeMessage(UnsubscribeMessage msg) throws IOException{		
+		KVMessage responseMessage = null;
+		if (parent.getServerStatus()
+				.equals(ServerStatuses.UNDER_INITIALIZATION)
+				|| parent.getServerStatus().equals(ServerStatuses.STOPPED)) {
+
+			/*
+			 * The server has just started and not ready yet to handle requests
+			 * from clients
+			 */
+			responseMessage = new ClientMessage();
+			((ClientMessage)responseMessage).setKey(msg.getKey());
+			((ClientMessage)responseMessage).setStatus(StatusType.SERVER_STOPPED);
+			
+		} else if (parent.getServerStatus().equals(ServerStatuses.WRITING_LOCK)) {
+
+			/* The server is locked for writing operations */			
+			responseMessage = new ClientMessage();
+			((ClientMessage)responseMessage).setKey(msg.getKey());
+			((ClientMessage)responseMessage).setStatus(StatusType.SERVER_WRITE_LOCK);
+
+		}
+
+		/* check if the received message is in this server range */
+		else if (isInMyRange(msg.getKey())) {			
+			this.parent.removeSubscriber(msg.getKey(), msg.getSubscriber());
+		}  else {
+			/* in case the received message is in the range of this server */
+			responseMessage = new ClientMessage();
+			((ClientMessage)responseMessage).setKey(msg.getKey());
+			((ClientMessage)responseMessage).setStatus(StatusType.SERVER_NOT_RESPONSIBLE);			
+			((ClientMessage) responseMessage).setMetadata(parent.getMetadata());
+		}
+
+		this.sendClientMessage(responseMessage);
+		logger.info("response message sent to client ");
+		
+	}
+
 	
 	private void handleSubscribeMessage(SubscribeMessage msg) throws IOException{		
 		KVMessage responseMessage = null;

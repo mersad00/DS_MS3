@@ -452,6 +452,12 @@ public class KVServer extends Thread {
 		logger.debug("NOTIFICATION subscriber added");
 		this.subscribeStorageManager.addSubscriber(key, subscriber);
 	}
+	
+	public void removeSubscriber (String key, ClientInfo subscriber) {
+		logger.debug("NOTIFICATION subscriber removed");
+		this.subscribeStorageManager.removeSubscriber(subscriber, key);
+	}
+	
 	public void NotifyIfHasSubscriber(String key, String value) {
 		logger.debug("NOTIFICATION notify subscribers if any");
 		List<ClientInfo> subscribers = subscribeStorageManager
