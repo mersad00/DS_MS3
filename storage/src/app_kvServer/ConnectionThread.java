@@ -366,6 +366,10 @@ public class ConnectionThread implements Runnable {
 		/* check if the received message is in this server range */
 		else if (isInMyRange(msg.getKey())) {			
 			this.parent.removeSubscriber(msg.getKey(), msg.getSubscriber());
+			responseMessage = new ClientMessage();
+			((ClientMessage)responseMessage).setKey(msg.getKey());
+			((ClientMessage)responseMessage).setStatus(StatusType.UNSUBSCRIBE_SUCCESS);			
+			
 		}  else {
 			/* in case the received message is in the range of this server */
 			responseMessage = new ClientMessage();
