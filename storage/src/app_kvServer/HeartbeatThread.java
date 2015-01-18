@@ -83,42 +83,51 @@ public class HeartbeatThread extends Thread {
 						+ parent.getThisServerInfo().getSecondCoordinatorInfo()
 								.getPort() + ":"
 						+ parent.getSecondCoordinatorLastSeen() + "]");
-
-				if (parent.getFirstCoordinatorLastSeen() != null) {
-					long minutes = getMinutesDiffNow(parent
-							.getFirstCoordinatorLastSeen());
-					if (minutes > 1) {
-						logger.debug("Heartbeat("
-								+ parent.getThisServerInfo().getPort()
-								+ ") Detected Failure["
-								+ parent.getThisServerInfo()
-										.getFirstCoordinatorInfo().getPort()
-								+ "]");
-						
-						///send fail message to ECS
-						FailureMessage failmsg = new FailureMessage();
-						failmsg.setFailedServer(parent.getThisServerInfo()
-										.getFirstCoordinatorInfo());
-						failmsg.setReporteeServer(parent.getThisServerInfo());
-						parent.sendFailureMessage(failmsg);
+				
+				if(!parent.getThisServerInfo().getFirstCoordinatorInfo()
+								.equals(parent.getThisServerInfo()))
+				{
+					if (parent.getFirstCoordinatorLastSeen() != null) {
+						long minutes = getMinutesDiffNow(parent
+								.getFirstCoordinatorLastSeen());
+						if (minutes > 1) {
+							logger.debug("Heartbeat("
+									+ parent.getThisServerInfo().getPort()
+									+ ") Detected Failure["
+									+ parent.getThisServerInfo()
+											.getFirstCoordinatorInfo().getPort()
+									+ "]");
+							
+							///send fail message to ECS
+							FailureMessage failmsg = new FailureMessage();
+							failmsg.setFailedServer(parent.getThisServerInfo()
+											.getFirstCoordinatorInfo());
+							failmsg.setReporteeServer(parent.getThisServerInfo());
+							parent.sendFailureMessage(failmsg);
+						}
 					}
 				}
-				if (parent.getSecondCoordinatorLastSeen() != null) {
-					long minutes = getMinutesDiffNow(parent
-							.getSecondCoordinatorLastSeen());
-					if (minutes > 1) {
-						logger.debug("Heartbeat("
-								+ parent.getThisServerInfo().getPort()
-								+ ") Detected Failure["
-								+ parent.getThisServerInfo()
-										.getSecondCoordinatorInfo().getPort()
-								+ "]");
-						///send fail message to ECS
-						FailureMessage failmsg = new FailureMessage();
-						failmsg.setFailedServer(parent.getThisServerInfo()
-										.getSecondCoordinatorInfo());
-						failmsg.setReporteeServer(parent.getThisServerInfo());
-						parent.sendFailureMessage(failmsg);
+				if(!parent.getThisServerInfo().getSecondCoordinatorInfo()
+						.equals(parent.getThisServerInfo()))
+				{
+					
+					if (parent.getSecondCoordinatorLastSeen() != null) {
+						long minutes = getMinutesDiffNow(parent
+								.getSecondCoordinatorLastSeen());
+						if (minutes > 1) {
+							logger.debug("Heartbeat("
+									+ parent.getThisServerInfo().getPort()
+									+ ") Detected Failure["
+									+ parent.getThisServerInfo()
+											.getSecondCoordinatorInfo().getPort()
+									+ "]");
+							///send fail message to ECS
+							FailureMessage failmsg = new FailureMessage();
+							failmsg.setFailedServer(parent.getThisServerInfo()
+											.getSecondCoordinatorInfo());
+							failmsg.setReporteeServer(parent.getThisServerInfo());
+							parent.sendFailureMessage(failmsg);
+						}
 					}
 				}
 			} catch (InterruptedException e) {

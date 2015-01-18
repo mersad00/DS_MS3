@@ -4,7 +4,7 @@ package app_kvEcs;
  * ECS: External configuration service, the service that controls the storgae
  * server
  * 
- * @author Amjad
+ * 
  * 
  */
 public interface ECS {
