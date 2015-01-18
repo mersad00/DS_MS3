@@ -1,8 +1,8 @@
 package app_kvEcs;
 
 /**
- * ECS: External configuration service, the service that controls the storgae
- * server
+ * ECS: External configuration service, the service that controls the storage
+ * servers
  * 
  * 
  * 

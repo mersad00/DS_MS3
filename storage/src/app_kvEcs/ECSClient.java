@@ -9,6 +9,10 @@ import utilities.LoggingManager;
 import app_kvClient.UserFacingMessages;
 import app_kvClient.ValidationUtil;
 
+/**
+ * This UI Class 
+ *
+ */
 
 public class ECSClient {
 

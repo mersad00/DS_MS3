@@ -15,17 +15,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
-
 import org.apache.log4j.Logger;
-
 import client.SerializationUtil;
-
-import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader.Array;
-
 import utilities.LoggingManager;
 import common.Hasher;
 import common.ServerInfo;
-import common.messages.AbstractMessage;
+
+/**
+ * implementation of the ECS.java, responsible for main operations of the ECS
+ * 
+ *
+ */
 
 public class ECSImpl implements ECS {
 
@@ -37,7 +37,6 @@ public class ECSImpl implements ECS {
 	private Map<ServerInfo, ServerConnection> activeConnections;
 	Logger logger = LoggingManager.getInstance().createLogger(this.getClass());
 	private Hasher md5Hasher;
-	// private ProcessInvoker processInvoker;
 	private SshInvoker processInvoker;
 	private String fileName;
 	private boolean localCall;
@@ -75,7 +74,6 @@ public class ECSImpl implements ECS {
 
 	public void init(int numberOfNodes) {
 		this.md5Hasher = new Hasher();
-		/* this.processInvoker = new ProcessInvoker (); */
 		this.processInvoker = new SshCaller();
 		initService(numberOfNodes);
 	}
@@ -134,7 +132,8 @@ public class ECSImpl implements ECS {
 		logger.info("ECS will launch " + numberOfNodes + " servers ");
 		launchNodes(serversToStart);
 
-		// some nodes were not started successfully!
+		// some nodes were not started successfully, try to incrementally add
+		// the remaining servers!
 		if (serversToStart.size() < numberOfNodes) {
 			int n = numberOfNodes - serversToStart.size();
 			count = 0;
@@ -153,13 +152,15 @@ public class ECSImpl implements ECS {
 				}
 				i++;
 			}
+			// when ECS is not successful to start all the n servers requested
+			// by the user
 			if (count < n)
-				// count += serversToStart.size();
 				logger.warn("Could not start all the " + numberOfNodes
 						+ " servers! insetead started "
 						+ this.activeServers.size() + " servers");
 		}
 		final ECSImpl that = this;
+		// start listening to failure detection reports
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -189,44 +190,43 @@ public class ECSImpl implements ECS {
 		// calculate the metaData
 		serversToStart = calculateMetaData(activeServers);
 
-		// communicate with servers and send call init
+		// communicate with servers and send call initialize command
 		ECSMessage initMessage = getInitMessage(serversToStart);
 		logger.info("Sending init signals to servers");
 
-		// create server connection
+		// create server connection for further communication with the servers
 		for (ServerInfo server : this.activeServers) {
 			ServerConnection channel = new ServerConnection(server);
 			try {
 				channel.connect();
 				channel.sendMessage(initMessage);
 				activeConnections.put(server, channel);
-				// added this line to
 				channel.disconnect();
 			} catch (IOException e) {
 				logger.error("One server node couldn't be initiated" + server);
-				// this.activeServers.remove(server);
 			}
-
 		}
-
 		logger.info("Active servers are launched and handed meta-data.");
 
 		logger.debug("Staring Replication Operation...");
 		replicationOperation();
 		logger.info(" Replication operation is done");
 		logger.info("ECS started " + serversToStart.toString());
-
 	}
 
+	/**
+	 * start the ECS Server, which is responsible for getting failure detection
+	 * reports from the KVServers
+	 * 
+	 * @return true if the ecs server started successfully
+	 */
 	private boolean initializeServer() {
 		logger.info("Initialize server ...");
 		try {
 			serverSocket = new ServerSocket(port);
 			logger.info("Server listening on port: "
 					+ serverSocket.getLocalPort());
-
 			return true;
-
 		} catch (IOException e) {
 			logger.error("Error! Cannot open server socket:");
 			if (e instanceof BindException) {
@@ -237,12 +237,12 @@ public class ECSImpl implements ECS {
 	}
 
 	/**
-	 * tell each server to replicated its data on the next two nodes!
+	 * tell each KVServer to replicated its data on the next two
+	 * nodes(KVServer's replicas) called during initialization of the system
 	 * 
 	 * @param serversToStart
-	 * @return
+	 * @return void
 	 */
-
 	private void replicationOperation() {
 		List<ServerConnection> locked = new ArrayList<ServerConnection>();
 		for (ServerInfo serverNode : activeServers) {
@@ -253,15 +253,16 @@ public class ECSImpl implements ECS {
 					serverNode.getToIndex());
 			locked.add(activeConnections.get(serverNode));
 		}
-		// releasing locks
+		// releasing locks, which were put on the servers, after sending
+		// sendData command.
 		ECSMessage releaseLock = new ECSMessage();
 		releaseLock.setActionType(ECSCommand.RELEASE_LOCK);
 		try {
-			for (ServerConnection sChannel : locked) {
+			for (ServerConnection sChannel : locked)
 				sendECSCommand(sChannel, releaseLock);
-			}
 			logger.debug("All locks are released.");
 
+			// put back the KVservers statue as under initialization
 			ECSMessage underInit = new ECSMessage();
 			underInit.setActionType(ECSCommand.INIT);
 			underInit.setMetaData(activeServers);
@@ -274,6 +275,13 @@ public class ECSImpl implements ECS {
 		}
 	}
 
+	/**
+	 * makes the initialization message to be sent to the server after starting
+	 * them up
+	 * 
+	 * @param serversToStart
+	 * @return ECSMessage INIT
+	 */
 	private ECSMessage getInitMessage(List<ServerInfo> serversToStart) {
 		ECSMessage initMessage = new ECSMessage();
 		initMessage.setActionType(ECSCommand.INIT);
@@ -281,8 +289,12 @@ public class ECSImpl implements ECS {
 		return initMessage;
 	}
 
+	/**
+	 * try to launch the servers in the list with remote SSH Calls
+	 * 
+	 * @param serversToStart
+	 */
 	private void launchNodes(List<ServerInfo> serversToStart) {
-
 		/*
 		 * it is considered that the invoker and invoked processes are in the
 		 * same folder and machine
@@ -296,32 +308,27 @@ public class ECSImpl implements ECS {
 		Iterator<ServerInfo> iterator = serversToStart.iterator();
 		while (iterator.hasNext()) {
 			ServerInfo item = iterator.next();
-			// You can remove elements while iterating.
-			// if server process started
 			arguments[0] = String.valueOf(item.getPort());
+
+			// for ssh calls
 			if (!localCall)
-				// for ssh calls
 				result = processInvoker.invokeProcess(item.getAddress(),
 						command, arguments);
+
+			// for local calls (for local testing, calls are made without SSH)
 			else
-				// for local calls
 				result = processInvoker.localInvokeProcess(command, arguments);
+
+			// the server started successfully
 			if (result == 0) {
 				this.activeServers.add(item);
 				item.setServerLaunched(true);
-			} else
+			}
+
+			// could not start the server
+			else
 				iterator.remove();
 		}
-
-		/*
-		 * for(ServerInfo server: serversToStart){ arguments[0] =
-		 * String.valueOf(server.getPort()); result =
-		 * processInvoker.invokeProcess(server.getAddress(), command,
-		 * arguments);
-		 * 
-		 * }
-		 */
-
 	}
 
 	/**
@@ -331,7 +338,6 @@ public class ECSImpl implements ECS {
 	 * @return 0 in case of successful launch
 	 */
 	private int launchNode(ServerInfo serverToStart) {
-
 		/*
 		 * it is considered that the invoker and invoked processes are in the
 		 * same folder and machine
@@ -342,14 +348,17 @@ public class ECSImpl implements ECS {
 		arguments[1] = "  ERROR &";
 		int result;
 		arguments[0] = String.valueOf(serverToStart.getPort());
+
+		// for ssh calls
 		if (!localCall)
-			// for ssh calls
 			result = processInvoker.invokeProcess(serverToStart.getAddress(),
 					command, arguments);
+
+		// for local invocations
 		else
-			// for local invocations
 			result = processInvoker.localInvokeProcess(command, arguments);
 
+		// remote server started successfully
 		if (result == 0) {
 			this.activeServers.add(serverToStart);
 			serverToStart.setServerLaunched(true);
@@ -358,24 +367,30 @@ public class ECSImpl implements ECS {
 			return -1;
 	}
 
+	/**
+	 * calculates the metaData of the current system
+	 * 
+	 * @param serversToStart
+	 *            , servers of the current state of the system
+	 * @return the new metaData
+	 */
 	private List<ServerInfo> calculateMetaData(List<ServerInfo> serversToStart) {
 
+		// calculate each server's MD5 Hash value and sort them based on this
+		// value
 		for (ServerInfo server : serversToStart) {
-			// loop and the hash values
 			String hashKey = md5Hasher.getHash(server.getAddress() + ":"
 					+ server.getPort());
-			// the to index is the value of the server hash
 			server.setToIndex(hashKey);
 		}
-
 		Collections.sort(serversToStart, new Comparator<ServerInfo>() {
-			// sort hashes
 			@Override
 			public int compare(ServerInfo o1, ServerInfo o2) {
 				return md5Hasher.compareHashes(o1.getToIndex(), o2.getToIndex());
 			}
 		});
 
+		// setting predecessor,coordinators and replicas for each server
 		for (int i = 0; i < serversToStart.size(); i++) {
 			ServerInfo server = serversToStart.get(i);
 			ServerInfo predecessor;
@@ -387,89 +402,63 @@ public class ECSImpl implements ECS {
 			}
 			server.setFromIndex(predecessor.getToIndex());
 		}
-		/*
-		 * for(int i=0; i<serversToStart.size();i++){
-		 * serversToStart.get(i).setFirstReplicaInfo(serversToStart.get((i+1) %
-		 * serversToStart.size()));
-		 * serversToStart.get(i).setSecondReplicaInfo(serversToStart.get((i+2) %
-		 * serversToStart.size())); }
-		 */
 		for (ServerInfo s : serversToStart) {
 			s.setFirstCoordinatorInfo(getMasters(s).get(0));
 			s.setSecondCoordinatorInfo(getMasters(s).get(1));
 			s.setFirstReplicaInfo(getReplicas(s).get(0));
 			s.setSecondReplicaInfo(getReplicas(s).get(1));
 		}
-		// this.activeServers = serversToStart;
-		// logger.debug ( "Calculated metadata " + serversToStart );
 		return serversToStart;
-	}
-
-	public Hasher getMd5Hasher() {
-		return md5Hasher;
 	}
 
 	@Override
 	public void start() {
-		// communicate with servers and send call init
 		ECSMessage startMessage = new ECSMessage();
 		startMessage.setActionType(ECSCommand.START);
 		for (ServerInfo server : this.activeServers) {
 			try {
 				ServerConnection channel = activeConnections.get(server);
-				// added connect
 				channel.connect();
 				channel.sendMessage(startMessage);
-				// added disconnect
 				channel.disconnect();
 			} catch (IOException e) {
 				logger.error("Could not send message to server" + server
 						+ e.getMessage());
 			}
-
 		}
-
 		logger.info("Active servers are started.");
 	}
 
 	@Override
 	public void shutdown() {
-		// communicate with servers and send call init
 		ECSMessage shutDownMessage = new ECSMessage();
 		shutDownMessage.setActionType(ECSCommand.SHUT_DOWN);
 		for (ServerInfo server : this.activeServers) {
 			try {
 				ServerConnection channel = activeConnections.get(server);
-				// added this line
 				channel.connect();
 				channel.sendMessage(shutDownMessage);
-				// added this line
 				channel.disconnect();
 			} catch (IOException e) {
 				logger.error("Could not send message to server" + server
 						+ e.getMessage());
 			}
 		}
-
 		this.activeConnections.clear();
 		this.activeServers.clear();
 		logger.info("Active servers are shutdown.");
-
 	}
 
 	@Override
 	public void stop() {
-		// communicate with servers and send call init
 		ECSMessage stopMessage = new ECSMessage();
 		stopMessage.setActionType(ECSCommand.STOP);
 
 		for (ServerInfo server : this.activeServers) {
 			try {
 				ServerConnection channel = activeConnections.get(server);
-				// added this line
 				channel.connect();
 				channel.sendMessage(stopMessage);
-				// added this line
 				channel.disconnect();
 			} catch (IOException e) {
 				logger.error("Could not send message to server" + server
@@ -477,22 +466,22 @@ public class ECSImpl implements ECS {
 			}
 		}
 		logger.info("Active servers are stopped.");
-
 	}
 
 	/**
-	 * chooses a node from a serverRepository and add it to the system
+	 * chooses a node randomly from the serverRepository and add it to the
+	 * system
 	 */
 	@Override
 	public void addNode() {
-		int result = -1;
-		int i = 0;
-		ServerInfo newNode = new ServerInfo();
-
 		logger.debug("$$$$$$ SYSTEM BEFORE ADDING A NODE $$$$$$");
 		for (ServerInfo s : activeServers)
 			logger.debug(s.getPort() + s.getToIndex());
 		logger.debug("$$$$$$");
+
+		int result = -1;
+		int i = 0;
+		ServerInfo newNode = new ServerInfo();
 
 		// search in serverRepository to find the servers which are
 		// not active (not launched yet), and try to launch them
@@ -511,13 +500,13 @@ public class ECSImpl implements ECS {
 			logger.info("No available node to add.");
 			return;
 		} else if (result != 0) {
-			logger.info("Could not add a new Server!");
+			logger.warn("Could not add a new Server!");
 			return;
 		}
 
 		calculateMetaData(activeServers);
 
-		// 1.init the newNode.
+		// 1.initialize the newNode.
 		ECSMessage initMessage = getInitMessage(this.activeServers);
 		ServerConnection channel = new ServerConnection(newNode);
 		try {
@@ -527,6 +516,7 @@ public class ECSImpl implements ECS {
 			logger.info("The new node added" + newNode.getAddress() + ":"
 					+ newNode.getPort());
 		} catch (IOException e) {
+
 			// server could not be initiated so remove it from the list!
 			logger.error(" server node couldn't be initiated"
 					+ newNode.getAddress() + ":" + newNode.getPort()
@@ -544,6 +534,7 @@ public class ECSImpl implements ECS {
 		try {
 			channel.sendMessage(startMessage);
 		} catch (IOException e) {
+
 			// server could not be started so remove it from the list!
 			logger.error("Start message couldn't be sent to "
 					+ newNode.getAddress() + ":" + newNode.getPort()
@@ -555,30 +546,37 @@ public class ECSImpl implements ECS {
 			return;
 		}
 
-		logger.debug("$$$$$$");
+		logger.debug("$$$$$$ NEW SYSTEM STATE $$$$$");
 		for (ServerInfo s : activeServers)
-			logger.debug(s.getPort() + s.getToIndex());
-		logger.debug("$$$$$$");
+			logger.debug(s.getAddress() + ":" + s.getPort() + s.getToIndex());
+		logger.debug("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
 
-		/*
-		 * 3. tell the sucessor to send data to the newNode tell the two new
-		 * Masters to send their data for replication to the newNode
-		 */
 		logger.debug("<<<<< Getting data from the successor >>>>>");
 		ServerInfo successor = getSuccessor(newNode);
 		List<ServerInfo> masters = getMasters(newNode);
-		List<ServerConnection> locked = new ArrayList<ServerConnection>();
 		List<ServerInfo> replicas = getReplicas(newNode);
+
+		/*
+		 * locked is a list to keep track of the servers which has been put into
+		 * the locked mode because of sendData operations
+		 */
+		List<ServerConnection> locked = new ArrayList<ServerConnection>();
 
 		// handling special case where there is just one node in the system
 		if (activeServers.size() <= 2) {
+
+			/*
+			 * 3. tell the successor to send the data, which it does not own
+			 * anymore to the newNode, tell the two new Coordinators to send
+			 * their data for replication to the newNode
+			 */
 			if (sendData(successor, newNode, newNode.getFromIndex(),
 					newNode.getToIndex()) == 0) {
 				locked.add(activeConnections.get(successor));
 				logger.debug("move data was successfull to the new Node");
 				sendMetaData();
 
-				// replicate data on both sides
+				// 4. replicate new Node's data on its replicas
 				if (sendData(newNode, successor, newNode.getFromIndex(),
 						newNode.getToIndex()) == 1
 						|| sendData(successor, newNode,
@@ -595,8 +593,9 @@ public class ECSImpl implements ECS {
 							+ " its replication to two new replica : "
 							+ successor.getPort());
 
-					logger.debug("data from " + successor.getPort()
-							+ " is replicated in : " + newNode.getPort());
+					logger.debug("data from " + successor.getAddress() + ":"
+							+ successor.getPort() + " is replicated in : "
+							+ newNode.getAddress() + ":" + newNode.getPort());
 
 					locked.add(activeConnections.get(newNode));
 
@@ -616,9 +615,10 @@ public class ECSImpl implements ECS {
 					return;
 				}
 			} else {
-				// when move data from successor to the newNode was not
-				// successful
-				// data could not be moved to the newly added Server
+				/*
+				 * when move data from successor to the newNode was not
+				 * successful data could not be moved to the newly added Server
+				 */
 				logger.error("Could not move data from "
 						+ successor.getServerName() + " to "
 						+ newNode.getServerName());
@@ -629,9 +629,19 @@ public class ECSImpl implements ECS {
 				calculateMetaData(activeServers);
 				return;
 			}
-		} else {
-			// normal cases when there is more than two nodes in the system
-			// before adding the new node
+		}
+
+		/*
+		 * handling normal cases when there is already more than two nodes in
+		 * the system (before adding the new node)
+		 */
+		else {
+
+			/*
+			 * 3. tell the successor to send the data, which it does not own
+			 * anymore to the newNode, tell the two new Coordinators to send
+			 * their data for replication to the newNode
+			 */
 			if (sendData(successor, newNode, newNode.getFromIndex(),
 					newNode.getToIndex()) == 0
 					&& sendData(masters.get(0), newNode, masters.get(0)
@@ -644,13 +654,15 @@ public class ECSImpl implements ECS {
 				locked.add(activeConnections.get(masters.get(1)));
 
 				logger.debug("move data message was sent to the new masters : "
+						+ masters.get(0).getAddress() + ":"
 						+ masters.get(0).getPort() + "   "
+						+ masters.get(1).getAddress() + ":"
 						+ masters.get(1).getPort());
 
-				logger.debug("<<<< removing old replicated data from the two next nodes after the "
-						+ "new node >>>>>");
-
-				// 4.Sending metaData updates to two new replicas
+				/*
+				 * 4.Sending metaData updates to the new node's replicas and
+				 * sending new Node's data for replication to replicas
+				 */
 				ECSMessage metaDataUpdate = new ECSMessage();
 				metaDataUpdate.setActionType(ECSCommand.SEND_METADATA);
 				metaDataUpdate.setMetaData(activeServers);
@@ -665,7 +677,8 @@ public class ECSImpl implements ECS {
 							+ e.getMessage());
 				}
 
-				// 5. sending newNode's data for replication to the its replicas
+				// sending newNode's data for replication to the its replicas
+				logger.debug("<<<< sending new Nodes data to the new replicas >>>>");
 				if (sendData(newNode, replicas.get(0), newNode.getFromIndex(),
 						newNode.getToIndex()) == 1
 						|| sendData(newNode, replicas.get(1),
@@ -678,17 +691,23 @@ public class ECSImpl implements ECS {
 				else {
 					logger.debug("move data was sent to new Node to move"
 							+ " its replication to two new replicas : "
+							+ replicas.get(0).getAddress() + ":"
 							+ replicas.get(0).getPort() + "   "
+							+ replicas.get(1).getAddress() + ":"
 							+ replicas.get(1).getPort());
 					locked.add(activeConnections.get(newNode));
 
 					/*
-					 * 6.tell to the next two nodes (newNodes replicas) and the
+					 * 5.tell to the next two nodes (newNodes replicas) and the
 					 * third node (which has the old data from new Nodes
 					 * replica(0) as replication)to delete their replicated data
 					 * which they used to store from newNode's Masters
 					 */
-					// when we have 3 nodes in system This is not needed!
+					logger.debug("<<<< removing old replicated data from the two next nodes after the "
+							+ "new node >>>>>");
+
+					// when we have 3 nodes in system This operation is not
+					// needed!
 					if (activeServers.size() > 3) {
 						int r = removeData(replicas.get(0), masters.get(0)
 								.getFromIndex(), masters.get(0).getToIndex());
@@ -699,27 +718,34 @@ public class ECSImpl implements ECS {
 
 						if (r == 0)
 							logger.debug("remove data message was sent to two new replicas : "
+									+ replicas.get(0).getAddress()
+									+ ":"
 									+ replicas.get(0).getPort()
 									+ "   "
+									+ replicas.get(1).getAddress()
+									+ ":"
 									+ replicas.get(1).getPort());
 						else
 							logger.warn("remove data message could not be sent to two new replicas : "
+									+ replicas.get(0).getAddress()
+									+ ":"
 									+ replicas.get(0).getPort()
 									+ "   "
+									+ replicas.get(1).getAddress()
+									+ ":"
 									+ replicas.get(1).getPort()
 									+ " "
 									+ replicas.get(1).getFirstReplicaInfo());
 
-						logger.debug("<<<< sending new Nodes data to the new replicas >>>>");
 					}
 				}
 
-				// 7.sends MetaData to all the servers!
+				// 6.sends MetaData to all the servers!
 				sendMetaData();
 				channel.disconnect();
 
 				logger.debug("releaing the locks");
-				// 8. release the lock from the successor, new Node and masters
+				// 7. release the lock from the successor, new Node and masters
 				ECSMessage releaseLock = new ECSMessage();
 				releaseLock.setActionType(ECSCommand.RELEASE_LOCK);
 				try {
@@ -732,7 +758,10 @@ public class ECSImpl implements ECS {
 				}
 			}
 
-			// when move data from successor to the newNode was not successful
+			/*
+			 * when move data from successor and newNode's Coordinators to the
+			 * newNode was not successful
+			 */
 			else {
 				// data could not be moved to the newly added Server
 				logger.error("Could not move data from "
@@ -748,14 +777,22 @@ public class ECSImpl implements ECS {
 		}
 	}
 
+	/**
+	 * returns the successor of the newNode
+	 * 
+	 * @param newNode
+	 * @return
+	 */
 	private ServerInfo getSuccessor(ServerInfo newNode) {
 		ServerInfo successor;
 		int nodeIndex = this.activeServers.indexOf(newNode);
 		try {
 			successor = this.activeServers.get(nodeIndex + 1);
 		} catch (IndexOutOfBoundsException e) {
-			// that means the new node is the last item and the successor with
-			// be the first item.
+			/*
+			 * that means the new node is the last item and the successor with
+			 * be the first item.
+			 */
 			successor = this.activeServers.get(0);
 		}
 
@@ -764,10 +801,11 @@ public class ECSImpl implements ECS {
 
 	/**
 	 * gets a serverInfo and return two other Server info which are responsible
-	 * for keeping the replicated data of the first server
+	 * for keeping the replicated data of the server s
 	 * 
 	 * @param s
-	 * @return
+	 * @return List of ServerInfo, which are responsible for keeping replicated
+	 *         data of the s
 	 */
 	private List<ServerInfo> getReplicas(ServerInfo s) {
 		if (activeServers.contains(s)) {
@@ -788,11 +826,11 @@ public class ECSImpl implements ECS {
 	}
 
 	/**
-	 * returns the two server which, the server s is keeping their replicated
-	 * data
+	 * returns the two server (Coordinators),which the server s is keeping their
+	 * replicated data
 	 * 
 	 * @param s
-	 * @return
+	 * @return List of ServerInfo of the Coordinators(Masters)
 	 */
 	private List<ServerInfo> getMasters(ServerInfo s) {
 		if (activeServers.contains(s)) {
@@ -819,21 +857,6 @@ public class ECSImpl implements ECS {
 	}
 
 	/**
-	 * Gets a new node from repo to start
-	 * 
-	 * @return returns the node to start or null in case no node was found.
-	 */
-	private ServerInfo getAvailableNode() {
-		for (ServerInfo server : this.serverRepository) {
-			if (!server.isServerLaunched()) {
-				return server;
-			}
-		}
-
-		return null;
-	}
-
-	/**
 	 * removes a node randomly from the active servers!
 	 */
 	@Override
@@ -848,7 +871,6 @@ public class ECSImpl implements ECS {
 		} else {
 			return removeNode(nodeToDelete);
 		}
-
 	}
 
 	/**
@@ -859,33 +881,44 @@ public class ECSImpl implements ECS {
 	 */
 	private boolean removeNode(ServerInfo nodeToDelete) {
 		ServerInfo successor = getSuccessor(nodeToDelete);
-		List<ServerConnection> locked = new ArrayList<ServerConnection>();
 		List<ServerInfo> masters = getMasters(nodeToDelete);
 		List<ServerInfo> replicas = getReplicas(nodeToDelete);
 		ServerConnection nodeToDeleteChannel = this.activeConnections
 				.get(nodeToDelete);
 		ServerConnection successorChannel = this.activeConnections
 				.get(successor);
-
-		logger.debug("$$$$$$ SYSTEM BEFORE REMOVING $$$$$$");
-		for (ServerInfo s : activeServers)
-			logger.debug(s.getPort());
-		logger.debug("$$$$$$");
-
+		/*
+		 * A list to keep track of the serves, which have been put under locked
+		 * statue on the result of some operation such as sendData
+		 */
+		List<ServerConnection> locked = new ArrayList<ServerConnection>();
 		this.activeServers.remove(nodeToDelete);
 		calculateMetaData(this.activeServers);
 
-		// special cases when we would have just one or two nodes left after
-		// removal
+		logger.debug("$$$$$$ SYSTEM BEFORE REMOVING $$$$$$");
+		for (ServerInfo s : activeServers)
+			logger.debug(s.getAddress() + ":" + s.getPort());
+		logger.debug("$$$$$$");
+
+		/*
+		 * special cases when we would have just one or two nodes left after
+		 * removal
+		 */
 		if (activeServers.size() <= 2) {
 			logger.debug("<<<< invoking transfers of data >>>>");
-			sendMetaData(); // same as to sending metaData to replicas because
-							// just two node is left
+			/*
+			 * 1. sendingmetaData to all is same as to sending metaData to
+			 * replicas because just two node is left
+			 */
+			sendMetaData();
+			// 2. Trasfer of the data
 			int result = sendData(nodeToDelete, successor,
 					nodeToDelete.getFromIndex(), nodeToDelete.getToIndex());
 
-			// telling to the remaining Nodes to replicate their data on each
-			// other
+			/*
+			 * 3. telling to the remaining Nodes to replicate their data on each
+			 * other
+			 */
 			if (activeServers.size() == 2) {
 				result += sendData(activeServers.get(0), activeServers.get(1),
 						activeServers.get(0).getFromIndex(),
@@ -897,21 +930,26 @@ public class ECSImpl implements ECS {
 				locked.add(activeConnections.get(activeServers.get(1)));
 
 				logger.debug("Data for replication sent from "
+						+ activeServers.get(0).getAddress() + ":"
 						+ activeServers.get(0).getPort() + " to "
+						+ activeServers.get(1).getAddress() + ":"
 						+ activeServers.get(1).getPort());
 				logger.debug("Data sent for replication from "
+						+ activeServers.get(1).getAddress() + ":"
 						+ activeServers.get(1).getPort() + " to "
+						+ activeServers.get(0).getAddress() + ":"
 						+ activeServers.get(0).getPort());
 			}
 			if (result == 0) {
 				// everything went perfect
-
-				logger.debug("Data sent from " + nodeToDelete.getPort()
-						+ " to " + successor.getPort());
+				logger.debug("Data sent from " + nodeToDelete.getAddress()
+						+ ":" + nodeToDelete.getPort() + " to "
+						+ successor.getAddress() + ":" + successor.getPort());
 			} else {
-				// move data from nodeToDelet failed
-				// getting back the system to the previous stage:(before
-				// removing)
+				/*
+				 * move data from nodeToDelet failed getting back the system to
+				 * the previous stage:(before removing)
+				 */
 				logger.error("SendData Unsuccessful! Delete Node Operation failed");
 				logger.error("Getting back the system to the previous state ");
 				try {
@@ -934,14 +972,15 @@ public class ECSImpl implements ECS {
 				}
 			}
 		}
+
 		/* in normal cases when we have more than 2 nodes left after removal */
 		else {
-			// 1.s Send meta-data update to the successor node and the
-			// replica(1) for nodeTODelete
-			// we dont send metaData update to replica(0) because replica(0)
-			// is same as successor!
-			// we also have to send metadataupdate to replica(1) of the
-			// successor
+			/*
+			 * 1. Send meta-data update to the successor node and the replica(1)
+			 * for nodeTODelete we dont send metaData update to replica(0)
+			 * because replica(0) is same as successor! we also have to send
+			 * metadata update to replica(1) of the successor
+			 */
 			ECSMessage metaDataUpdate = new ECSMessage();
 			metaDataUpdate.setActionType(ECSCommand.SEND_METADATA);
 			metaDataUpdate.setMetaData(activeServers);
@@ -969,28 +1008,33 @@ public class ECSImpl implements ECS {
 
 				/*
 				 * 3. Tell the two masters to send their data as replicas to
-				 * thire two new replicas invoking the transfer of nodetoDlete's
+				 * their two new replicas invoking the transfer of nodetoDlete's
 				 * data to the successors replicas
 				 */
 				if (sendData(masters.get(0), replicas.get(0), masters.get(0)
 						.getFromIndex(), masters.get(0).getToIndex()) == 0) {
 					locked.add(activeConnections.get(masters.get(0)));
 					logger.debug("Data for replication sent from "
+							+ masters.get(0).getAddress() + ":"
 							+ masters.get(0).getPort() + " to "
+							+ replicas.get(0).getAddress() + ":"
 							+ replicas.get(0).getPort());
 				}
 				if (sendData(masters.get(1), replicas.get(1), masters.get(1)
 						.getFromIndex(), masters.get(1).getToIndex()) == 0) {
 					locked.add(activeConnections.get(masters.get(1)));
-					logger.debug("Data sent for replication from "
+					logger.debug("Data for replication sent from "
+							+ masters.get(1).getAddress() + ":"
 							+ masters.get(1).getPort() + " to "
+							+ replicas.get(1).getAddress() + ":"
 							+ replicas.get(1).getPort());
 
 				}
-				// invoking replication! :
-				// we used from and to index from the successor
-				// so successor will treat it as replication not
-				// move data to another server
+				/*
+				 * 4. invoking replication of the new data moved to successor:
+				 * we used from and to index from the successor so successor
+				 * will treat it as replication not move data to another server
+				 */
 				if (sendData(successor, successor.getFirstReplicaInfo(),
 						successor.getFromIndex(), successor.getToIndex())
 						+ sendData(successor, successor.getSecondReplicaInfo(),
@@ -999,7 +1043,7 @@ public class ECSImpl implements ECS {
 					locked.add(activeConnections.get(successor));
 
 				/*
-				 * 4.tell to the next two nodes (newNodes replicas) to delete
+				 * 5.tell to the next two nodes (newNodes replicas) to delete
 				 * their replicated data which they used to store from newNode's
 				 * Masters we don't send remove data to the replica(0) because
 				 * replica(0) is the successor and owns the data which used to
@@ -1009,22 +1053,28 @@ public class ECSImpl implements ECS {
 						nodeToDelete.getFromIndex(), nodeToDelete.getToIndex());
 				if (r == 0)
 					logger.debug("remove data message was sent to two new replicas : "
+							+ replicas.get(0).getAddress()
+							+ ":"
 							+ replicas.get(0).getPort()
 							+ "   "
+							+ replicas.get(1).getAddress()
+							+ ":"
 							+ replicas.get(1).getPort());
+
 				else
 					logger.warn("remove data message could not be sent to two new replicas : "
 							+ replicas.get(0).getPort()
 							+ "   "
 							+ replicas.get(1).getPort());
 
-				// 5. send metadat update to all
+				// 6. send metadata update to all
 				sendMetaData();
 
 			} else {
-				// move data from nodeToDelet failed
-				// getting back the system to the previous stage:(before
-				// removing)
+				/*
+				 * move data from nodeToDelet failed getting back the system to
+				 * the previous stage:(before removing)
+				 */
 				logger.error("SendData Unsuccessful! Delete Node Operation failed");
 				logger.error("Getting back the system to the previous state ");
 				try {
@@ -1046,7 +1096,7 @@ public class ECSImpl implements ECS {
 			}
 		}
 
-		// 6. shut down the nodetoDelete
+		// 7(4 for special cases). shut down the nodetoDelete
 		ECSMessage shutDown = new ECSMessage();
 		shutDown.setActionType(ECSCommand.SHUT_DOWN);
 		try {
@@ -1055,7 +1105,7 @@ public class ECSImpl implements ECS {
 			logger.error("shut down message couldn't be sent." + e.getMessage());
 		}
 
-		// 7. step releasing all locks
+		// 8(5 for special cases). step releasing all locks
 		logger.debug("releasing all locks!! ");
 		ECSMessage releaseLock = new ECSMessage();
 		releaseLock.setActionType(ECSCommand.RELEASE_LOCK);
@@ -1070,36 +1120,36 @@ public class ECSImpl implements ECS {
 			logger.error("ReLease Lock message couldn't be sent.");
 		}
 
-		// 8.
+		// 9.(6)
 		nodeToDeleteChannel.disconnect();
 		cleanUpNode(nodeToDelete);
 
 		logger.debug("$$$$$$ New SYSTEM STATE $$$$$$");
 		for (ServerInfo s : activeServers)
-			logger.debug(s.getPort());
+			logger.debug(s.getAddress() + ":" + s.getPort());
 		logger.debug("$$$$$$");
 
 		return true;
-
 	}
 
 	/**
 	 * tries to recover the System when a failure is detected
 	 * 
 	 * @param failed
+	 *            Node
 	 */
 	private void recovery(ServerInfo failedNode) {
 		List<ServerConnection> locked = new ArrayList<ServerConnection>();
-		// we have not removed the failedNode yet
-		logger.debug("INSIDE RECOVERY!!!");
-		if (activeServers.size() == 1){
+		// we have not removed the failedNode from the activeServers yet
+		if (activeServers.size() == 1) {
 			logger.error("System failed! All nodes are dead! All data is lost!");
 			return;
-		}
-		else if (activeServers.size() == 2) {
+		} else if (activeServers.size() == 2) {
 			logger.debug("inside REcovery ! Special case, just one node left in System");
-			// send a command to store replicated data as the main data on the
-			// remaining server
+			/*
+			 * 1. send a command to store replicated data as the main data on
+			 * theremaining server
+			 */
 			RecoverMessage recoverData = new RecoverMessage();
 			recoverData.setActionType(ECSCommand.RECOVER_DATA);
 			recoverData.setFailedServer(failedNode);
@@ -1114,28 +1164,31 @@ public class ECSImpl implements ECS {
 				logger.error("recover Data message couldn't be sent."
 						+ e.getMessage());
 			}
+			// 2.cleaning up the system and adding a node
 			activeServers.remove(failedNode);
 			activeConnections.remove(failedNode);
 			calculateMetaData(activeServers);
 			sendMetaData();
 			addNode();
+
 			logger.debug("$$$$$$ New SYSTEM STATE $$$$$$");
 			for (ServerInfo s : activeServers)
-				logger.debug(s.getPort());
+				logger.debug(s.getAddress() + ":" + s.getPort());
 			logger.debug("$$$$$$");
+
 			return;
 		} else if (activeServers.size() == 3) {
 			logger.debug("ONE NODE FAILED! 2 NODES STILL RUNNING");
+			/*
+			 * 1. send a message to the successor to store replicated data of
+			 * the failed node as its own data
+			 */
 			ServerConnection serverChannel = activeConnections
 					.get(getSuccessor(failedNode));
-			// send a message to the successor to store replicated data of the
-			// failed node as its own data
 			RecoverMessage recoverData = new RecoverMessage();
 			recoverData.setActionType(ECSCommand.RECOVER_DATA);
 			recoverData.setFailedServer(failedNode);
 			try {
-				// ServerConnection serverChannel =
-				// activeConnections.get(getSuccessor(failedNode));
 				serverChannel.connect();
 				logger.debug("sending recover data to "
 						+ serverChannel.getServer().getPort());
@@ -1144,18 +1197,22 @@ public class ECSImpl implements ECS {
 						.toObject(SerializationUtil.toByteArray(recoverData));
 				logger.debug(temp.getFailedServer().getPort());
 				logger.debug(temp.getMessageType());
-
 				serverChannel.disconnect();
 			} catch (IOException e) {
 				logger.error("recover data message couldn't be sent."
 						+ e.getMessage());
 			}
+
+			// 2. removing the failed node and updating metadata
 			activeServers.remove(failedNode);
 			activeConnections.remove(failedNode);
 			calculateMetaData(activeServers);
 			sendMetaData();
 
-			// sending their data as replication to each other
+			/*
+			 * 3. tell the remaining servers to send their data as replication
+			 * to each other
+			 */
 			sendData(activeServers.get(0), activeServers.get(1), activeServers
 					.get(0).getFromIndex(), activeServers.get(0).getToIndex());
 			sendData(activeServers.get(1), activeServers.get(0), activeServers
@@ -1170,21 +1227,25 @@ public class ECSImpl implements ECS {
 			logger.debug("Data sent for replication from "
 					+ activeServers.get(1).getPort() + " to "
 					+ activeServers.get(0).getPort());
-		} else {
+		}
+
+		// normal cases when we have more than 3 servers before removing the
+		// failed node
+		else {
 			ServerInfo successor = getSuccessor(failedNode);
 			List<ServerInfo> masters = getMasters(failedNode);
 			List<ServerInfo> replicas = getReplicas(failedNode);
 
-			// send a message to the successor to store replicated data of the
-			// failed node as its own data
+			/*
+			 * 1. send a message to the successor to store replicated data of
+			 * the failed node as its own data
+			 */
 			ServerConnection serverChannel = activeConnections
 					.get(getSuccessor(failedNode));
 			RecoverMessage recoverData = new RecoverMessage();
 			recoverData.setActionType(ECSCommand.RECOVER_DATA);
 			recoverData.setFailedServer(failedNode);
 			try {
-				// ServerConnection serverChannel =
-				// activeConnections.get(getSuccessor(failedNode));
 				serverChannel.connect();
 				logger.debug("sending recover data to "
 						+ serverChannel.getServer().getPort());
@@ -1192,34 +1253,42 @@ public class ECSImpl implements ECS {
 				serverChannel.disconnect();
 				logger.info("Data recovered from replica "
 						+ replicas.get(0).getPort() + " sent to "
-						+ successor.getPort());
+						+ successor.getAddress() + ":" + successor.getPort());
 			} catch (IOException e) {
 				logger.error("recover data message couldn't be sent."
 						+ e.getMessage());
-				// recovering lost data from the other replica
+				/*
+				 * 1'. recovering data from successor failed, so recovering lost
+				 * data from the other replicas
+				 */
 				if (sendData(replicas.get(1), successor,
 						failedNode.getFromIndex(), failedNode.getToIndex()) == 0) {
 					logger.info("Data recovered from replica "
+							+ replicas.get(1).getAddress() + ":"
 							+ replicas.get(1).getPort() + " sent to "
 							+ successor.getPort());
 					logger.info("Data recovered from replica "
+							+ replicas.get(0).getAddress() + ":"
 							+ replicas.get(0).getPort() + " sent to "
+							+ successor.getAddress() + ":"
 							+ successor.getPort());
 
 				} else
-					logger.warn(" Data owned by " + failedNode.getPort()
+					logger.warn(" Data owned by " + failedNode.getAddress()
+							+ ":" + failedNode.getPort()
 							+ " could not be recovered");
-
 			}
 
+			// 2. sending new metaData
 			activeServers.remove(failedNode);
 			activeConnections.remove(failedNode);
 			calculateMetaData(activeServers);
-			// 1. sending new metaData
 			sendMetaData();
-			// 3. storing data as replica : sent from failed node's masters to
-			// failed node's replicas
-			// sent from successor to its replicas
+
+			/*
+			 * 3. storing data as replication : sent from failed node's masters
+			 * to failed node's replicas sent from successor to its replicas
+			 */
 			if (sendData(masters.get(0), replicas.get(0), masters.get(0)
 					.getFromIndex(), masters.get(0).getToIndex()) == 0)
 				logger.debug("Data for replication sent from "
@@ -1249,7 +1318,7 @@ public class ECSImpl implements ECS {
 				logger.warn("Data transfer for replication  from "
 						+ masters.get(1).getPort() + " to "
 						+ replicas.get(1).getPort() + " FAILED");
-			
+
 			if (sendData(successor, successor.getSecondReplicaInfo(),
 					failedNode.getFromIndex(), successor.getToIndex()) == 0)
 				logger.debug("Data sent for replication from "
@@ -1259,13 +1328,13 @@ public class ECSImpl implements ECS {
 				logger.warn("Data transfer for replication  from "
 						+ successor.getPort() + " to "
 						+ successor.getSecondReplicaInfo() + " FAILED");
-			
+
 			locked.add(activeConnections.get(successor));
 			locked.add(activeConnections.get(masters.get(0)));
 			locked.add(activeConnections.get(masters.get(1)));
 		}
 
-		// 4. releasing locks
+		// 4. releasing all locks
 		logger.debug("releasing all locks!! ");
 		ECSMessage releaseLock = new ECSMessage();
 		releaseLock.setActionType(ECSCommand.RELEASE_LOCK);
@@ -1284,7 +1353,7 @@ public class ECSImpl implements ECS {
 
 		logger.debug("$$$$$$ New SYSTEM STATE $$$$$$");
 		for (ServerInfo s : activeServers)
-			logger.debug(s.getPort());
+			logger.debug(s.getAddress() + ":" + s.getPort());
 		logger.debug("$$$$$$");
 
 	}
@@ -1303,11 +1372,6 @@ public class ECSImpl implements ECS {
 	private int sendData(ServerInfo sender, ServerInfo reciever,
 			String fromIndex, String toIndex) {
 
-		// Set write lock (lockWrite()) on the sender node
-		/*
-		 * ServerConnection serverChannel = this.activeConnections .get ( sender
-		 * );
-		 */
 		// in order to handle concurrent send from the same serverConnection I
 		// used new objects!
 		ServerConnection senderChannel = new ServerConnection(sender);
@@ -1350,6 +1414,7 @@ public class ECSImpl implements ECS {
 
 				return 0;
 			} else {
+				// sender channel could not got the Ack
 				logger.warn(" TimeOut reached ! could not recieve Message from "
 						+ senderChannel.getServer().getPort());
 				senderChannel.disconnect();
@@ -1382,12 +1447,9 @@ public class ECSImpl implements ECS {
 
 		try {
 			/*
-			 * ServerConnection serverChannel = this.activeConnections .get (
-			 * server );
+			 * in order to handle concurrent send from the same serverConnection
+			 * I used new objects!
 			 */
-			// in order to handle concurrent send from the same serverConnection
-			// I used new objects!
-
 			ServerConnection serverChannel = new ServerConnection(server);
 			serverChannel.connect();
 			serverChannel.sendMessage(removeDataMessage);
@@ -1449,6 +1511,12 @@ public class ECSImpl implements ECS {
 		return 0;
 	}
 
+	/**
+	 * clean up the system metaData whenever a node should be deleted from the
+	 * system
+	 * 
+	 * @param nodeToDelete
+	 */
 	private void cleanUpNode(ServerInfo nodeToDelete) {
 		for (ServerInfo server : this.serverRepository) {
 			if (server.equals(nodeToDelete)) {
@@ -1480,36 +1548,35 @@ public class ECSImpl implements ECS {
 		channel.disconnect();
 	}
 
+	/**
+	 * this method is called whenever a server has reports a failure to ECS
+	 * 
+	 * @param failedServer
+	 * @param reportee
+	 */
 	public synchronized void reportFailure(ServerInfo failedServer,
 			ServerInfo reportee) {
 		logger.debug("Failure detected Failed:" + failedServer + " reporter:"
 				+ reportee);
 		try {
 			Iterator<ServerInfo> activeServerIt = activeServers.iterator();
-			/*
-			 * for (ServerInfo serverInfo : activeServers) { if
-			 * (serverInfo.equals(failedServer)) {
-			 * serverInfo.reportFailure(reportee); }
-			 */
 			while (activeServerIt.hasNext()) {
 				ServerInfo serverInfo = activeServerIt.next();
 				if (serverInfo.equals(failedServer)) {
 					serverInfo.reportFailure(reportee);
 				}
-				if(activeServers.size() == 2){
+				if (activeServers.size() == 2) {
 					recovery(failedServer);
 					logger.debug("Failure detected more than one server reported");
 					serverInfo.failureReportees.clear();
 					notify();
-				}else if (serverInfo.getNumberofFailReports() > 1) {
-					// /TODO: @Arash add your recovery codes
+				} else if (serverInfo.getNumberofFailReports() > 1) {
 					recovery(failedServer);
 					logger.debug("Failure detected more than one server reported");
 					serverInfo.failureReportees.clear();
 					notify();
 				}
 			}
-
 		} catch (Exception e) {
 			logger.debug(e.toString());
 			notify();

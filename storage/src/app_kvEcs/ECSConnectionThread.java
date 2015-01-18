@@ -4,15 +4,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.net.SocketAddress;
-
 import org.apache.log4j.Logger;
-
 import client.SerializationUtil;
-import common.ServerInfo;
 import common.messages.AbstractMessage;
 import common.messages.AbstractMessage.MessageType;
 import utilities.LoggingManager;
+
+/**
+ * This Class is responsible for getting report failures from the servers
+ *
+ */
 
 public class ECSConnectionThread implements Runnable {
 	private static Logger logger;

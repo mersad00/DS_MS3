@@ -14,8 +14,6 @@ import utilities.LoggingManager;
  * This class is the entry point for the ECS. It creates the service and the
  * client
  * 
- * @author Amjad
- * 
  */
 public class ECSApplication {
 

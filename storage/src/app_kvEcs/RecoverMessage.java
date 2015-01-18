@@ -1,33 +1,36 @@
 package app_kvEcs;
 
-import java.util.List;
-
 import common.ServerInfo;
 import common.messages.AbstractMessage;
 
+/**
+ * 
+ * Class of Recovery Message, sent by ecs to servers to recover portion of data
+ * from their replica storage
+ */
 public class RecoverMessage implements AbstractMessage {
 
-    private ECSCommand actionType;
-    private ServerInfo failedServer;
-    
-    @Override
-    public MessageType getMessageType() {
-	return MessageType.RECOVERY_MESSAGE;
-    }
+	private ECSCommand actionType;
+	private ServerInfo failedServer;
 
-    public ECSCommand getActionType() {
-	return actionType;
-    }
+	@Override
+	public MessageType getMessageType() {
+		return MessageType.RECOVERY_MESSAGE;
+	}
 
-    public void setActionType(ECSCommand actionType) {
-	this.actionType = actionType;
-    }
-    
-    public ServerInfo getFailedServer(){
-    	return failedServer;
-    }
-    
-    public void setFailedServer(ServerInfo failed){
-    	this.failedServer = failed;
-    }
+	public ECSCommand getActionType() {
+		return actionType;
+	}
+
+	public void setActionType(ECSCommand actionType) {
+		this.actionType = actionType;
+	}
+
+	public ServerInfo getFailedServer() {
+		return failedServer;
+	}
+
+	public void setFailedServer(ServerInfo failed) {
+		this.failedServer = failed;
+	}
 }

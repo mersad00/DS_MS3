@@ -1,10 +1,5 @@
 package app_kvEcs;
 
-/**
- * @author AMJAD
- * 
- */
-
 public enum ECSCommand {
 
     INIT("init"),  START("start"), STOP("stop"), SHUT_DOWN("shutDown"),  SET_WRITE_LOCK("setWriteLock"), MOVE_DATA("moveData"), SEND_METADATA(

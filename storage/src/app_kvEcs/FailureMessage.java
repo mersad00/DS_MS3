@@ -2,7 +2,10 @@ package app_kvEcs;
 
 import common.ServerInfo;
 import common.messages.AbstractMessage;
-
+/**
+ * Special Class for FailureMessages, which are sent by servers 
+ *
+ */
 
 public class FailureMessage implements AbstractMessage {
 

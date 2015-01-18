@@ -4,7 +4,10 @@ import java.util.List;
 
 import common.ServerInfo;
 import common.messages.AbstractMessage;
-
+/**
+ * 
+ * The Class of ECS Commands, which are sent to servers
+ */
 public class ECSMessage implements AbstractMessage {
 
     private ECSCommand actionType;
