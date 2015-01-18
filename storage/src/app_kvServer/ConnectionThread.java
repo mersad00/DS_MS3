@@ -36,6 +36,7 @@ import javax.activation.UnsupportedDataTypeException;
 import org.apache.log4j.Logger;
 
 import utilities.LoggingManager;
+import app_kvClient.KVCommand;
 import app_kvEcs.ECSCommand;
 import app_kvEcs.ECSMessage;
 import app_kvEcs.RecoverMessage;
@@ -333,7 +334,7 @@ public class ConnectionThread implements Runnable {
 			handleRecoverDataRequest((RecoverMessage) msg);
 		} else if (msg.getMessageType().equals(MessageType.SUBSCRIBE_MESSAGE)) {
 			handleSubscribeMessage((SubscribeMessage)msg);
-		} else if (msg.getMessageType().equals(MessageType.SUBSCRIBE_MESSAGE)) {
+		} else if (msg.getMessageType().equals(MessageType.UNSUBSCRIBE_MESSAGE)) {
 			handleUnsubscribeMessage((UnsubscribeMessage)msg);
 		}
 		else
@@ -414,6 +415,10 @@ public class ConnectionThread implements Runnable {
 			 * msg.getValue () );
 			 */
 			responseMessage = dbManager.put(msg.getKey(), msg.getValue());
+			ClientMessage temp = (ClientMessage) responseMessage;
+			temp.setStatus(StatusType.PUTS_SUCCESS);
+			responseMessage = temp;
+			
 			parent.NotifyIfHasSubscriber(msg.getKey(), msg.getValue());
 			
 			this.parent.addSubscriber(msg.getKey(), msg.getSubscriber());
@@ -434,6 +439,9 @@ public class ConnectionThread implements Runnable {
 			if (isInMyRange(msg.getKey())) {
 				// responseMessage = DatabaseManager.get ( msg.getKey () );
 				responseMessage = dbManager.get(msg.getKey());
+				ClientMessage temp = (ClientMessage) responseMessage;
+				temp.setStatus(StatusType.GETS_SUCCESS);
+				responseMessage = temp;
 				this.parent.addSubscriber(msg.getKey(), msg.getSubscriber());
 			} else {
 				// /check if replica(s) storages have the key
@@ -441,6 +449,9 @@ public class ConnectionThread implements Runnable {
 						.getKey());
 				if (replicaServeGet != null) {
 					responseMessage = replicaServeGet;
+					ClientMessage temp = (ClientMessage) responseMessage;
+					temp.setStatus(StatusType.GETS_SUCCESS);
+					responseMessage = temp;
 				} else {
 					// / this is a get request which neither server nor replicas
 					// storages

@@ -26,7 +26,9 @@ public class SubscriberStorageManager {
 			subscribersList = new ArrayList<ClientInfo>();
 			this.subscribtions.put(key, subscribersList);
 		} 
-		subscribersList.add(subscriber);
+		// add it to the list of subscribers, if it is not already subscribed to t!
+		if(! subscribersList.contains(subscriber))
+			subscribersList.add(subscriber);
 	}
 	
 	

@@ -36,6 +36,7 @@ import common.messages.KVMessage;
 import common.messages.ClientMessage;
 import common.messages.KVMessage.StatusType;
 import common.messages.SubscribeMessage;
+import common.messages.UnsubscribeMessage;
 
 public class KVStore implements KVCommInterface {
 
@@ -273,6 +274,8 @@ public class KVStore implements KVCommInterface {
 			msgBytes = SerializationUtil.toByteArray((ClientMessage) msg);
 		} else if (msg.getMessageType() == MessageType.SUBSCRIBE_MESSAGE) {
 			msgBytes = SerializationUtil.toByteArray((SubscribeMessage) msg);
+		}else if (msg.getMessageType() == MessageType.UNSUBSCRIBE_MESSAGE) {
+			msgBytes = SerializationUtil.toByteArray((UnsubscribeMessage) msg);
 		}
 
 		if (msgBytes != null) {
@@ -288,18 +291,52 @@ public class KVStore implements KVCommInterface {
 	 *            the new metadata to be settled
 	 */
 	public void updateMetadata(List<ServerInfo> metadata) {
-		List<ServerInfo> oldMetaData = this.metadata;
+		List<ServerInfo> oldMetaData = new ArrayList<ServerInfo>();
 		List<ServerInfo> suspectedServers;
 		List<String> keys;
 		Map<ServerInfo,List<String>> tobeSubscribed;
+		
+		//making a deep copy of the needed informations
+		if(this.metadata != null){
+		/*	for(ServerInfo s: this.metadata){
+				ServerInfo temp = new ServerInfo();
+				temp.setAddress(s.getAddress());
+				temp.setPort(s.getPort());
+				temp.setFromIndex(s.getFromIndex());
+				temp.setToIndex(s.getToIndex());
+				temp.setSecondCoordinatorInfo(s.getSecondCoordinatorInfo());
+				oldMetaData.add(temp);
+			}*/
+			oldMetaData = this.metadata;
+		}
+		logger.debug("OLD META DATA");
+		logger.debug(oldMetaData);
+		
+		//copying new metaData
 		this.metadata = metadata;
-		/*suspectedServers = checkSubscribtionValidation(oldMetaData);
+		
+		// metadata sent to the client does not have all the info
+		for(ServerInfo s: this.metadata){
+			s.setFirstCoordinatorInfo( metadata.get((metadata.indexOf(s) + metadata.size() -2 )% metadata.size()));
+			s.setSecondCoordinatorInfo(metadata.get((metadata.indexOf(s) + metadata.size() -1 )% metadata.size()));
+		}
+		
+		suspectedServers = checkSubscribtionValidation(oldMetaData);
+		
+		logger.debug("suspected " );
+		logger.debug(suspectedServers);
+		
 		keys = checkKeyResponsibilities(suspectedServers);
+		logger.debug("affected subscribed keys !");
+		logger.debug(keys);
+		
 		tobeSubscribed = sortKeysByServer(keys);
+		
+		logger.debug(tobeSubscribed);
+
 		updateSubscription(tobeSubscribed);
 		dataStoreCache.cleanServerList(metadata);
-		logger.info("update metadata with " + metadata.size() + " keys");*/
-		
+		logger.info("update metadata with " + metadata.size() + " keys");
 	}
 	
 	/**
@@ -308,6 +345,8 @@ public class KVStore implements KVCommInterface {
 	 * @return the list of the servers which are suspected
 	 */
 	public List<ServerInfo> checkSubscribtionValidation(List<ServerInfo> oldMetaData){
+		if(oldMetaData.isEmpty())
+			return null;
 		List<ServerInfo> toBeChecked = new ArrayList<ServerInfo>();
 		for(ServerInfo s:oldMetaData){
 			if(this.metadata.contains(s)){
@@ -317,8 +356,10 @@ public class KVStore implements KVCommInterface {
 				* if it has changed, Server s may has lost some
 				* keys
 				*/
-				if(! s.getSecondCoordinatorInfo().equals(newS.getSecondCoordinatorInfo())){
+				
+				if(! (s.getSecondCoordinatorInfo().equals(newS.getSecondCoordinatorInfo()))){
 					toBeChecked.add(newS);
+					
 				}
 			}else{
 				// s has been removed from the system, check the keys!
@@ -336,15 +377,19 @@ public class KVStore implements KVCommInterface {
 	 * @return list of toBesubscribekeys
 	 */
 	public List<String> checkKeyResponsibilities(List<ServerInfo> toBechecked){
+		if(toBechecked == null || toBechecked.isEmpty())
+			return null;
 		List<String> toBesubscribekeys = new ArrayList<String>();
 		List<ServerInfo> subscribedServers = dataStoreCache.getSubscribedServers();
-		for(ServerInfo subscribed:subscribedServers){
-			if (toBechecked.contains(subscribed)){
-				List<String> keys = dataStoreCache.getSubscribedKeys(subscribed);
-				for(String key: keys){
-					// if the server has lost the ownership of the key
-					if(! getDestinationServerInfo(key).equals(subscribed))
-						toBesubscribekeys.add(key);
+		if(subscribedServers != null || ! subscribedServers.isEmpty()){
+			for(ServerInfo subscribed:subscribedServers){
+				if (toBechecked.contains(subscribed)){
+					List<String> keys = dataStoreCache.getSubscribedKeys(subscribed);
+					for(String key: keys){
+						// if the server has lost the ownership of the key
+						if(! getDestinationServerInfo(key).equals(subscribed))
+							toBesubscribekeys.add(key);
+					}
 				}
 			}
 		}
@@ -357,6 +402,8 @@ public class KVStore implements KVCommInterface {
 	 * @return Map of serverInfo, keys each ServerInfo is mapped to list of its keys
 	 */
 	public Map<ServerInfo, List<String>> sortKeysByServer(List<String> keys){
+		if(keys == null || keys.isEmpty())
+			return null;
 		Map<ServerInfo, List<String>> keysByServer = new HashMap<ServerInfo, List<String>>(); 
 		List<String> temp = new ArrayList<String>();
 		for(String key:keys){
@@ -379,6 +426,8 @@ public class KVStore implements KVCommInterface {
 	 * @param tobeSubscribeAgain
 	 */
 	public void updateSubscription(Map<ServerInfo, List<String>> tobeSubscribeAgain){
+		if(tobeSubscribeAgain == null || tobeSubscribeAgain.isEmpty())
+			return;
 		// first send subscription messages to the current connection if possible
 		List<String> tempList;
 		if(tobeSubscribeAgain.containsKey(this.getCurrentConnection())){
@@ -388,12 +437,24 @@ public class KVStore implements KVCommInterface {
 			}
 			tobeSubscribeAgain.remove(this.getCurrentConnection());
 		}
+		
+		ServerInfo prevConnection = this.getCurrentConnection();
+		
 		// send subscription to the other servers!
 		for(ServerInfo s: tobeSubscribeAgain.keySet()){
 			tempList = tobeSubscribeAgain.get(s);
 			for(String key: tempList){
-				this.getS(key, paretnInfo);
+				KVMessage res = this.getS(key, paretnInfo);
+				subscribe(s,res.getKey(),res.getValue());
 			}
+		}
+		
+		//turn back the connection to the previous connection (before starting subscription updates)
+		try {
+			this.switchConnection ( prevConnection );
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	
@@ -444,7 +505,6 @@ public class KVStore implements KVCommInterface {
 			this.sendMessage(msg);
 			receivedMsg = this.receiveMessage();
 			//dataStoreCache.push(key, receivedMsg.getValue());
-			dataStoreCache.subscribetoServer(tempInfo, key, receivedMsg.getValue());
 		} catch (IOException e) {
 			logger.error("error in sending or receiving message");
 		}
@@ -465,34 +525,39 @@ public KVMessage putS(String key, String value,ClientInfo clientInfo) {
 		this.sendMessage(msg);
 		receivedMsg = this.receiveMessage();
 		//dataStoreCache.push(key, receivedMsg.getValue());
-		dataStoreCache.subscribetoServer(tempInfo, key, receivedMsg.getValue());
 	} catch (IOException e) {
 		logger.error("error in sending or receiving message");
 	}
 	return receivedMsg;
 }
 
+public void subscribe(ServerInfo server, String key, String value){
+	dataStoreCache.subscribetoServer(server, key, value);
+}
+
 public KVMessage unsubscribe(String key, ClientInfo clientInfo) {
 	KVMessage receivedMsg = null;
 	if(dataStoreCache.get(key) == null)
 		return receivedMsg;
+	logger.debug("unsubscribing from " + key);
+	
 	ServerInfo responsible = getDestinationServerInfo(key);
 	dataStoreCache.remove(key, responsible);
-	//TODO @Ibrahim requirements of unsubscribe msg type 
-	/*SubscribeMessage msg = new UnSubscribeMessage();
-	msg.setKeys(key);
-	msg.setStatusType(StatusType.UNSUBSCRIBE);
-	msg.setUnSubscriber(clientInfo);
-	ServerInfo tempInfo = this.getDestinationServerInfo (key);
+	logger.debug("key has been removed from local catch");
+	UnsubscribeMessage msg = new UnsubscribeMessage();
+	msg.setKey(key);
+	msg.setSubscriber(clientInfo);
 	try {
-		 if ( ! this.currentDestinationServer.equals ( tempInfo ) )
-		this.switchConnection ( tempInfo ); 
+		 if ( ! this.currentDestinationServer.equals ( responsible ) )
+			 this.switchConnection ( responsible ); 
+		logger.debug("before send message");
 		this.sendMessage(msg);
 		receivedMsg = this.receiveMessage();
+		logger.debug(receivedMsg);
 
 	} catch (IOException e) {
 		logger.error("error in sending or receiving message");
-	}*/
+	}
 	return receivedMsg;
 }
 
@@ -537,4 +602,19 @@ public ArrayList<String> unsubscribe(String[] keys, ClientInfo clientInfo) {
 	}
 	return response;
 }*/
+	public List<ServerInfo> getMetaData(){
+		return this.metadata;
+	}
+	
+	public void sMetaData(List<ServerInfo>metaData){
+		this.metadata = metaData;
+		for(ServerInfo s: this.metadata){
+			s.setFirstCoordinatorInfo( metadata.get((metadata.indexOf(s) + metadata.size() -2 )% metadata.size()));
+			s.setSecondCoordinatorInfo(metadata.get((metadata.indexOf(s) + metadata.size() -1 )% metadata.size()));
+		}
+	}
+	
+	public SubscribtionCache getSubscription(){
+		return this.dataStoreCache;
+	}
 }

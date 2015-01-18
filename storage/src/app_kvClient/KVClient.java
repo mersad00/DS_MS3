@@ -16,6 +16,7 @@ import app_kvEcs.ECSImpl;
 import utilities.LoggingManager;
 import client.ClientInfo;
 import client.KVStore;
+import common.ServerInfo;
 import common.messages.KVMessage;
 import common.messages.ClientMessage;
 
@@ -64,25 +65,30 @@ public class KVClient {
 				switch (command) {
 				case CONNECT:
 					if (validationUtil.isValidConnectionParams(tokens)) {
-
-						connection = new KVStore(tokens[1],
-								Integer.parseInt(tokens[2]));
-						connection.setparentInfo(getThisClientInfo());
 						try{
-							connection.connect();
-							System.out.println("Connected to KV server, "
-									+ tokens[1] + ":" + tokens[2]);
-							logger.info("Connected to KV server, " + tokens[1]
-								+ ":" + tokens[2]);
+							if(connection != null)
+								connection.switchConnection(new ServerInfo(tokens[1], Integer.parseInt(tokens[2])));
+							else{
+								connection = new KVStore(tokens[1],
+										Integer.parseInt(tokens[2]));
+								connection.setparentInfo(getThisClientInfo());
+								connection.connect();
+							}
+								System.out.println("Connected to KV server, "
+										+ tokens[1] + ":" + tokens[2]);
+								logger.info("Connected to KV server, " + tokens[1]
+									+ ":" + tokens[2]);
 						}catch (IOException io){
 							logger.warn("Could not connect to server on: " + tokens[1] + tokens[2]);
 						}
 					}
 					break;
 				case DISCONNECT:
-					connection.disconnect();
-					System.out.println("Connection closed.");
-					logger.info("Connection closed.");
+					if(this.connection != null){
+						connection.disconnect();
+						System.out.println("Connection closed.");
+						logger.info("Connection closed.");
+					}else System.out.println(UserFacingMessages.NOT_CONNECTED_YET);
 					break;
 				case PUT:
 					if (validationUtil.isValidStoreParams(tokens)) {
@@ -143,6 +149,7 @@ public class KVClient {
 
 				case UN_SUBSCRIBE:
 					if (validationUtil.isValidTwoArguments(tokens)) {
+						logger.debug("INSIDE UNSUBSCRIBE");
 						if(connection != null){
 							KVMessage result = connection.unsubscribe(tokens[1],
 									getThisClientInfo());
@@ -182,10 +189,12 @@ public class KVClient {
 				}
 
 			} catch (Exception e) {
-				e.printStackTrace();
+				//e.printStackTrace();
 				logger.error(e);
-				System.out
-						.println("Server is not found any more, make sure the server is up");
+				/*System.out
+						.println("Server is not found any more, make sure the server is up");*/
+				System.out.println("Operation failed! ");
+				System.out.println(UserFacingMessages.HELP_TEXT);
 			}
 
 		}
@@ -225,8 +234,9 @@ public class KVClient {
 					+ result.getValue();
 			break;
 		case GETS_SUCCESS:
+			connection.subscribe(connection.getCurrentConnection(), result.getKey(), result.getValue());
 			resultText = UserFacingMessages.GETS_SUCCESS_MESSAGE
-					+ result.getValue();
+					+ " " +result.getValue();
 			break;
 
 		case GET_SUCCESS:
@@ -244,6 +254,7 @@ public class KVClient {
 			break;
 
 		case PUTS_SUCCESS:
+			connection.subscribe(connection.getCurrentConnection(), result.getKey(), result.getValue());
 			resultText = UserFacingMessages.PUTS_SUCCESS_MESSAGE
 					+ result.getValue();
 			break;

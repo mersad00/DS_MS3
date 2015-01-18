@@ -19,15 +19,15 @@ public class UserFacingMessages {
 			+ "address: Hostname or IP address of the KV server.\nport: The port of the KV service on the respective server.\n"
 			+ " Example: connect 192.168.50.1 50000 \n"
 			+ "disconnect: Tries to disconnect from the connected server."
-			+ "\nget <key> : gets the value mapped to the key form the storage server data structure.\n"
-			+ "\ngets <key> : gets the value mapped to the key form the storage server data structure with subscribtion to get notified of any changes made to the value.\n"
+			+ "\nget <key> : gets the value mapped to the key form the storage server data structure."
+			+ "\ngets <key> : gets the value mapped to the key form the storage server data structure with subscribtion to get notified of any changes made to the value."
 			+ "\nput <key> <value>: Inserts (or updtaes if it exists) a key-value pair into the storage server data structure."
-			+ "\nputs <key> <value>: Inserts (or updtaes if it exists) a key-value pair into the storage server data structure with subscribtion to get notified of any changes made to the value.\n"
+			+ "\nputs <key> <value>: Inserts (or updtaes if it exists) a key-value pair into the storage server data structure with subscribtion to get notified of any changes made to the value."
 			+ "\nlogLevel <level>: Sets the logger to the specified log level."
 			+ "\nlevel: One of the following log4j log levels: (ALL | DEBUG | INFO | WARN | ERROR | FATAL | OFF)."
 			+ "\nHelp: Prints the help and usage tips."
-			+ "\nquit: Tears down the active connection to the server and exits the program execution.\n"
-			+ "\nunsubscribe <key> : tell the cloud server to unsibsribe this client from the key .\n";
+			+ "\nquit: Tears down the active connection to the server and exits the program execution."
+			+ "\nunsubscribe <key> : tell the cloud server to unsibsribe this client from the key.";
 	
 	public static final String ECS_HELP_TEXT = "ECS:  The third phase of cloud database course project."
 		+ "\nUsage:"
