@@ -200,11 +200,15 @@ To be added...
 
 In the past, one server was enough to serve thousands of clients. This server was separating data layer from the application layer by delegating data retrieval to a sql server to improve efficiency and transparency.
 
-Nowadays, the need for efficient and  reliable big data storages has significantly increased. New advances in input mediums offer very high resolutions. These high resolutions when come to storage requires much more space. On the same hand, the usage of software programs such as Facebook, YouTube and blogs has accelerated in forms of mobile applications as well as web applications. 
-
-Cloud computing has moved toward peer to peer communication. When we talk about the cloud some main properties are highly demanded scalability, reliability, consistency and minimum latency. In order to guarantee these properties, some problems need to be taken into account such as dealing with failure, failure detection, replication.
+When we talk about the cloud computing some main properties are highly demanded scalability, reliability, consistency and minimum latency. In order to guarantee these properties, some problems need to be taken into account such as dealing with failure, failure detection, replication.
 
 Over a decade of research in cloud computing has achieved effective solutions aiming to satisfy mentioned properties using a peer to peer communication between a group of server nodes. These nodes build up a key value store to leverage cloud scalability and reliability. Key value storages are being used by many data exhaustive applications such as Facebook, YouTube and Google Drive.  
+
+%Nowadays, the need for efficient and reliable big data storages has significantly increased.
+Massive user requests and dealing with failure are two main motivations to move to the cloud storages. Relational databases by design are not easly scalable thus, cannot be used effectively in  cloud environment. Instead cloud databases deal with data as pairs of key and value which is known as NoSQL database. In key-value stores there is no primary or foreign key and so no relation between data from data storage perspective thus, NoSQL databases are highly scalable and replicable.
+%On the same hand, the usage of software programs such as Facebook, YouTube and blogs has accelerated in forms of mobile applications as well as web applications. 
+
+
 Key value store can be used rigorously by all application developers who are seeking for highly scalable and reliable data storages. use cases of  these kind data stores could be as following, online stores, e-commerces, video sharing, social media applications, electronic votings, hotel booking, travel agency and etc. We insist that, usage of the key value storages is not limited to the mentioned use cases and any massive user targeted solution can be potential candidate.
 
 In this paper we have implemented and evaluated a highly scalable and reliable  key value storage using state of the arts literature and  techniques in the field supplied to us during our practical training course. 
@@ -240,7 +244,7 @@ The rest of this paper is structured as following Section 2 Related work, discus
 David Karger et al., 1999 \cite{consistentHashing} in their research work have presented the idea of web caching with the use of consistent hashing technique. They have shown that using consistent hashing load  balance and fault tolerance is handled much efficient. 
 In this work we  have used consistent hashing for mapping keys to server nodes, such that adding and removing nodes ensures a balanced load.
 
-A few years later, the need for an efficient way to locate nodes in a distributed peer to peer network motivated Ion Stoica et al., 2002 \cite{chord} to came up with the chord protocol. In their protocol, for a given key,   it is easily computable to find the responsible server. This has been done with leveraging consistent hashing technique along with a novel finger table per each node. Such that, each node by referring to its own finger table can route the key to mapping server. They have shown average lookup time for N nodes for a given key is (½) Log N. 
+A few years later, the need for an efficient way to locate nodes in a distributed peer to peer network motivated Ion Stoica et al., 2002 \cite{chord} to came up with the chord protocol. In their protocol, for a given key,   it is easily computable to find the responsible server. This has been done with leveraging consistent hashing technique along with a novel finger table per each node. Such that, each node by referring to its own finger table can route the key to mapping server. They have shown average lookup time for N nodes for a given key is (1/2) Log N. 
 
 Dong Dai et al., 2012 \cite{memory} explained that keeping cloud data storages in the memory rather than disks improves the retrieval and decreases the latency in key value storages. Therefore, we cashing most recent key-value pairs in the RAM to improve the latency in our system.
 
