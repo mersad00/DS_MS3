@@ -5,10 +5,6 @@ import java.util.Iterator;
 
 import org.apache.log4j.*;
 
-/**
- * @author Md.Habibur Rahman
- * 
- */
 public final class LoggingManager {
 
 	private HashSet < Logger > loggerList = new HashSet < Logger > ();

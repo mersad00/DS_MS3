@@ -2,7 +2,7 @@ package utilities;
 
 /** Used to determine OS, this is needed when running the scripts
  * The idea of the class as taken from: http://stackoverflow.com/questions/228477/how-do-i-programmatically-determine-operating-system-in-java
- * @author Amjad
+ * 
  *
  */
 public final class OsUtils {
