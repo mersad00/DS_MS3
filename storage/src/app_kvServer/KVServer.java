@@ -287,7 +287,7 @@ public class KVServer extends Thread {
 				server = new KVServer(Integer.parseInt(args[0]),
 						Integer.parseInt(args[1]), args[2]);
 			else
-				server = new KVServer(Integer.parseInt(args[0]), 10, "FIFO");
+				server = new KVServer(Integer.parseInt(args[0]), 100, "FIFO");
 
 			new LogSetup(server.getPath() + "logs/server/server" + args[0]
 					+ ".log", Level.ALL);
