@@ -54,7 +54,7 @@
 %\CopyrightYear{2007} % Allows default copyright year (20XX) to be over-ridden - IF NEED BE.
 %\crdata{0-12345-67-8/90/01}  % Allows default copyright data (0-89791-88-6/97/05) to be over-ridden - IF NEED BE.
 % --- End of Author Metadata ---
-\title{A Key-Value Storage for Cloud Databases with Notification and Failure Detection}%\titlenote{(Produces the permission block, and
+\title{A Cloud Key-Value storage with Replication, Failure Detection and Notification}%\titlenote{(Produces the permission block, and
 %copyright information). For use with
 %SIG-ALTERNATE.CLS. Supported by ACM.}}
 %\subtitle{[Extended Abstract]
@@ -87,7 +87,7 @@
 % without further effort on your part as the last section in
 % the body of your article BEFORE References or any Appendices.
 
-\numberofauthors{3} %  in this sample file, there are a *total*
+\numberofauthors{2} %  in this sample file, there are a *total*
 % of EIGHT authors. SIX appear on the 'first-page' (for formatting
 % reasons) and the remaining two appear in the \additionalauthors section.
 %
@@ -120,14 +120,15 @@ Ibrahim AlZant
        %\affaddr{Dublin, Ohio 43017-6221}\\
        \email{ibrahim.alzant@tum.de}
 % 3rd. author
+\and
 \alignauthor 
-Arash Khataei
+Arash Khatayee
 %Lars Th{\o}rv{\"a}ld\titlenote{This author is the
 %one who did all the really hard work.}\\
        %\affaddr{The Th{\o}rv{\"a}ld Group}\\
        %\affaddr{1 Th{\o}rv{\"a}ld Circle}\\
        %\affaddr{Hekla, Iceland}\\
-       \email{arash.khataei@tum.de}
+       \email{arash.khatayee@tum.de}
 %\and  % use '\and' if you need 'another row' of author names
 %% 4th. author
 %\alignauthor Lawrence P. Leipuner\\
@@ -283,7 +284,8 @@ KVClient is the user intermediate layer in which the end-user with knowing only 
 \textbf{gets} it retrieves the queried key by the user similar to get command. Plus to that, the client will be notified about the queried  key changes. In other words, by using this command user will be subscribed to the corresponding server. Therefore, Any value changes of the key by any client will lead to a push notification to the subscribed client.\\
 \textbf{puts} It stores a key-value pair and subscribe to the key changes just like the gets.\\
 \subsubsection{Subscription on client side}
-For the subscription part we have implemented a separated thread to keep listening to the notification messages. On the server side, a list of subscribed servers per each key is being maintained and upon each put command the notifications are being published. For further details about the subscription feature refer to the server implementation details section \ref{serverimpl}.
+For the subscription part we have implemented a separate thread to keep listening to the notification messages from the responsible servers. In case that new servers being added or removed from the system, the responsible server for each key might change due to the mapping constraints in the ring. To deal with responsibility changes, upon metadata updates on client side we subscribe all keys to corresponding servers. By this approach eventual consistency is guaranteed as well as no overhead on server side because clients are keeping track of their subscription.\\ 
+On the server side, a list of subscribed servers per each key is being maintained and upon each put command the notifications are being published. For further details about the subscription feature refer to the server implementation details section \ref{serverimpl}.
 
 \subsection{Server}\label{serverimpl}
 to be added...
