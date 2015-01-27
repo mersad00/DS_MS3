@@ -304,7 +304,22 @@ For the subscription part we have implemented a separate thread to keep listenin
 On the server side, a list of subscribed servers per each key is being maintained and upon each put command the notifications are being published. For further details about the subscription feature refer to the server implementation details section \ref{serverimpl}.
 
 \subsection{Server}\label{serverimpl}
-to be added...
+KVServer is the main component in the server side. The KVServer is starting a new thread for each new client request. This new thread will handle any request come from clients including all client available operations.
+In the same context, the server component includes a database manager component. This manager is responsible of storing and retrieving data in pairs from and into the server database. The database manager is a thread safe, supporting multiple threads accessing the data and perform different operation simultaneously. 
+
+On other hand, the server side had multiple statuses. The reply from the server to client includes this status. The statuses of the server side are :\\
+\textbf{UNDER INITIALIZATION}: This status represents that the server has not started to serve client yet and its under initialization operation from the ECS component.\\
+\textbf{STOPPED}: In case of the server is stopped and not serving clients temporarily.\\
+\textbf{SERVER WRITE LOCK}: This status means that the server is currently moving or receiving data from or to other servers.\\
+\textbf{SERVER NOT RESPONSIBLE}: This status indicates that the requested data is not located on this server and also not replicated on this server. In case of this status, the server will send a copy of metadata to the client so it can redirect the request to the responsible server.\\
+\textbf{GET ERROR, GET SUCCESS, GETS SUCCESS}: Indicates the status of the requested GET operation.\\
+\textbf{PUT SUCCESS, PUTS SUCCESS, PUT UPDATE, PUT ERROR}: Indicates the status of the requested PUT operation.\\
+\textbf{DELETE SUCCESS, DELETE ERROR}: Indicates the status of the requested PUT with null value - Delete- operation.
+
+Additionally,The server component is responsible for serving the subscribe requests from the client side. It stores all clients information that interested in a specific pair, then it will notify all the subscribers in case of any change for this pair. see (number of extension part).
+
+Finally, Each instance of the server component is replicating the data into two other instances. At the same time it acts as a replica for other two server instances. see (number of replication section.). Moreover, each instance sends heartbeat to its replica instances in order to detect the failure of a node.(see failure detection section)
+
 \subsection{External Configuration Service}
 ECS is the component in our system, which coordinates KVServers, knows how the data is distributed in the system, and modifies this distribution whenever it is needed, such as when a node is added, removed, or failed. The ECS calculates the meta data and assigns key ranges to the servers. ECS's role in this system is comparable to master's role in Google's Big Table key value store.\cite{bigTable}. Furthermore, ECS has a User Interface to interact with the admin. Adding and removing a node(\textbf{add, remove}), starting and stopping the system(\textbf{start, stop}), and shutting down the system (\textbf{shutDown}) are the commands available for the admin of the system.
 
