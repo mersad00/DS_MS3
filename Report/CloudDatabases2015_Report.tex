@@ -278,6 +278,14 @@ In the figure \ref{failuredetection} the failure detection sketch has been illus
 \end{center}
 
 \subsection{Extension}
+\subsubsection{Subscription/Notification System}
+
+We provided data subscription capability as an extension to our key value store system. By implementing  this functionality, a client is able to keep track of the data which is important to him and get the newest value, whenever a change has been occurred. 
+
+The subscribed key value pairs are stored on a cache on the client side alongside a hash list of subscribed servers and keys. This cache is used to respond to handle GET requests of subscribed keys. As a result the load on the network and the servers will be reduced. Furthermore, this cache is guaranteed to provide the recent value of a key until the responsible server of that key has been changed, due to an addition or removal of a node. When the new meta data has reached to the client, the client will resubscribe to all the previously subscribed keys, which their responsible server have been changed, and the cache is fully reliable again. By making clients responsible for keeping their subscriptions consistent, there is no overhead on the server side regarding this issue.
+
+On the server side the list of subscribed keys and the clients who are interested in getting notifications about their value is being kept. In case of any changes to the value, every subscribed client will get notified with the recent value. These information is kept in memory in servers in order to have a fast access to data and more efficiency. Thus, in case of removal or failure of a node these information will be lost on the server side, but as it was mentioned the client will always keep its subscription list updated whenever he recognizes any change in the system formation.
+
 
 \section{Implementation}
 Key-value storage consists of three subsystems namely KVClient, KVServer, KVECS. 
