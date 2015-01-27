@@ -254,6 +254,8 @@ Beside these literatures which targeted the scalability of the system, in \cite{
 
 \section{Approach}
 \subsection{Design Decisions}
+Our key-value storage is consist of three subsystems as Client, Server and External Configuration Service. These subsystems are descibed in details in the section \ref{implementation}. In this section, we explained our design decisions that effected all subsystems namely  \textbf{Replication}, \textbf{Failure detection} and the final \textbf{Extension} that we have added to the system. 
+
 \subsubsection{Replication}
 Reliability and consistency are two of the most important factors in designing scalable web services running on cloud environments. With integrating replication into our system we achieved to overcome the loss of data, omitted the problem of single point of failure, and reduced the load on the servers. The strategy was to store each server's data also as replicated data on two other servers. Whenever a server crashes or is not available, the data can be recovered from these replicas, and the probability of the loss of the data is  significantly decreased. The replica servers will also respond to clients' GET requests, so the load on each server is distributed between two other replica servers. 
 
@@ -277,8 +279,8 @@ In the figure \ref{failuredetection} the failure detection sketch has been illus
 \end{figure}
 \end{center}
 
-\subsection{Extension}
-\subsubsection{Subscription/Notification System}
+\subsection{Extension: Subscription/Notification System }
+%\subsubsection{}
 
 We provided data subscription capability as an extension to our key value store system. By implementing  this functionality, a client is able to keep track of the data which is important to him and get the newest value, whenever a change has been occurred. 
 
@@ -287,9 +289,9 @@ The subscribed key value pairs are stored on a cache on the client side alongsid
 On the server side the list of subscribed keys and the clients who are interested in getting notifications about their value is being kept. In case of any changes to the value, every subscribed client will get notified with the recent value. These information is kept in memory in servers in order to have a fast access to data and more efficiency. Thus, in case of removal or failure of a node these information will be lost on the server side, but as it was mentioned the client will always keep its subscription list updated whenever he recognizes any change in the system formation.
 
 
-\section{Implementation}
+\section{Implementation}\label{implementation}
 Key-value storage consists of three subsystems namely KVClient, KVServer, KVECS. 
-To be elaborated ... @Arash @Ibrahim
+In this section we descibe each subsystem in details. However, full source codes are available on Github accessible at \cite{github}. 
 \subsection{Client}
 KVClient is the user intermediate layer in which the end-user with knowing only one server location can start using the cloud storage. KVClient application has following main features: \\
 \textbf{connect} which allows the user to establish a connection to a server\\
@@ -321,7 +323,7 @@ to be added
 
 %ACKNOWLEDGMENTS are optional
 \section{Acknowledgments}
-To be added...
+We would like to acknowledge the support and guidance from the  Chair of Business Information Systems (Prof. Jacobsen) of Technische Universit{\"a}t M{\"u}nchen.
 %
 % The following two commands are all you need in the
 % initial runs of your .tex file to
