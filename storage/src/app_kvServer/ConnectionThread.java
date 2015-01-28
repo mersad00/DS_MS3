@@ -280,6 +280,10 @@ public class ConnectionThread implements Runnable {
 	}
 
 	private void sendReplicationMessage(ReplicaMessage msg, ServerInfo server) {
+		//prevent replica to self
+		if(server.getAddress().equals(parent.getThisServerInfo().getAddress()) && server.getPort()== this.parent.getThisServerInfo().getPort())
+			return;
+		
 		byte[] msgBytes = SerializationUtil.toByteArray(msg);
 		Socket connectionToOtherServer = null;
 		OutputStream output = null;

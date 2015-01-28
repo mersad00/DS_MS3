@@ -7,7 +7,7 @@ public class ECSMock {
 	private ECSImpl ecs;
 	public ECSMock (int numberOfServers, String fileName){
 		try{
-			ecs = new ECSImpl ( numberOfServers , fileName );			
+			ecs = new ECSImpl ( numberOfServers , fileName, "Sequential call" );			
 		} catch ( FileNotFoundException e ){
 			e.printStackTrace ();
 		}

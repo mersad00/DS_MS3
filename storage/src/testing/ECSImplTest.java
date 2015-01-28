@@ -2,6 +2,7 @@ package testing;
 
 import java.io.IOException;
 
+import junit.framework.TestCase;
 import logger.LogSetup;
 
 import org.apache.log4j.Level;
@@ -14,7 +15,7 @@ import common.messages.KVMessage.StatusType;
 import client.KVStore;
 import static org.junit.Assert.*;
 
-public class ECSImplTest {
+public class ECSImplTest extends TestCase {
     static {
 	try {
 	    new LogSetup("logs/testing/test.log", Level.ALL);
@@ -22,12 +23,20 @@ public class ECSImplTest {
 	    e.printStackTrace();
 	}
     }
+    public void setUp() {
+    }
 
+    public void tearDown() {
+    }
+    
     
     public ECSImplTest(String threadName) {
  	this.threadName = threadName;
      }
-
+   public ECSImplTest() {
+     	//this.threadName =  Long.toString(Thread.currentThread().getId());
+         }
+    
      private String threadName;
 
     @Test
@@ -42,12 +51,7 @@ public class ECSImplTest {
 	    KVMessage response = null;
 	    Exception ex = null;
 	    response = kvClient.put(key, key);
-//	    assertTrue(ex == null
-//			    && (response.getStatus() == StatusType.PUT_SUCCESS
-//				    || response.getStatus() == StatusType.SERVER_NOT_RESPONSIBLE || response
-//				    .getStatus() == StatusType.SERVER_STOPPED));
-//	
-	 
+
 	    if (response.getStatus().equals(StatusType.SERVER_NOT_RESPONSIBLE)) {
 		// retry
 		kvClient.updateMetadata(((ClientMessage)response).getMetadata());
@@ -63,7 +67,7 @@ public class ECSImplTest {
     }
 
     private static ServerInfo getServerInfo(int i) {
-	ServerInfo serverInfo = new ServerInfo("localhost",6000);
+	ServerInfo serverInfo = new ServerInfo("localhost",50010);
 	return serverInfo;
     }
 

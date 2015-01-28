@@ -20,6 +20,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -66,8 +67,8 @@ public class DatabaseManager {
 		 */
 		path = path.replace("ms3-server.jar", "");
 
-		this.dataBaseUri = path + "/PersistentStorage-" + id + "."
-				+ databaseType;
+		this.dataBaseUri = Paths.get(path, "PersistentStorage-"+ id + "."
+				+ databaseType).toString(); 
 		File f = new File(dataBaseUri);
 
 		if (!f.exists()) {

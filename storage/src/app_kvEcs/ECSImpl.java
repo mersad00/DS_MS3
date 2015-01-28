@@ -63,6 +63,16 @@ public class ECSImpl implements ECS {
 		init(numberOfNodes);
 	}
 
+	boolean NoRandom = false;
+
+	ECSImpl(int numberOfNodes, String fileName, String justToOverload) throws FileNotFoundException {
+		this.fileName = fileName;
+		/* parse the server repository */
+		readServerInfo(this.fileName);
+		NoRandom = true;
+		init(numberOfNodes);
+	}
+
 	ECSImpl(int numberOfNodes, String fileName, boolean local)
 			throws FileNotFoundException {
 		this.fileName = fileName;
@@ -119,14 +129,28 @@ public class ECSImpl implements ECS {
 		this.activeConnections = new HashMap<ServerInfo, ServerConnection>();
 		if (this.activeServers == null)
 			this.activeServers = new ArrayList<ServerInfo>();
-		// choosing servers randomly
-		while (count < numberOfNodes) {
-			int i = rand.nextInt(serverRepository.size());
-			temp = serverRepository.get(i);
-			if ((!serversToStart.contains(temp))
-					&& !this.activeServers.contains(temp)) {
-				serversToStart.add(temp);
-				count++;
+		if (NoRandom) {
+			// choosing servers sequently
+			int i = 0;
+			while (count < numberOfNodes) {
+				temp = serverRepository.get(i);
+				if ((!serversToStart.contains(temp))
+						&& !this.activeServers.contains(temp)) {
+					serversToStart.add(temp);
+					count++;
+				}
+				i++;
+			}
+		} else {
+			// choosing servers randomly
+			while (count < numberOfNodes) {
+				int i = rand.nextInt(serverRepository.size());
+				temp = serverRepository.get(i);
+				if ((!serversToStart.contains(temp))
+						&& !this.activeServers.contains(temp)) {
+					serversToStart.add(temp);
+					count++;
+				}
 			}
 		}
 		logger.info("ECS will launch " + numberOfNodes + " servers ");
