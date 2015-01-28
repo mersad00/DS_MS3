@@ -16,6 +16,7 @@ package app_kvServer;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -37,12 +38,13 @@ public class DatabaseManager {
 
 	// private static Map < String , String > database = new HashMap < String ,
 	// String > ();
-	private Cache cache;
+	//private Cache cache;
 	private static Logger logger = Logger.getRootLogger();
 	private int id;
 	private String dataBaseUri;
-	private void initDatabaseManager(int id, int cacheSize,
-			String cacheStrategy, String databaseType) {
+	private Map<String,String> cache;
+	
+	private void initDatabaseManager(int id, String databaseType) {
 		/*
 		 * path added in order to handle invocation by a remote process through
 		 * ssh in order to avoid Filenotfound exception when creating
@@ -54,7 +56,7 @@ public class DatabaseManager {
 		this.id = id;
 		String path = this.getClass().getProtectionDomain().getCodeSource()
 				.getLocation().getPath();
-		cache = new Cache(cacheSize, CacheStrategy.valueOf(cacheStrategy));
+		cache = new HashMap<String, String>();
 		/*
 		 * for local invoking of the KVserver programs(no ssh call), we remove
 		 * /bin to refer the path to project's root path
@@ -66,19 +68,15 @@ public class DatabaseManager {
 		 * updated for handling calls within ssh
 		 */
 		path = path.replace("ms3-server.jar", "");
-
-		this.dataBaseUri = Paths.get(path, "PersistentStorage-"+ id + "."
-				+ databaseType).toString(); 
-		File f = new File(dataBaseUri);
+		this.dataBaseUri = path + "PersistentStorage-" + id + "." + databaseType;		File f = new File(dataBaseUri);
 
 		if (!f.exists()) {
 			try {
 				/* on the first run of the program the storage is created */
-				f.createNewFile();
-				Map<String, String> temp = new HashMap<String, String>();
+				f.createNewFile();				
 				FileOutputStream fileOut = new FileOutputStream(f, false);
 				ObjectOutputStream out = new ObjectOutputStream(fileOut);
-				out.writeObject(temp);
+				out.writeObject(cache);
 				logger.info("Server's First time starting: Persistent storage created!");
 				out.close();
 				fileOut.close();
@@ -86,12 +84,31 @@ public class DatabaseManager {
 				logger.error("an error occured while trying to create the Storage");
 				logger.error(e.getMessage());
 			}
+		} else {
+			FileInputStream fileIn;
+			try {
+				fileIn = new FileInputStream(this.dataBaseUri);
+				ObjectInputStream in = new ObjectInputStream(fileIn);
+				cache = (HashMap<String, String>) in.readObject();
+				in.close();
+				fileIn.close();
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
 		}
 	}
 
-	public DatabaseManager(int id, int cacheSize, String cacheStrategy,
+	public DatabaseManager(int id,
 			String databaseType) {
-		initDatabaseManager(id, cacheSize, cacheStrategy, databaseType);
+		initDatabaseManager(id, databaseType);
 
 	}
 
@@ -128,8 +145,8 @@ public class DatabaseManager {
 			ClientMessage msg = new ClientMessage();
 			try {
 				// database.put ( key , value );
-				savetoDatabase(key, value);
-				cache.push(key, value);
+				//savetoDatabase(key, value);
+				cache.put(key, value);
 
 				msg.setKey(key);
 				msg.setValue(value);
@@ -201,8 +218,8 @@ public class DatabaseManager {
 		ClientMessage msg = new ClientMessage();
 		try {
 			// database.remove ( key );
-			deleteFromDatabase(key);
-			cache.push(key, null);
+			//deleteFromDatabase(key);
+			cache.remove(key);
 
 			msg.setKey(key);
 			msg.setStatus(common.messages.KVMessage.StatusType.DELETE_SUCCESS);
@@ -233,8 +250,8 @@ public class DatabaseManager {
 
 			// database.put ( key , value );
 
-			savetoDatabase(key, value);
-			cache.push(key, value);
+			//savetoDatabase(key, value);
+			cache.put(key, value);
 
 			msg.setKey(key);
 			msg.setValue(value);
@@ -258,27 +275,7 @@ public class DatabaseManager {
 	 */
 	@SuppressWarnings("unchecked")
 	public synchronized void putAll(Map<String, String> data) {
-		// database.putAll ( data );
-
-		// saving the new data into DataBase
-		try {
-			// loading the DataBase
-			Map<String, String> temp = new HashMap<String, String>();
-			FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
-			ObjectInputStream in = new ObjectInputStream(fileIn);
-			temp = (HashMap<String, String>) in.readObject();
-			in.close();
-			fileIn.close();
-			// saving into dataBase
-			temp.putAll(data);
-			FileOutputStream fileOut = new FileOutputStream(this.dataBaseUri);
-			ObjectOutputStream out = new ObjectOutputStream(fileOut);
-			out.writeObject(temp);
-			out.close();
-			fileOut.close();
-		} catch (Exception e) {
-			logger.error(e.getMessage());
-		}
+		cache.putAll(data);
 	}
 
 	/**
@@ -295,19 +292,12 @@ public class DatabaseManager {
 			String rangeEnd) {
 
 		try {
-			// loading the DataBase
-			HashMap<String, String> temp = new HashMap<String, String>();
-			FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
-			ObjectInputStream in = new ObjectInputStream(fileIn);
-			temp = (HashMap<String, String>) in.readObject();
-			in.close();
-			fileIn.close();
-
+			
 			Map<String, String> dataToBeMoved = new HashMap<String, String>();
 			Hasher hasher = new Hasher();
-			for (String key : temp.keySet()) {
+			for (String key : cache.keySet()) {
 				if (hasher.isInRange(rangeStart, rangeEnd, key)) {
-					dataToBeMoved.put(key, temp.get(key));
+					dataToBeMoved.put(key, cache.get(key));
 				}
 
 			}
@@ -333,30 +323,11 @@ public class DatabaseManager {
 			String rangeEnd) {
 
 		try {
-			// loading the DataBase
-			HashMap<String, String> temp = new HashMap<String, String>();
-			FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
-			ObjectInputStream in = new ObjectInputStream(fileIn);
-			temp = (HashMap<String, String>) in.readObject();
-			in.close();
-			fileIn.close();
-
-			// Map < String , String > dataToBeMoved = new HashMap < String ,
-			// String > ();
+			
 			Hasher hasher = new Hasher();
 
-			/*
-			 * Using Iterator and while loop. In this method you can remeove the
-			 * entries while iterating through it. The previous for loop will
-			 * through java.util.ConcurrentModificationException if you remove
-			 * while iterating.
-			 * 
-			 * for ( String key : database.keySet () ) { if ( hasher.isInRange (
-			 * rangeStart , rangeEnd , key ) ) { //database.remove(key);
-			 * //temp.remove ( key); }
-			 */
-
-			Iterator<Map.Entry<String, String>> iterator = temp.entrySet()
+			
+			Iterator<Map.Entry<String, String>> iterator = cache.entrySet()
 					.iterator();
 			while (iterator.hasNext()) {
 				Map.Entry<String, String> item = iterator.next();
@@ -365,13 +336,6 @@ public class DatabaseManager {
 					iterator.remove();
 				}
 			}
-
-			// saving the changes to the persistent database
-			FileOutputStream fileOut = new FileOutputStream(this.dataBaseUri);
-			ObjectOutputStream out = new ObjectOutputStream(fileOut);
-			out.writeObject(temp);
-			out.close();
-			fileOut.close();
 
 		} catch (Exception e) {
 			logger.error("error occured while removing data" + "in range "
@@ -384,13 +348,8 @@ public class DatabaseManager {
 	@SuppressWarnings("unchecked")
 	public synchronized void printDatabase() {
 		try {
-			HashMap<String, String> temp = new HashMap<String, String>();
-			FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
-			ObjectInputStream in = new ObjectInputStream(fileIn);
-			temp = (HashMap<String, String>) in.readObject();
-			in.close();
-			fileIn.close();
-			System.out.println(temp.toString());
+			
+			System.out.println(cache.toString());
 		} catch (Exception e) {
 			logger.error("failed to print the dataBase! " + e.getMessage());
 		}
@@ -398,87 +357,53 @@ public class DatabaseManager {
 
 	/* additional methods added for handling input and output from the file */
 
-	@SuppressWarnings("unchecked")
-	private void savetoDatabase(String key, String value) throws IOException,
-			ClassNotFoundException {
+	
 
-		// loading the DataBase
-		HashMap<String, String> temp = new HashMap<String, String>();
-		FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
-		ObjectInputStream in = new ObjectInputStream(fileIn);
-		temp = (HashMap<String, String>) in.readObject();
-		in.close();
-		fileIn.close();
-
-		// saving the new data into DataBase
-		temp.put(key, value);
-		FileOutputStream fileOut = new FileOutputStream(this.dataBaseUri);
-		ObjectOutputStream out = new ObjectOutputStream(fileOut);
-		out.writeObject(temp);
-		out.close();
-		fileOut.close();
-	}
-
-	@SuppressWarnings("unchecked")
-	private void deleteFromDatabase(String key) throws IOException,
-			ClassNotFoundException {
-
-		// loading the DataBase
-		HashMap<String, String> temp = new HashMap<String, String>();
-		FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
-		ObjectInputStream in = new ObjectInputStream(fileIn);
-		temp = (HashMap<String, String>) in.readObject();
-		in.close();
-		fileIn.close();
-
-		// saving the new data into DataBase
-		temp.remove(key);
-		FileOutputStream fileOut = new FileOutputStream(this.dataBaseUri);
-		ObjectOutputStream out = new ObjectOutputStream(fileOut);
-		out.writeObject(temp);
-		out.close();
-		fileOut.close();
-	}
+	
 
 	@SuppressWarnings("unchecked")
 	private String loadFromDatabase(String key) throws IOException,
 			ClassNotFoundException {
 
 		// loading the DataBase
-		HashMap<String, String> temp = new HashMap<String, String>();
+		
 		FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
 		ObjectInputStream in = new ObjectInputStream(fileIn);
-		temp = (HashMap<String, String>) in.readObject();
+		cache = (HashMap<String, String>) in.readObject();
 		in.close();
 		fileIn.close();
-		return temp.get(key);
+		return cache.get(key);
 
 	}
 
 	@SuppressWarnings({ "unchecked", "null" })
-	private boolean contains(String key) {
-		try {
-			HashMap<String, String> temp = new HashMap<String, String>();
-			FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
-			ObjectInputStream in = new ObjectInputStream(fileIn);
-			temp = (HashMap<String, String>) in.readObject();
-			in.close();
-			fileIn.close();
-			return temp.containsKey(key);
-		} catch (Exception e) {
-			return false;
-		}
+	private boolean contains(String key) {	
+			return cache.containsKey(key);
 
 	}
 
 	public Map<String, String> getAll() throws IOException,
-			ClassNotFoundException {
-		Map<String, String> temp = new HashMap<String, String>();
-		FileInputStream fileIn = new FileInputStream(this.dataBaseUri);
-		ObjectInputStream in = new ObjectInputStream(fileIn);
-		temp = (Map<String, String>) in.readObject();
-		in.close();
-		fileIn.close();
-		return temp;
+			ClassNotFoundException {		
+		return cache;
+	}
+
+	public void saveCacheToDatabase(){
+		
+		try {
+			FileOutputStream fileOut = new FileOutputStream(this.dataBaseUri);
+			ObjectOutputStream out = new ObjectOutputStream(fileOut);
+			out.writeObject(cache);
+			out.close();
+			fileOut.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+
+	}
+	
+	public Map<String,String> getCache(){
+		return this.cache;
 	}
 }
