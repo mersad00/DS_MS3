@@ -331,7 +331,71 @@ In order to get the failure reports from the servers, the ECS has a server insid
 ECS will start the recovery operation. In recovery operation a new meta data is calculated, and ECS will command the successor of the failed server to recover the data of the failed server from its replication storage. Later on the affected servers will send replication data to their new replicas, and get replicated data from their new coordinators. At last, ECS will try to add a new node to the system.
 
 \section{Evaluation}
-to be added
+\subsection{Dataset}
+Data for our experiment, key value pairs, were gathered from the UNIX dictionary of British-English words. A large data set consisting of approximately one hundred thousand of words.
+\subsection{Test prepration}
+Before each test we populate 80 percent of data, key values, to our servers with respect to the current distribution of servers and their hash values in the ring topology. These data are stored in the main storage for each responsible server of that key, and in replicated storages of the replicas of that servers in ring topology. In order to simulate a real environment, where not only clients send request for keys already stored in the system, but also they will provide new key value pairs to the system. We designed our test clients to choose keys for their requests randomly from the same dataset. Thus, with 20 percent of chance they may choose a new key which is not still in the system and with 80 percent a key already stored in the system. 
+
+\subsection{Test parameters}
+The test plan was designed using Jmeter to measure the system performance under different parameters. The common setting for all test cases were:
+\begin{enumerate}
+\item Number of users that has been set to 1000
+\item Ramp-up time that has been set to 20, which means 1/20 of total number of users, in this case 50, per second are being added to the system.
+\item The main testing variable in each test was the number of launched KV servers.
+\end{enumerate}
+		
+\subsection{Test Steps}								 			
+1-  Setup test environment by launching ECS with requested number of servers by the test definition.\newline
+2-  Executing parallel write operations simulating different users. The key-value pair are randomly retrieved from the test dataset as stated before.\newline
+3-  Executing concurrent read operations of a random key retrieved from the test dataset. As only 80\% of the keys are available in the cloud storage, there is 20\% chance of requesting a key which does not exist on the servers and this will result to error(GET ERROR).\newline
+4-  Shutting down ECS.	
+			 					
+\subsubsection{Test Environment}			
+The test was conducted deploying all the components on the same machine, the test machine capabilities: Processor: Intel Core i5 CPU @ 2,4 GHz (4 CPUs) , Memory: 8 GB 1600 MHz DDR3
+
+\subsection{Tests}
+\subsubsection{Test case1: ( 1000 clients, 1 server, 20 s ramp-up time)}
+% table one 
+%\begin{table}[h]
+%\begin{tabular}{llllll}
+%average & median & min & max    & error \% & Throughput/sec \\
+%97661   & 106326 & 309 & 195389 & 0        &               
+%\end{tabular}
+%\end{table}
+\centering
+     \includegraphics[width=0.5\textwidth]{graph-1.png}
+%table two
+\centering
+     \includegraphics[width=0.5\textwidth]{graph-2.png}
+
+\subsubsection{Test case2: ( 1000 clients, 5 servers, 20 s ramp-up time)}
+%table
+\centering
+     \includegraphics[width=0.5\textwidth]{graph-3.png}
+
+%table
+\centering
+     \includegraphics[width=0.5\textwidth]{graph-4.png}
+ 
+\subsubsection{Test case3: ( 1000 clients, 10 servers, 20 s ramp-up time)}
+
+%table
+\centering
+     \includegraphics[width=0.5\textwidth]{graph-5.png}
+ 
+%table
+\centering
+     \includegraphics[width=0.5\textwidth]{graph-6.png}
+ 
+\subsubsection{Test case4: ( 1000 clients, 10 servers, 20 s ramp-up time) without saving after each put request}
+%table
+\centering
+     \includegraphics[width=0.5\textwidth]{graph-7.png}
+ 
+%table
+\centering
+     \includegraphics[width=0.5\textwidth]{graph-8.png}
+
 \section{Discussion}
 to be added
 \section{Conclusion}
