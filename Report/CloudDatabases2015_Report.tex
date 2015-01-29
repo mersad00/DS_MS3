@@ -54,7 +54,7 @@
 %\CopyrightYear{2007} % Allows default copyright year (20XX) to be over-ridden - IF NEED BE.
 %\crdata{0-12345-67-8/90/01}  % Allows default copyright data (0-89791-88-6/97/05) to be over-ridden - IF NEED BE.
 % --- End of Author Metadata ---
-\title{A Cloud Key-Value storage with Replication, Failure Detection and Notification}%\titlenote{(Produces the permission block, and
+\title{Godzilla: A Cloud Key-Value storage with Replication, Failure Detection and Notification}%\titlenote{(Produces the permission block, and
 %copyright information). For use with
 %SIG-ALTERNATE.CLS. Supported by ACM.}}
 %\subtitle{[Extended Abstract]
@@ -353,53 +353,97 @@ The test plan was designed using Jmeter to measure the system performance under 
 \subsubsection{Test Environment}			
 The test was conducted deploying all the components on the same machine, the test machine capabilities: Processor: Intel Core i5 CPU @ 2,4 GHz (4 CPUs) , Memory: 8 GB 1600 MHz DDR3
 
-\subsection{Tests}
+\subsection{Tests and Results}
 \subsubsection{Test case1: ( 1000 clients, 1 server, 20 s ramp-up time)}
-% table one 
-%\begin{table}[h]
-%\begin{tabular}{llllll}
-%average & median & min & max    & error \% & Throughput/sec \\
-%97661   & 106326 & 309 & 195389 & 0        &               
-%\end{tabular}
-%\end{table}
+%Table to be added
+\textbf{Write}  operation's response time graph presented in figure \ref{put_1_1000} for this  test case.
+\begin{center}
+\begin{figure}[ht!]
 \centering
-     \includegraphics[width=0.5\textwidth]{graph-1.png}
-%table two
+     \includegraphics[width=0.5\textwidth]{put_1_1000_response.png}
+\caption{Write operation (1000 clients, 1 server) \label{put_1_1000}}
+\end{figure}
+\end{center}
+
+\textbf{Read} the response time graph for the get requests has been shown in figure \ref{get_1_1000}.
+\begin{center}
+\begin{figure}[ht!]
 \centering
-     \includegraphics[width=0.5\textwidth]{graph-2.png}
+     \includegraphics[width=0.5\textwidth]{get_1_1000_response.png}
+\caption{Read operation (1000 clients, 1 server) \label{get_1_1000}}
+\end{figure}
+\end{center}
+
 
 \subsubsection{Test case2: ( 1000 clients, 5 servers, 20 s ramp-up time)}
 %table
+ \textbf{Write} performance results shown in figure \ref{put_5_1000}.
+ \begin{center}
+\begin{figure}[ht!]
 \centering
-     \includegraphics[width=0.5\textwidth]{graph-3.png}
-
-%table
+     \includegraphics[width=0.5\textwidth]{put_5_1000_response.png}
+\caption{Write operation (1000 clients, 5 servers) \label{put_5_1000}}
+\end{figure}
+\end{center}
+ \textbf{Read} expermient results illustrated in figure \ref{get_5_1000}.
+ \begin{center}
+\begin{figure}[ht!]
 \centering
-     \includegraphics[width=0.5\textwidth]{graph-4.png}
- 
+     \includegraphics[width=0.5\textwidth]{get_5_1000_response.png}
+\caption{Read operation (1000 clients, 5 servers) \label{get_5_1000}}
+\end{figure}
+\end{center}
 \subsubsection{Test case3: ( 1000 clients, 10 servers, 20 s ramp-up time)}
+%table
+ \textbf{Write} operation experiment for this test case is shown in figure. \ref{put_10_1000}
+ \begin{center}
+\begin{figure}[ht!]
+\centering
+     \includegraphics[width=0.5\textwidth]{put_10_1000_response.png}
+\caption{Write operation (1000 clients, 10 servers) \label{put_10_1000}}
+\end{figure}
+\end{center}
 
-%table
+ \textbf{Read} requests performance results for this test case is presented in figure \ref{get_10_1000}.
+ \begin{center}
+\begin{figure}[ht!]
 \centering
-     \includegraphics[width=0.5\textwidth]{graph-5.png}
- 
-%table
-\centering
-     \includegraphics[width=0.5\textwidth]{graph-6.png}
- 
+     \includegraphics[width=0.5\textwidth]{get_10_1000_response.png}
+\caption{Read operation (1000 clients, 10 servers) \label{get_10_1000}}
+\end{figure}
+\end{center}
 \subsubsection{Test case4: ( 1000 clients, 10 servers, 20 s ramp-up time) without saving after each put request}
-%table
+ \textbf{Write} operations performance results without constantly saving to persistance storage after each request is presented in figure \ref{put_10_1000_nosave}.
+ \begin{center}
+\begin{figure}[ht!]
 \centering
-     \includegraphics[width=0.5\textwidth]{graph-7.png}
- 
-%table
-\centering
-     \includegraphics[width=0.5\textwidth]{graph-8.png}
+     \includegraphics[width=0.5\textwidth]{put_10_1000_response_nosave.png}
+\caption{Write operation (1000 clients, 10 servers) \label{put_10_1000_nosave}}
+\end{figure}
+\end{center}
 
+ \textbf{Read}
+Not mentioned as it is the same as test case 3 read results. 
 \section{Discussion}
-to be added
+This section is about discussing the results of the previous performance measurements. In the beginning, it is important to mention that the number of users (running threads) and ramp-up are fixed in all previous test cases. The only change is with the number of the servers, since those test cases aim to test the load balance between servers and its influence on the overall performance.
+
+In the first test case, with only one server running, the graph for the read operation shows that the performance started with a good response times. By the end of the test case, the performance is getting slower and the response time increased. The reason behind this increasing in the response time is that the number of user threads is increasing 50 users per second since the ramp up time is 20.
+
+On other hand, the graph of the write operations shows that the performance of write operations has some overhead. This overhead is due to the synchronization between threads in the writing operation, since the system is moving  the "in-memory" cache storage into the persistence storage after each write operation. 
+
+By comparing the results from the second test case, which has five servers instead of one server, the read operations graph shows that the performance of the read operation is getting slower after increasing the number of servers. This leak of performance is due to switching the connection from one server to other by the client threads. The client threads are switching the connection based on the hash value for the inserted key. On other hand, the interesting point is that the performance of the write operation is improved five times comparing to the previous test case. The reason of this improvement is that the load has been balanced between five servers instead of only one server. In that case, the synchronization between threads for the write operation and moving the "in-memory" cache into persistence storage is distributed between servers which has the impact the performance of the write operations.
+
+In the third test case, the number of the servers has increased up to 10 servers. Again, the performance of the read operations is getting slower since the users threads need to switch between ten servers instead of five. Although, comparing the results with the second test case results, the performance of the write operations has been improved twice.  This improvement  is a result of balancing the load into ten servers.
+
+Eventually, the fourth test case is exactly the same as the third one, but without moving the "in-memory" cache into persistence storage after each write operation. Instead of that, moving the "in-memory" cache is moved into persistence storage only at the shutdown time. In that case, all the operations are done in the memory without performing any I/O operations. As a result of this change, the performance has been improved dramatically, since the user threads do not need to wait for persistence storage operations.
+In conclusion for the previous results, the more servers the system has, the slower performance for the read operations. This leak of performance is due to the switching 
 \section{Conclusion}
-to be added
+% serve clients from the in memory cache as much as possible,  avoid keeping clients waiting for persistency of the data.
+We have provided a key value storage which is highly reliable in terms of data persistance state using replication mechanism. Beside that, a heartbeat system with minimum overheads while being able to detect actual failures has been introduced. Furthermore, we designed and implemented a publish-subscribe extention for our KV-Store which can be really handy for cloud based applications such as chatting and data storages.
+
+According to our evaluation results, the more servers the system has, the slower performance for the read operations. This leak of performance is due to the switching between servers based on the hash value of the key. On other hand, the performance of the write operations is getting better since the synchronization between user threads is distributed among servers. In the same context, avoiding the persistence storage after each write operation and just performing that once at the shutdown time will improve the performance dramatically as seen in the last test case.
+
+As future work of this project we propose, a mechanism to periodically persist the running cache and discover the trade off between increasing the cache size (to load key-value pairs into the memory) and latency of the servers. 
 
 %ACKNOWLEDGMENTS are optional
 \section{Acknowledgments}

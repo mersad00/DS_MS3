@@ -44,7 +44,7 @@ class Serverstub implements Runnable{
 }
 public class DataBaseManagerTest {
 	
-	DatabaseManager db = new DatabaseManager(12345, 10, "FIFO","ser");
+	DatabaseManager db = new DatabaseManager(12345,"ser");
 	Map <String	,String>dataSet = new HashMap<String, String>();
 	
 	@Before public void setUpData(){

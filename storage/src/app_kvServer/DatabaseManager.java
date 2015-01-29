@@ -139,6 +139,7 @@ public class DatabaseManager {
 			} else {
 				m = update(key, value);
 			}
+			//saveCacheToDatabase();
 			return m;
 
 		} else {
@@ -160,6 +161,7 @@ public class DatabaseManager {
 				logger.error("insert for key: '" + key
 						+ "' failed because of :" + e.getMessage());
 			}
+			//saveCacheToDatabase();
 			return msg;
 		}
 	}
@@ -387,7 +389,7 @@ public class DatabaseManager {
 		return cache;
 	}
 
-	public void saveCacheToDatabase(){
+	public synchronized void saveCacheToDatabase(){
 		
 		try {
 			FileOutputStream fileOut = new FileOutputStream(this.dataBaseUri);

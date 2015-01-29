@@ -720,43 +720,43 @@ public class ConnectionThread implements Runnable {
 			parent.setServerStatus(ServerStatuses.ACTIVE);
 
 		} else if (msg.getActionType().equals(ECSCommand.MOVE_DATA)) {
-			logger.info("preparing data to be moved ... ");
-			ServerMessage message = new ServerMessage();
-
-			// Moving whole storage for replication! (not deleting the data
-			// afterwards)
-			logger.debug("MOVE DATA MSG RECIEVED range: "
-					+ msg.getMoveFromIndex() + " " + msg.getMoveToIndex());
-
-			logger.debug("this server's range: "
-					+ parent.getThisServerInfo().getFromIndex() + " "
-					+ parent.getThisServerInfo().getToIndex());
-
-			message.setData(dbManager.getDataInRange(msg.getMoveFromIndex(),
-					msg.getMoveToIndex()));
-			message.setSaveFromIndex(msg.getMoveFromIndex());
-			message.setSaveToIndex(msg.getMoveToIndex());
-
-			if (msg.getMoveFromIndex().equals(
-					parent.getThisServerInfo().getFromIndex())
-					&& msg.getMoveToIndex().equals(
-							parent.getThisServerInfo().getToIndex())) {
-				logger.debug("*************************\n "
-						+ "sending own storage for replication to "
-						+ msg.getMoveToServer());
-			} else {
-				this.dataToBeRemoved = msg;
-				logger.debug("**************************\n"
-						+ "moving own storage to " + msg.getMoveToServer());
-				dbManager.removeDataInRange(
-						this.dataToBeRemoved.getMoveFromIndex(),
-						this.dataToBeRemoved.getMoveToIndex());
-				logger.debug("data set to move has been removed from dataBase...");
-				this.dataToBeRemoved = null;
-
-			}
-
-			this.sendServerMessage(message, msg.getMoveToServer());
+//			logger.info("preparing data to be moved ... ");
+//			ServerMessage message = new ServerMessage();
+//
+//			// Moving whole storage for replication! (not deleting the data
+//			// afterwards)
+//			logger.debug("MOVE DATA MSG RECIEVED range: "
+//					+ msg.getMoveFromIndex() + " " + msg.getMoveToIndex());
+//
+//			logger.debug("this server's range: "
+//					+ parent.getThisServerInfo().getFromIndex() + " "
+//					+ parent.getThisServerInfo().getToIndex());
+//
+//			message.setData(dbManager.getDataInRange(msg.getMoveFromIndex(),
+//					msg.getMoveToIndex()));
+//			message.setSaveFromIndex(msg.getMoveFromIndex());
+//			message.setSaveToIndex(msg.getMoveToIndex());
+//
+//			if (msg.getMoveFromIndex().equals(
+//					parent.getThisServerInfo().getFromIndex())
+//					&& msg.getMoveToIndex().equals(
+//							parent.getThisServerInfo().getToIndex())) {
+//				logger.debug("*************************\n "
+//						+ "sending own storage for replication to "
+//						+ msg.getMoveToServer());
+//			} else {
+//				this.dataToBeRemoved = msg;
+//				logger.debug("**************************\n"
+//						+ "moving own storage to " + msg.getMoveToServer());
+//				dbManager.removeDataInRange(
+//						this.dataToBeRemoved.getMoveFromIndex(),
+//						this.dataToBeRemoved.getMoveToIndex());
+//				logger.debug("data set to move has been removed from dataBase...");
+//				this.dataToBeRemoved = null;
+//
+//			}
+//
+//			this.sendServerMessage(message, msg.getMoveToServer());
 
 			/*
 			 * if (message.getData().keySet().size() > 0) {
@@ -781,47 +781,47 @@ public class ConnectionThread implements Runnable {
 			 * old master(1) from rep2 to rep1. Because now old master(1) is new
 			 * master(0)
 			 */
-			logger.info("preparing data to be removed ... ");
-			String fromIndex = msg.getMoveFromIndex();
-			String toIndex = msg.getMoveToIndex();
-			logger.info("removing data form first replica storage from "
-					+ fromIndex + " to: " + toIndex);
-			rep1.removeDataInRange(fromIndex, toIndex);
-
-			// skip swapping if the ex coordinator(1) is the new coordinator(1)
-			// nothing changed just
-			// the new coordinator(0) is new!
-			if (!parent.getThisServerInfo().getSecondCoordinatorInfo()
-					.equals(parent.getExCoordinator(1))) {
-				logger.debug("swaping data from rep2 (old master(1) which is now (new master(0)) to rep1 ");
-				// when the excoordinator(1) is the newcoordinator(0)
-				// meta data is updated so swapping first coordinator from rep2,
-				// which was the
-				// second coordinator
-				rep1.putAll(rep2.getDataInRange(parent.getThisServerInfo()
-						.getFirstCoordinatorInfo().getFromIndex(), parent
-						.getThisServerInfo().getFirstCoordinatorInfo()
-						.getToIndex()));
-
-				rep2.removeDataInRange(parent.getThisServerInfo()
-						.getFirstCoordinatorInfo().getFromIndex(), parent
-						.getThisServerInfo().getFirstCoordinatorInfo()
-						.getToIndex());
-			} else if (parent.getThisServerInfo().getFirstCoordinatorInfo()
-					.equals(parent.getExCoordinator(0))) {
-				// in a case this node is the third node after adding the new
-				// node
-				// so just deleting from rep1 is enough
-				// do nothing!
-			} else {
-				// when the excoordinator(1) is the newcoordinator(1)
-				// removing the data which belongs to newcoordinator(0),
-				// which previously was belonged to coordinator(1) from rep2
-				rep2.removeDataInRange(parent.getThisServerInfo()
-						.getFirstCoordinatorInfo().getFromIndex(), parent
-						.getThisServerInfo().getFirstCoordinatorInfo()
-						.getToIndex());
-			}
+//			logger.info("preparing data to be removed ... ");
+//			String fromIndex = msg.getMoveFromIndex();
+//			String toIndex = msg.getMoveToIndex();
+//			logger.info("removing data form first replica storage from "
+//					+ fromIndex + " to: " + toIndex);
+//			rep1.removeDataInRange(fromIndex, toIndex);
+//
+//			// skip swapping if the ex coordinator(1) is the new coordinator(1)
+//			// nothing changed just
+//			// the new coordinator(0) is new!
+//			if (!parent.getThisServerInfo().getSecondCoordinatorInfo()
+//					.equals(parent.getExCoordinator(1))) {
+//				logger.debug("swaping data from rep2 (old master(1) which is now (new master(0)) to rep1 ");
+//				// when the excoordinator(1) is the newcoordinator(0)
+//				// meta data is updated so swapping first coordinator from rep2,
+//				// which was the
+//				// second coordinator
+//				rep1.putAll(rep2.getDataInRange(parent.getThisServerInfo()
+//						.getFirstCoordinatorInfo().getFromIndex(), parent
+//						.getThisServerInfo().getFirstCoordinatorInfo()
+//						.getToIndex()));
+//
+//				rep2.removeDataInRange(parent.getThisServerInfo()
+//						.getFirstCoordinatorInfo().getFromIndex(), parent
+//						.getThisServerInfo().getFirstCoordinatorInfo()
+//						.getToIndex());
+//			} else if (parent.getThisServerInfo().getFirstCoordinatorInfo()
+//					.equals(parent.getExCoordinator(0))) {
+//				// in a case this node is the third node after adding the new
+//				// node
+//				// so just deleting from rep1 is enough
+//				// do nothing!
+//			} else {
+//				// when the excoordinator(1) is the newcoordinator(1)
+//				// removing the data which belongs to newcoordinator(0),
+//				// which previously was belonged to coordinator(1) from rep2
+//				rep2.removeDataInRange(parent.getThisServerInfo()
+//						.getFirstCoordinatorInfo().getFromIndex(), parent
+//						.getThisServerInfo().getFirstCoordinatorInfo()
+//						.getToIndex());
+//			}
 
 			ECSMessage acknowledgeMessage = new ECSMessage();
 			acknowledgeMessage.setActionType(ECSCommand.ACK);

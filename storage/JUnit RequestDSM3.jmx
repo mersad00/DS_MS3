@@ -14,7 +14,7 @@
           </elementProp>
           <elementProp name="servers" elementType="Argument">
             <stringProp name="Argument.name">servers</stringProp>
-            <stringProp name="Argument.value">10</stringProp>
+            <stringProp name="Argument.value">5</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
         </collectionProp>
@@ -128,7 +128,7 @@
           <boolProp name="junitsampler.createinstancepersample">true</boolProp>
         </JUnitSampler>
         <hashTree>
-          <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" enabled="true">
+          <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="PutReport" enabled="true">
             <boolProp name="ResultCollector.error_logging">false</boolProp>
             <objProp>
               <name>saveConfig</name>
@@ -156,9 +156,11 @@
                 <assertionsResultsToSave>0</assertionsResultsToSave>
                 <bytes>true</bytes>
                 <threadCounts>true</threadCounts>
+                <sampleCount>true</sampleCount>
               </value>
             </objProp>
             <stringProp name="filename"></stringProp>
+            <boolProp name="useGroupName">true</boolProp>
           </ResultCollector>
           <hashTree/>
           <ResultCollector guiclass="RespTimeGraphVisualizer" testclass="ResultCollector" testname="Response Time Graph" enabled="true">
@@ -192,7 +194,8 @@
               </value>
             </objProp>
             <stringProp name="filename"></stringProp>
-            <stringProp name="RespTimeGraph.interval">50000</stringProp>
+            <stringProp name="RespTimeGraph.interval">3000</stringProp>
+            <stringProp name="RespTimeGraph.graphtitle">Response Time Graph</stringProp>
           </ResultCollector>
           <hashTree/>
           <ResultCollector guiclass="GraphVisualizer" testclass="ResultCollector" testname="Graph Results" enabled="true">
@@ -263,7 +266,7 @@
           <hashTree/>
         </hashTree>
       </hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="GethreadGroup" enabled="false">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="GethreadGroup" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
@@ -297,7 +300,7 @@
           <boolProp name="junitsampler.createinstancepersample">true</boolProp>
         </JUnitSampler>
         <hashTree>
-          <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="Aggregate Report" enabled="true">
+          <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="get agg" enabled="true">
             <boolProp name="ResultCollector.error_logging">false</boolProp>
             <objProp>
               <name>saveConfig</name>
@@ -330,7 +333,7 @@
             <stringProp name="filename"></stringProp>
           </ResultCollector>
           <hashTree/>
-          <ResultCollector guiclass="RespTimeGraphVisualizer" testclass="ResultCollector" testname="Response Time Graph" enabled="true">
+          <ResultCollector guiclass="RespTimeGraphVisualizer" testclass="ResultCollector" testname="get response" enabled="true">
             <boolProp name="ResultCollector.error_logging">false</boolProp>
             <objProp>
               <name>saveConfig</name>
@@ -361,10 +364,11 @@
               </value>
             </objProp>
             <stringProp name="filename"></stringProp>
-            <stringProp name="RespTimeGraph.interval">30000</stringProp>
+            <stringProp name="RespTimeGraph.interval">3000</stringProp>
+            <stringProp name="RespTimeGraph.xaxistimeformat">mm:ss</stringProp>
           </ResultCollector>
           <hashTree/>
-          <ResultCollector guiclass="GraphVisualizer" testclass="ResultCollector" testname="Graph Results" enabled="true">
+          <ResultCollector guiclass="GraphVisualizer" testclass="ResultCollector" testname="get graph" enabled="true">
             <boolProp name="ResultCollector.error_logging">false</boolProp>
             <objProp>
               <name>saveConfig</name>
@@ -394,11 +398,11 @@
                 <threadCounts>true</threadCounts>
               </value>
             </objProp>
-            <stringProp name="filename"></stringProp>
+            <stringProp name="filename">GetReport1Server1000users_Graph</stringProp>
           </ResultCollector>
           <hashTree/>
-          <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
-            <boolProp name="ResultCollector.error_logging">false</boolProp>
+          <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="get tree" enabled="true">
+            <boolProp name="ResultCollector.error_logging">true</boolProp>
             <objProp>
               <name>saveConfig</name>
               <value class="SampleSaveConfiguration">

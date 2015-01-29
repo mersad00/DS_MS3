@@ -22,7 +22,8 @@ public class Dictionary {
                 while(scanner.hasNext()){
                     String key = scanner.nextLine();
                     String val = scanner.nextLine();
-                    dictionary.put(key, val);                    
+                    if(key!=null && val!=null && !key.isEmpty() && !val.isEmpty() && !key.contains("è") && !val.contains("è")  )
+                    	dictionary.put(key, val);                    
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -33,6 +34,10 @@ public class Dictionary {
     	List<String> keysAsArray = new ArrayList<String>(dictionary.keySet());
     	Random r = new Random();
     	return keysAsArray.get(r.nextInt(keysAsArray.size()));
+    } 
+    public static String getIndexKey(int i){
+    	List<String> keysAsArray = new ArrayList<String>(dictionary.keySet());
+    	return keysAsArray.get(i);
     }
     
     public static String getValue(String Key){

@@ -8,7 +8,11 @@ import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.junit.Test;
 
+import client.KVStore;
 import common.ServerInfo;
+import common.messages.ClientMessage;
+import common.messages.KVMessage;
+import common.messages.KVMessage.StatusType;
 import app_kvEcs.ECSMock;
 
 public class EnvJMeterSetupTest extends TestCase {
@@ -77,6 +81,8 @@ public class EnvJMeterSetupTest extends TestCase {
 			for (int i = 1; i < serverNumber; i++) {
 				ecsService.getECS().addNode();
 			}
+			ecsService.getECS().start();
+			Thread.sleep(5000);
 //			
 		} catch (Exception e) {
 			fail();
@@ -106,7 +112,7 @@ public class EnvJMeterSetupTest extends TestCase {
 	
 	
 	public ServerInfo getServerInfo(int i) {
-		ServerInfo serverInfo = new ServerInfo("localhost", 6000);
+		ServerInfo serverInfo = new ServerInfo("localhost", 60000);
 		return serverInfo;
 	}
 	@Test

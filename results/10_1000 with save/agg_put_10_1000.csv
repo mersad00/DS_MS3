@@ -1,0 +1,3 @@
+sampler_label,aggregate_report_count,average,aggregate_report_median,aggregate_report_90%_line,aggregate_report_min,aggregate_report_max,aggregate_report_error%,aggregate_report_rate,aggregate_report_bandwidth
+PutThreadGroup:JUnit RequestNewUser,1000,9995,2600,34701,9,50262,0.0,18.852984427434862,0.0
+TOTAL,1000,9995,2600,34701,9,50262,0.0,18.852984427434862,0.0
