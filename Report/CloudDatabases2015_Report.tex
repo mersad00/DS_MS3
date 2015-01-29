@@ -356,16 +356,28 @@ The test was conducted deploying all the components on the same machine, the tes
 \subsection{Tests and Results}
 \subsubsection{Test case1: ( 1000 clients, 1 server, 20 s ramp-up time)}
 %Table to be added
-\textbf{Write}  operation's response time graph presented in figure \ref{put_1_1000} for this  test case.
+\textbf{Write operation}:  Table \ref{put_1_1000_tbl} presents the performance results and figure \ref{put_1_1000} illustrates the response time graph for this  test case.
+\begin{table}[h]
+\begin{tabular}{|l|l|l|l|l|l|l|}
+\hline
+ \textbf{avg} & \textbf{med} & \textbf{min} & \textbf{max} & \textbf{error} & \textbf{Throughput/sec} \\ \hline
+ 97661 & 106326 & 309 & 366 & 0 & 4.77 \\ \hline
+\end{tabular}\caption{Write operation measures(1000 clients, 1 server)}\label{put_1_1000_tbl}
+\end{table}
 \begin{center}
 \begin{figure}[ht!]
-\centering
      \includegraphics[width=0.5\textwidth]{put_1_1000_response.png}
 \caption{Write operation (1000 clients, 1 server) \label{put_1_1000}}
 \end{figure}
 \end{center}
-
-\textbf{Read} the response time graph for the get requests has been shown in figure \ref{get_1_1000}.
+\textbf{Read operation}: Measures results shown in table \ref{get_1_1000_tbl}. The response time graph for the get requests has been shown in figure \ref{get_1_1000}.
+\begin{table}[h]
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+\textbf{avg} & \textbf{med} & \textbf{min} & \textbf{max} & \textbf{error} & \textbf{Throughput/sec} \\ \hline
+13 & 7 & 2 & 381 & 0.002 & 43.36 \\ \hline
+\end{tabular}\caption{Read operation measures (1000 clients, 1 server)}\label{get_1_1000_tbl}
+\end{table}
 \begin{center}
 \begin{figure}[ht!]
 \centering
@@ -373,11 +385,15 @@ The test was conducted deploying all the components on the same machine, the tes
 \caption{Read operation (1000 clients, 1 server) \label{get_1_1000}}
 \end{figure}
 \end{center}
-
-
 \subsubsection{Test case2: ( 1000 clients, 5 servers, 20 s ramp-up time)}
-%table
- \textbf{Write} performance results shown in figure \ref{put_5_1000}.
+ \textbf{Write operation}: performance results shown in figure \ref{put_5_1000} and table \ref{put_5_1000_tbl}.
+\begin{table}[h]
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+\textbf{avg} & \textbf{med} & \textbf{min} & \textbf{max} & \textbf{error} & \textbf{Throughput/sec} \\ \hline
+20639 & 17827 & 40 & 56853 & 0 & 14.37029373 \\ \hline
+\end{tabular}\caption{Write operation (1000 clients, 5 servers)}\label{put_5_1000_tbl}
+\end{table} 
  \begin{center}
 \begin{figure}[ht!]
 \centering
@@ -385,7 +401,14 @@ The test was conducted deploying all the components on the same machine, the tes
 \caption{Write operation (1000 clients, 5 servers) \label{put_5_1000}}
 \end{figure}
 \end{center}
- \textbf{Read} expermient results illustrated in figure \ref{get_5_1000}.
+ \textbf{Read opearation}: expermient results illustrated in figure \ref{get_5_1000} and table \ref{get_5_1000_tbl}.
+ \begin{table}[h]
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+\textbf{avg} & \textbf{med} & \textbf{min} & \textbf{max} & \textbf{error} & \textbf{Throughput/sec} \\ \hline
+55 & 12 & 2 & 1662 & 0.26 & 43.08487721 \\ \hline
+\end{tabular}\caption{Read operation measures (1000 clients, 5 servers)}\label{get_5_1000_tbl}
+\end{table}
  \begin{center}
 \begin{figure}[ht!]
 \centering
@@ -394,8 +417,14 @@ The test was conducted deploying all the components on the same machine, the tes
 \end{figure}
 \end{center}
 \subsubsection{Test case3: ( 1000 clients, 10 servers, 20 s ramp-up time)}
-%table
- \textbf{Write} operation experiment for this test case is shown in figure. \ref{put_10_1000}
+ \textbf{Write operation}: operation experiment for this test case is shown in figure \ref{put_10_1000} and table \ref{put_10_1000_tbl}.
+\begin{table}[h]
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+\textbf{avg} & \textbf{med} & \textbf{min} & \textbf{max} & \textbf{error} & \textbf{Throughput/sec} \\ \hline
+9995 & 2600 & 9 & 50262 & 0 & 18.85298443 \\ \hline
+\end{tabular}\caption{Write operation measures (1000 clients, 10 servers)}\label{put_10_1000_tbl}
+\end{table} 
  \begin{center}
 \begin{figure}[ht!]
 \centering
@@ -403,8 +432,14 @@ The test was conducted deploying all the components on the same machine, the tes
 \caption{Write operation (1000 clients, 10 servers) \label{put_10_1000}}
 \end{figure}
 \end{center}
-
- \textbf{Read} requests performance results for this test case is presented in figure \ref{get_10_1000}.
+ \textbf{Read operation}: requests performance results for this test case is presented in figure \ref{get_10_1000} and table \ref{get_10_1000_tbl}.
+ \begin{table}[h]
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+\textbf{avg} & \textbf{med} & \textbf{min} & \textbf{max} & \textbf{error} & \textbf{Throughput/sec} \\ \hline
+30 & 12 & 2 & 397 & 0.21 & 42.86877867 \\ \hline
+\end{tabular}\caption{Read operation measures (1000 clients, 10 servers)}\label{get_10_1000_tbl}
+\end{table}
  \begin{center}
 \begin{figure}[ht!]
 \centering
@@ -413,7 +448,14 @@ The test was conducted deploying all the components on the same machine, the tes
 \end{figure}
 \end{center}
 \subsubsection{Test case4: ( 1000 clients, 10 servers, 20 s ramp-up time) without saving after each put request}
- \textbf{Write} operations performance results without constantly saving to persistance storage after each request is presented in figure \ref{put_10_1000_nosave}.
+ \textbf{Write operation}: operations performance results without constantly saving to persistance storage after each request is presented in figure \ref{put_10_1000_nosave} and table \ref{put_10_1000_nosave_tbl}.
+ \begin{table}[h]
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+\textbf{avg} & \textbf{Med} & \textbf{Min} & \textbf{max} & \textbf{error} & \textbf{Throughput/sec} \\ \hline
+14 & 14 & 3 & 97 & 0.21 & 43.07188698 \\ \hline
+\end{tabular}\caption{Write operation measures (1000 clients, 10 servers) no save after each operation}\label{put_10_1000_nosave_tbl}
+\end{table}
  \begin{center}
 \begin{figure}[ht!]
 \centering
@@ -421,8 +463,7 @@ The test was conducted deploying all the components on the same machine, the tes
 \caption{Write operation (1000 clients, 10 servers) \label{put_10_1000_nosave}}
 \end{figure}
 \end{center}
-
- \textbf{Read}
+ \textbf{Read operation}:
 Not mentioned as it is the same as test case 3 read results. 
 \section{Discussion}
 This section is about discussing the results of the previous performance measurements. In the beginning, it is important to mention that the number of users (running threads) and ramp-up are fixed in all previous test cases. The only change is with the number of the servers, since those test cases aim to test the load balance between servers and its influence on the overall performance.
